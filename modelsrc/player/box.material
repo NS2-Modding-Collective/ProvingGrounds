@@ -1,0 +1,5 @@
+shader = "models/player/marine.surface_shader"
+albedoMap = "models/player/box.dds"
+specularMap = "models/player/box_spec.dds"
+normalMap = "models/player/box_normal.dds"
+surface = "metal"
