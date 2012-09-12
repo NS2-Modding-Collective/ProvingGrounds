@@ -27,7 +27,7 @@ kTechId = enum({
     'Door', 'DoorOpen', 'DoorClose', 'DoorLock', 'DoorUnlock',
 
     // Misc
-    'ResourcePoint', 'TechPoint', 'SocketPowerNode', 'Mine',
+    'Mine',
     
     /////////////
     // Marines //
@@ -53,7 +53,7 @@ kTechId = enum({
     // Marine tech 
     'CommandStation', 'MAC', 'Armory', 'InfantryPortal', 'Extractor', 'Sentry', 'ARC',
     'Scan', 'AmmoPack', 'MedPack', 'CatPack', 'CatPackTech', 'PowerPoint', 'AdvancedArmoryUpgrade', 'Observatory', 'DistressBeacon', 'PhaseGate', 'RoboticsFactory', 'ARCRoboticsFactory', 'ArmsLab',
-    'PowerPack', 'PrototypeLab', 'AdvancedArmory',
+    'PowerPack', 'SentryBattery', 'PrototypeLab', 'AdvancedArmory',
     
     // Weapon tech
     'RifleUpgradeTech', 'ShotgunTech', 'GrenadeLauncherTech', 'FlamethrowerTech', 'NerveGasTech', 'FlamethrowerAltTech', 'WelderTech', 'MinesTech',

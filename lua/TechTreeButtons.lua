@@ -62,9 +62,6 @@ function InitTechTreeMaterialOffsets()
     kAlienTechIdToMaterialOffset = {}
     
     // Resource Points
-    kMarineTechIdToMaterialOffset[kTechId.ResourcePoint] = 89
-    kAlienTechIdToMaterialOffset[kTechId.ResourcePoint] = 0
-
     // First row
     kMarineTechIdToMaterialOffset[kTechId.CommandStation] = 0
     
@@ -81,10 +78,7 @@ function InitTechTreeMaterialOffsets()
     kMarineTechIdToMaterialOffset[kTechId.ARCRoboticsFactory] = 6
     
     kMarineTechIdToMaterialOffset[kTechId.Observatory] = 7
-    kMarineTechIdToMaterialOffset[kTechId.PowerPoint] = 10
-    kMarineTechIdToMaterialOffset[kTechId.SocketPowerNode] = 10  
-    // TODO: Change this
-    kMarineTechIdToMaterialOffset[kTechId.PowerPack] = 10
+    kMarineTechIdToMaterialOffset[kTechId.SentryBattery] = 71
     kMarineTechIdToMaterialOffset[kTechId.ArmsLab] = 11
     
     // Second row - Non-player orders
@@ -144,6 +138,7 @@ function InitTechTreeMaterialOffsets()
     kMarineTechIdToMaterialOffset[kTechId.Weapons3] = 57
     
     kMarineTechIdToMaterialOffset[kTechId.Marine] = 60
+    kMarineTechIdToMaterialOffset[kTechId.JetpackMarine] = 60
     kMarineTechIdToMaterialOffset[kTechId.Exo] = 61
     kMarineTechIdToMaterialOffset[kTechId.MACEMPTech] = 62
     kMarineTechIdToMaterialOffset[kTechId.MACEMP] = 62

@@ -14,7 +14,7 @@ class 'GUIUnitStatus' (GUIAnimatedScript)
 
 GUIUnitStatus.kMarineFontName = "fonts/AgencyFB_small.fnt"
 
-GUIUnitStatus.kUnitStatusSize = Vector(100, 100, 0)
+GUIUnitStatus.kUnitStatusSize = Vector(60, 60, 0)
 
 GUIUnitStatus.kAlphaPerSecond = 0.8
 GUIUnitStatus.kImpulseIntervall = 2.5
@@ -23,8 +23,8 @@ GUIUnitStatus.kBadgeSize = Vector(32, 32, 0)
 
 GUIUnitStatus.kBlackTexture = "ui/black_dot.dds"
 
-local kStatusBgTexture = { [kMarineTeamType] = "ui/unitstatus_marine.dds", [kAlienTeamType] = "ui/unitstatus_alien.dds", [kNeutralTeamType] = "ui/unitstatus_neutral.dds" }
-local kStatusFontColor = { [kMarineTeamType] = Color(kMarineTeamColorFloat), [kAlienTeamType] = Color(kAlienTeamColorFloat), [kNeutralTeamType] = Color(1,1,1,1) }
+local kStatusBgTexture = { [kMarineTeamType] = "ui/unitstatus_marine.dds", [kRedTeamType] = "ui/unitstatus_alien.dds", [kNeutralTeamType] = "ui/unitstatus_neutral.dds" }
+local kStatusFontColor = { [kMarineTeamType] = Color(kMarineTeamColorFloat), [kRedTeamType] = Color(kAlienTeamColorFloat), [kNeutralTeamType] = Color(1,1,1,1) }
 
 GUIUnitStatus.kStatusBgSize = GUIScale( Vector(168, 70, 0) )
 GUIUnitStatus.kStatusBgNoHintSize = GUIScale( Vector(168, 56, 0) )
@@ -289,7 +289,7 @@ function GUIUnitStatus:UpdateUnitStatusList(activeBlips, deltaTime)
         updateBlip.ProgressingIcon:SetRotation(Vector(0, 0, -2 * math.pi * baseResearchRot))
         updateBlip.BorderMask:SetRotation(Vector(0, 0, -2 * math.pi * baseResearchRot))
         updateBlip.BorderMask:SetIsVisible(teamType == kMarineTeamType and blipData.IsCrossHairTarget)
-        updateBlip.smokeyBackground:SetIsVisible(teamType == kAlienTeamType and blipData.HealthFraction ~= 0)
+        updateBlip.smokeyBackground:SetIsVisible(teamType == kRedTeamType and blipData.HealthFraction ~= 0)
 
         updateBlip.Badge:SetTexture(blipData.BadgeTexture)
         updateBlip.Badge:SetIsVisible(string.len(blipData.BadgeTexture) > 0)

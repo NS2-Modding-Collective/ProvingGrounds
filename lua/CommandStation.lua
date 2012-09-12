@@ -53,10 +53,6 @@ AddMixinNetworkVars(VortexAbleMixin, networkVars)
 function CommandStation:OnCreate()
 
     CommandStructure.OnCreate(self)
-
-    if Server then
-        self:SetTechId(kTechId.CommandStation)
-    end
     
     InitMixin(self, CorrodeMixin)
     InitMixin(self, GhostStructureMixin)
@@ -135,24 +131,11 @@ end
 
 local kCommandStationState = enum( { "Normal", "Locked", "Welcome" } )
 function CommandStation:OnUpdateRender()
-
-    CommandStructure.OnUpdateRender(self)
     
     local model = self:GetRenderModel()
     if model then
     
-        local state = kCommandStationState.Normal
-        
-        if self:GetIsOccupied() then
-            state = kCommandStationState.Welcome
-        elseif GetTeamHasCommander(self:GetTeamNumber()) then
-            state = kCommandStationState.Locked
-        end
-        
-        if not PlayerUI_GetHasGameStarted() then
-            state = kCommandStationState.Locked
-        end
-        
+        local state = kCommandStationState.Locked
         model:SetMaterialParameter("state", state)
         
     end

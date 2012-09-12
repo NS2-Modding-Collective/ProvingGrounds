@@ -187,13 +187,13 @@ end
 function Marine:InitWeapons()
 
     Player.InitWeapons(self)
+    //Amended for Proving Grounds
+    self:GiveItem(ExoWeaponHolder.kMapName)
     
-    self:GiveItem(Rifle.kMapName)
-    self:GiveItem(Pistol.kMapName)
-    self:GiveItem(Axe.kMapName)
-    self:GiveItem(Builder.kMapName)
+    local weaponHolder = self:GetWeapon(ExoWeaponHolder.kMapName, false)
+    weaponHolder:SetWeapons(Minigun.kMapName, Minigun.kMapName)
     
-    self:SetActiveWeapon(Rifle.kMapName)
+    self:SetActiveWeapon(ExoWeaponHolder.kMapName)
 
 end
 

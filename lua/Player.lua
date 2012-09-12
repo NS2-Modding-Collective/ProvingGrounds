@@ -216,8 +216,7 @@ local networkVars =
     crouching = "compensated boolean",
     timeOfCrouchChange = "compensated time",
     
-    // bodyYaw must be compenstated as it feeds into the animation as a
-    // pose parameter from OnSynchronized().
+    // bodyYaw must be compenstated as it feeds into the animation as a pose parameter
     bodyYaw = "compensated interpolated angle (11 bits)",
     standingBodyYaw = "angle interpolated (11 bits)",
     
@@ -329,10 +328,6 @@ function Player:OnCreate()
     if Client then
         InitMixin(self, HelpMixin)
     end
-    
-    self.cachedCloseToGroundPosition = nil
-    self.cachedCloseToGroundDistance = nil
-    self.cachedCloseToGroundResult = nil    
     
     self:SetLagCompensated(true)
     
@@ -766,7 +761,7 @@ end
 function Player:GetSlowSpeedModifier()
 
     // Never drop to 0 speed
-    return 1 - (1 - Player.kMinSlowSpeedScalar) * self.slowAmount
+    return 1 
     
 end
 
@@ -1132,10 +1127,6 @@ function Player:AddResources(amount)
     
     return resReward
     
-end
-
-function Player:AddTeamResources(amount)
-    self.teamResources = math.max(math.min(self.teamResources + amount, kMaxResources), 0)
 end
 
 function Player:GetDisplayResources()
@@ -1514,41 +1505,6 @@ function Player:UpdateViewAngles(input)
     
     self:AdjustAngles(input.time)
     
-end
-
-do
-
-    local function GetId(player)
-        if player.clientIndex and player.clientIndex ~= -1 then
-            return player.clientIndex
-        end 
-        return player:GetId()
-    end
-
-    function DumpPlayerData(mover, input)
-
-        local mode
-        
-        if Client then
-            if Shared.GetIsRunningPrediction() then
-                mode = "prediction"
-            else
-                mode = "client"
-            end
-        else
-            mode = "server"
-        end
-        
-        Shared.Message( string.format( ">>> OnProcessMove %s Player %d time = %f", mode, GetId(mover), Shared.GetTime() ) )
-
-        for index, player in ientitylist(Shared.GetEntitiesWithClassname("Player")) do
-            local origin = player:GetOrigin()
-            local height, radius = player:GetControllerSize()
-            Shared.Message( string.format(">>>> Player %d: %f, %f, %f, %f", GetId(player), origin.x, origin.y, origin.z, radius) )
-        end
-        
-    end
-
 end
 
 function Player:OnJumpLand(landIntensity, slowDown)
@@ -2181,21 +2137,14 @@ function Player:GetIsCloseToGround(distanceToGround)
         return false
     end
 
-    if (self:GetVelocityUp() and self.timeOfLastJump ~= nil and (Shared.GetTime() - self.timeOfLastJump < .2)) then
+    if (self:GetVelocityPitch() > 0 and self.timeOfLastJump ~= nil and (Shared.GetTime() - self.timeOfLastJump < .2)) then
     
         // If we are moving away from the ground, don't treat
         // us as standing on it.
         return false
         
     end
-    
-    // Check the cached value
-    if self.cachedCloseToGroundDistance == distanceToGround and
-       self.cachedCloseToGroundPosition ~= nil and
-       self.cachedCloseToGroundPosition:GetDistanceSquared(self.controller:GetPosition()) < 0.05*0.05 then
-        return self.cachedCloseToGroundResult
-    end
-    
+        
     // Try to move the controller downward a small amount to determine if
     // we're on the ground.
     local offset = Vector(0, -distanceToGround, 0)
@@ -2215,12 +2164,6 @@ function Player:GetIsCloseToGround(distanceToGround)
         end
         
     end
-    
-    
-    
-    self.cachedCloseToGroundDistance = distanceToGround
-    self.cachedCloseToGroundPosition = self.controller:GetPosition()
-    self.cachedCloseToGroundResult = result
 
     return result
     
@@ -2786,8 +2729,20 @@ end
 /**
  * Returns the view model entity.
  */
-function Player:GetViewModelEntity()    
-    return Shared.GetEntity(self.viewModelId)
+function Player:GetViewModelEntity()
+
+    local result = nil
+    
+    // viewModelId is a private field
+    if not Client or self:GetIsLocalPlayer() then  
+    
+        result = Shared.GetEntity(self.viewModelId)
+        ASSERT(not result or result:isa("ViewModel"), "%s: viewmodel is a %s!", self, result);
+        
+    end
+    
+    return result
+    
 end
 
 /**
@@ -3006,7 +2961,7 @@ if Client then
         self.leftFoot = not self.leftFoot
         local sprinting = HasMixin(self, "Sprint") and self:GetIsSprinting()
         local viewVec = self:GetViewAngles():GetCoords().zAxis
-        local forward = math.abs(self:GetVelocityYaw()) < 0.1
+        local forward = self:GetVelocity():DotProduct(viewVec) > -0.1
         local crouch = self:GetCrouching()
         local localPlayer = Client.GetLocalPlayer()
         local enemy = localPlayer and GetAreEnemies(self, localPlayer)

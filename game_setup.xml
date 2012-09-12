@@ -1,0 +1,7 @@
+<game>
+	<name>pg</name>
+	<description>Proving Grounds</description>
+	<client>lua/Client.lua</client>
+	<server>lua/Server.lua</server>
+    <soundinfo>sound/NS2.soundinfo</soundinfo>
+</game>

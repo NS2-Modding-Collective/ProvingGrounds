@@ -75,7 +75,7 @@ function CommandStructure:OnCreate()
         InitMixin(self, CommanderGlowMixin)
     end
     
-    self.occupied = false
+    self.occupied = true
     self.commanderId = Entity.invalidId
     
     self.maxHealth = LookupTechData(self:GetTechId(), kTechDataMaxHealth)
@@ -104,61 +104,10 @@ end
 
 if Client then
 
-    local function DisplayHelpArrows(self, visible)
-    
-        if not self.helpArrows and visible then
-        
-            self.helpArrows = Client.CreateCinematic(RenderScene.Zone_Default)
-            self.helpArrows:SetCinematic(self:GetHelpArrowsCinematicName())
-            self.helpArrows:SetCoords(self:GetCoords())
-            self.helpArrows:SetRepeatStyle(Cinematic.Repeat_Endless)
-            
-        end
-        
-        if self.helpArrows then
-            self.helpArrows:SetIsVisible(visible)
-        end
-        
-    end
-    
-    function CommandStructure:OnUpdateRender()
-    
-        local player = Client.GetLocalPlayer()
-        local now = Shared.GetTime()
-        
-        self.lastTimeOccupied = self.lastTimeOccupied or now
-        if self:GetIsOccupied() then
-            self.lastTimeOccupied = now
-        end
-        
-        local displayHelpArrows = false
-        if player then
-        
-            // Display the help arrows (get into Comm structure) when the
-            // team does not have a commander and the Comm structure is built
-            // and some time has passed.
-            displayHelpArrows = player:GetGameStarted()
-            displayHelpArrows = displayHelpArrows and player:GetTeamNumber() == self:GetTeamNumber()
-            displayHelpArrows = displayHelpArrows and self:GetIsBuilt() and self:GetIsAlive()
-            displayHelpArrows = displayHelpArrows and not ScoreboardUI_GetTeamHasCommander(self:GetTeamNumber())
-            displayHelpArrows = displayHelpArrows and not self:GetIsOccupied() and (now - self.lastTimeOccupied) >= 12
-            
-        end
-        
-        DisplayHelpArrows(self, displayHelpArrows)
-        
-    end
     
     function CommandStructure:OnDestroy()
     
         ScriptActor.OnDestroy(self)
-        
-        if self.helpArrows then
-        
-            Client.DestroyCinematic(self.helpArrows)
-            self.helpArrows = nil
-            
-        end
         
     end
     

@@ -18,7 +18,7 @@ Script.Load("lua/MenuManager.lua")
 local mainMenuMusic = nil
 local mainMenuAlertMessage  = nil
 
-mods = { "ns2" }
+mods = { "pg" }
 mapnames = { }
 maps = { }
 
@@ -31,8 +31,8 @@ Shared.GetMatchingFileNames("maps/*.level", false, matchingFiles)
 for _, mapFile in pairs(matchingFiles) do
 
     local _, _, filename = string.find(mapFile, "maps/(.*).level")
-    local mapname = string.gsub(filename, 'ns2_', '', 1):gsub("^%l", string.upper)
-    local tagged,_ = string.match(filename, "ns2_", 1)
+    local mapname = string.gsub(filename, 'pg_', '', 1):gsub("^%l", string.upper)
+    local tagged,_ = string.match(filename, "pg_", 1)
     if tagged ~= nil then
     
         table.insert(mapnames, mapname)

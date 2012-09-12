@@ -14,8 +14,6 @@ Script.Load("lua/TeamDeathMessageMixin.lua")
 
 class 'PlayingTeam' (Team)
 
-PlayingTeam.kObliterateVictoryTeamResourcesNeeded = 500
-
 PlayingTeam.kTooltipHelpInterval = 1
 
 PlayingTeam.kTechTreeUpdateTime = 1
@@ -87,8 +85,6 @@ function PlayingTeam:AddPlayer(player)
 
     local added = Team.AddPlayer(self, player)
     
-    player.teamResources = self.teamResources
-    
     return added
     
 end
@@ -120,7 +116,6 @@ function PlayingTeam:OnInitialized()
     
     self.teamResources = 0
     self.totalTeamResourcesCollected = 0
-    self:AddTeamResources(kPlayingTeamInitialTeamRes)
     
     self.ejectCommVoteManager:Reset()
     
@@ -130,13 +125,9 @@ function PlayingTeam:OnInitialized()
 end
 
 function PlayingTeam:ResetTeam()
-
-    local initialTechPoint = self:GetInitialTechPoint()
-
-    self:SpawnInitialStructures(initialTechPoint)
     
     for i, player in ipairs( GetEntitiesForTeam("Player", self:GetTeamNumber()) ) do
-        player:OnInitialSpawn(initialTechPoint:GetOrigin())
+        self:RespawnPlayer(player)
     end 
     
 end
@@ -177,9 +168,6 @@ function PlayingTeam:GetHasCommander()
 end
 
 // This is the initial tech point for the team
-function PlayingTeam:GetInitialTechPoint()
-    return Shared.GetEntity(self.initialTechPointId)
-end
 
 function PlayingTeam:InitTechTree()
    
@@ -376,53 +364,11 @@ function PlayingTeam:TriggerAlert(techId, entity)
     
 end
 
-function PlayingTeam:SetTeamResources(amount)
-
-    if(amount > self.teamResources) then
-    
-        // Save towards victory condition
-        self.totalTeamResourcesCollected = self.totalTeamResourcesCollected + (amount - self.teamResources)
-        
-    end
-    
-    self.teamResources = math.min(kMaxTeamResources, amount)
-    
-    function PlayerSetTeamResources(player)
-        player:SetTeamResources(self.teamResources)
-    end
-    
-    self:ForEachPlayer(PlayerSetTeamResources)
-    
-end
-
-function PlayingTeam:GetTeamResources()
-
-    return self.teamResources
-    
-end
-
-function PlayingTeam:AddTeamResources(amount)
-
-    self:SetTeamResources(self.teamResources + amount)
-    
-end
-function PlayingTeam:GetTotalTeamResources()
-
-    return self.totalTeamResourcesCollected
-
-end
 function PlayingTeam:GetHasTeamLost()
 
     if GetGamerules():GetGameStarted() and not Shared.GetCheatsEnabled() then
-    
-        // Team can't respawn or last Command Station or Hive destroyed
-        local activePlayers = self:GetHasActivePlayers()
-        local abilityToRespawn = self:GetHasAbilityToRespawn()
-        local numAliveCommandStructures = self:GetNumAliveCommandStructures()
         
-        if  (not activePlayers and not abilityToRespawn) or
-            (numAliveCommandStructures == 0) or
-            (self:GetNumPlayers() == 0) then
+        if  (self:GetNumPlayers() == 0) then
             
             return true
             
@@ -440,86 +386,13 @@ function PlayingTeam:GetHasTeamWon()
     return false
 end
 
-local function SpawnResourceTower(self, techPoint)
 
-    local techPointOrigin = Vector(techPoint:GetOrigin())
-    
-    local closestPoint = nil
-    local closestPointDistance = 0
-    
-    for index, current in ientitylist(Shared.GetEntitiesWithClassname("ResourcePoint")) do
-    
-        // The resource point and tech point must be in locations that share the same name.
-        local sameLocation = techPoint:GetLocationName() == current:GetLocationName()
-        if sameLocation then
-        
-            local pointOrigin = Vector(current:GetOrigin())
-            local distance = (pointOrigin - techPointOrigin):GetLength()
-            
-            if current:GetAttached() == nil and closestPoint == nil or distance < closestPointDistance then
-            
-                closestPoint = current
-                closestPointDistance = distance
-                
-            end
-            
-        end
-        
-    end
-    
-    // Now spawn appropriate resource tower there
-    if closestPoint ~= nil then
-    
-        local techId = ConditionalValue(self:GetIsAlienTeam(), kTechId.Harvester, kTechId.Extractor)
-        return closestPoint:SpawnResourceTowerForTeam(self, techId)
-        
-    end
-    
-    return nil
-    
-end
-
-/**
- * Spawn hive or command station at nearest empty tech point to specified team location.
- * Does nothing if can't find any.
- */
-local function SpawnCommandStructure(techPoint, teamNumber)
-
-    local commandStructure = techPoint:SpawnCommandStructure(teamNumber)
-    assert(commandStructure ~= nil)
-    commandStructure:SetConstructionComplete()
-    
-    // Use same align as tech point.
-    local techPointCoords = techPoint:GetCoords()
-    techPointCoords.origin = commandStructure:GetOrigin()
-    commandStructure:SetCoords(techPointCoords)
-    
-    return commandStructure
-    
-end
-
-function PlayingTeam:SpawnInitialStructures(techPoint)
-
-    assert(techPoint ~= nil)
-    
-    // Spawn tower at nearest unoccupied resource point.
-    local tower = SpawnResourceTower(self, techPoint)
-    if not tower then
-        Print("Warning: Failed to spawn a resource tower for tech point in location: " .. techPoint:GetLocationName())
-    end
-    
-    // Spawn hive/command station at team location.
-    local commandStructure = SpawnCommandStructure(techPoint, self:GetTeamNumber())
-    
-    return tower, commandStructure
-    
-end
 
 function PlayingTeam:GetHasAbilityToRespawn()
     return true
 end
 
-function PlayingTeam:GetIsAlienTeam()
+function PlayingTeam:GetIsRedTeam()
     return false
 end
 
@@ -562,8 +435,80 @@ end
 // Call with origin and angles, or pass nil to have them determined from team location and spawn points.
 function PlayingTeam:RespawnPlayer(player, origin, angles)
 
-    local success = false
-    local initialTechPoint = Shared.GetEntity(self.initialTechPointId)
+    if self:GetIsMarineTeam() then
+        if origin == nil or angles == nil then
+        
+            // Randomly choose unobstructed spawn points to respawn the player
+            local marineSpawnPoint = nil
+            local marineSpawnPoints = Server.team1SpawnList
+            local numSpawnPoints = table.maxn(marineSpawnPoints)
+            
+            if numSpawnPoints > 0 then
+            
+                local marineSpawnPoint = GetRandomClearSpawnPoint(player, marineSpawnPoints)
+                if marineSpawnPoint ~= nil then
+                
+                    origin = marineSpawnPoint:GetOrigin()
+                    angles = marineSpawnPoint:GetAngles()
+                    
+                end
+                
+            end
+            
+        end
+        
+        // Move origin up and drop it to floor to prevent stuck issues with floating errors or slightly misplaced spawns
+        if origin ~= nil then
+        
+            SpawnPlayerAtPoint(player, origin, angles)
+            
+            player:ClearEffects()
+            
+            return true
+            
+        else
+            Print("PlayingTeam:RespawnPlayer(player, %s, %s) - No Marine Team Spawns.", ToString(origin), ToString(angles))
+        end
+    elseif self:GetIsRedTeam() then
+        if origin == nil or angles == nil then
+        
+            // Randomly choose unobstructed spawn points to respawn the player
+            local redSpawnPoint = nil
+            local redSpawnPoints = Server.team2SpawnList
+            local numSpawnPoints = table.maxn(redSpawnPoints)
+            
+            if numSpawnPoints > 0 then
+            
+                redSpawnPoint = GetRandomClearSpawnPoint(player, redSpawnPoints)
+                if redSpawnPoint ~= nil then
+                
+                    origin = redSpawnPoint:GetOrigin()
+                    angles = redSpawnPoint:GetAngles()
+                    
+                end
+                
+            end
+            
+        end
+        
+        // Move origin up and drop it to floor to prevent stuck issues with floating errors or slightly misplaced spawns
+        if origin ~= nil then
+        
+            SpawnPlayerAtPoint(player, origin, angles)
+            
+            player:ClearEffects()
+            
+            return true
+            
+        else
+            Print("PlayingTeam:RespawnPlayer(player, %s, %s) - No Alien Team Spawns.", ToString(origin), ToString(angles))
+        end  
+    else
+        Print("PlayingTeam:RespawnPlayer(player) - Player isn't on team.")
+    end
+    
+    return false
+    /*local initialTechPoint = Shared.GetEntity(self.initialTechPointId)
     
     if origin ~= nil and angles ~= nil then
         success = Team.RespawnPlayer(self, player, origin, angles)
@@ -590,7 +535,7 @@ function PlayingTeam:RespawnPlayer(player, origin, angles)
         Print("PlayingTeam:RespawnPlayer(): No initial tech point.")
     end
     
-    return success
+    return success*/
     
 end
 
@@ -646,6 +591,7 @@ function PlayingTeam:TechRemoved(entity)
         self.techIdCount[techId] = nil
     end
     
+    //Print(ToString(debug.traceback()))
     //Print("TechRemoved %s  id: %s", EnumToString(kTechId, entity:GetTechId()), ToString(entity:GetTechId()))
     if(self.techTree ~= nil) then
         self.techTree:SetTechChanged()
@@ -679,10 +625,6 @@ function PlayingTeam:Update(timePassed)
     
     self:UpdateVoteToEject()
     
-    if gamerules:GetGameStarted() then
-        self:UpdateResourceTowers()
-    end
-    
 end
 
 function PlayingTeam:PrintWorldTextForTeamInRange(messageType, data, position, range)
@@ -692,45 +634,6 @@ function PlayingTeam:PrintWorldTextForTeamInRange(messageType, data, position, r
     
     for _, player in ipairs(playersInRange) do
         Server.SendNetworkMessage(player, "WorldText", message, true)        
-    end
-
-end
-
-function PlayingTeam:UpdateResourceTowers()
-
-    if self.timeSinceLastRTUpdate + kResourceTowerResourceInterval < Shared.GetTime() then
-    
-        self.timeSinceLastRTUpdate = Shared.GetTime()
-        
-        local numRTs = 0
-        local numSupportedHarvesters = kMinSupportedRTs + self:GetNumCapturedTechPoints() * kRTsPerTechpoint
-        
-        // update resource towers        
-        for index, resourceTower in ipairs(GetEntitiesForTeam("ResourceTower", self:GetTeamNumber())) do
-        
-            /*
-            if numRTs >= numSupportedHarvesters then
-                break
-            end
-            */
-        
-            if resourceTower:GetIsCollecting() then
-            
-                resourceTower:CollectResources()
-                
-                numRTs = numRTs + 1
-                
-            end
-            
-        end
-        
-        // update resources
-        local pResGained = numRTs * kPlayerResPerInterval * self:GetPresRecipientCount()
-        local tResGained = numRTs * kTeamResourcePerTick
-        
-        self:SplitPres(pResGained)
-        self:AddTeamResources(tResGained)
-    
     end
 
 end
@@ -844,7 +747,7 @@ function PlayingTeam:GetPresRecipientCount()
     for i, playerId in ipairs(self.playerIds) do
         
         local player = Shared.GetEntity(playerId)
-        if player and player:GetResources() < kMaxPersonalResources and player:GetIsAlive() and not player:isa("Commander") then
+        if player and player:GetResources() < kMaxPersonalResources and player:GetIsAlive() then
             recipientCount = recipientCount + 1
         end
 
@@ -869,7 +772,7 @@ function PlayingTeam:SplitPres(resAwarded)
         
         for i, playerId in ipairs(self.playerIds) do
             local player = Shared.GetEntity(playerId)
-            if player and player:GetIsAlive() and not player:isa("Commander") then
+            if player and player:GetIsAlive() then
                 resAwarded = resAwarded - player:AddResources(resPerPlayer)
             end
         end

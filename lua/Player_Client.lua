@@ -56,7 +56,7 @@ local function GetHealthCircleName(self)
 
     if self:GetTeamNumber() == kMarineTeamType then
         return Player.kFirstPersonMarineHealthCircle
-    elseif self:GetTeamNumber() == kAlienTeamType then
+    elseif self:GetTeamNumber() == kRedTeamType then
         return Player.kFirstPersonAlienHealthCircle
     end
     
@@ -140,7 +140,7 @@ end
 function PlayerUI_GetIsSpecating()
 
     local player = Client.GetLocalPlayer()
-    return player ~= nil and player:isa("Spectator")
+    return player ~= nil and (player:isa("Spectator") or player:isa("FilmSpectator"))
     
 end
 
@@ -452,7 +452,7 @@ local function AddObjectives(objectives, className)
                 if dotProduct < 0 then
                 
                     // Display higher then the origin (world units above the origin)
-                    local yOffset = ConditionalValue(player:GetTeamType() == kAlienTeamType, .75, 3)
+                    local yOffset = ConditionalValue(player:GetTeamType() == kRedTeamType, .75, 3)
         
                     VectorCopy(Client.WorldToScreen(objective:GetOrigin() + Vector(0, yOffset, 0)), screenPosition) 
                     table.insert(objectives, { Position = screenPosition, TechId = objective:GetTechId(), DistanceFraction = distanceFraction })                    
@@ -1389,7 +1389,7 @@ function Player:GetCrossHairTarget()
 end
 
 function Player:GetShowCrossHairText()
-    return self:GetTeamNumber() == kMarineTeamType or self:GetTeamNumber() == kAlienTeamType
+    return self:GetTeamNumber() == kMarineTeamType or self:GetTeamNumber() == kRedTeamType
 end
 
 function Player:UpdateCrossHairText(entity)
@@ -1562,7 +1562,7 @@ function Player:UpdateScreenEffects(deltaTime)
     if self.screenEffects.lowHealth then
     
         // Show low health warning if below the threshold and not a spectator and not a commander.
-        local isSpectator = self:isa("Spectator")
+        local isSpectator = self:isa("Spectator") or self:isa("FilmSpectator")
         local isCommander = self:isa("Commander")
         local isEmbryo = self:isa("Embryo")
         local isExo = self:isa("Exo")
@@ -1736,7 +1736,7 @@ function Player:UpdateCommanderPingSound()
             local pingSound = kDefaultPingSound
             if self:GetTeamType() == kMarineTeamType then
                 pingSound = kMarinePingSound
-            elseif self:GetTeamType() == kAlienTeamType then
+            elseif self:GetTeamType() == kRedTeamType then
                 pingSound = kAlienPingSound
             end    
          
@@ -2255,7 +2255,7 @@ function Player:GetCameraViewCoordsOverride(cameraCoords)
 
     if self.countingDown and not Shared.GetCheatsEnabled() then
     
-        if HasMixin(self, "Team") and (self:GetTeamNumber() == kMarineTeamType or self:GetTeamNumber() == kAlienTeamType) then
+        if HasMixin(self, "Team") and (self:GetTeamNumber() == kMarineTeamType or self:GetTeamNumber() == kRedTeamType) then
             cameraCoords = self:GetCameraViewCoordsCountdown(cameraCoords)
             Client.SetYaw(self.viewYaw)
             Client.SetPitch(self.viewPitch)
@@ -2417,7 +2417,7 @@ function Player:OnCountDown()
 
     if not Shared.GetCheatsEnabled() then
     
-        if not self.guiCountDownDisplay and HasMixin(self, "Team") and (self:GetTeamNumber() == kMarineTeamType or self:GetTeamNumber() == kAlienTeamType) then
+        if not self.guiCountDownDisplay and HasMixin(self, "Team") and (self:GetTeamNumber() == kMarineTeamType or self:GetTeamNumber() == kRedTeamType) then
             self.guiCountDownDisplay = GetGUIManager():CreateGUIScript("GUICountDownDisplay")
         end
         
@@ -2881,7 +2881,7 @@ function PlayerUI_IsOnAlienTeam()
 
     local player = Client.GetLocalPlayer()
     if player and HasMixin(player, "Team") then
-        return player:GetTeamNumber() == kAlienTeamType
+        return player:GetTeamNumber() == kRedTeamType
     end
     
     return false  
@@ -3033,7 +3033,7 @@ function PlayerUI_GetStaticMapBlips()
                 if playerNoTeam then
                     if blipTeamNumber == kMarineTeamType then
                         blipTeam = minimapBlipTeamMarine
-                    elseif blipTeamNumber== kAlienTeamType then
+                    elseif blipTeamNumber== kRedTeamType then
                         blipTeam = minimapBlipTeamAlien
                     end
                 else
@@ -3291,10 +3291,11 @@ function Player:CheckClientJumpLandOnSynch()
     
 end
 
-function Player:OnSynchronized()
 
-    PROFILE("Player:OnSynchronized")
-    
+function Player:OnPreUpdate()
+
+    PROFILE("Player:OnPreUpdate")
+
     self:CheckClientJumpLandOnSynch()
     
     if self.locationId ~= self.lastLocationId then
@@ -3304,8 +3305,6 @@ function Player:OnSynchronized()
         self.lastLocationId = self.locationId
         
     end
-    
-    ScriptActor.OnSynchronized(self)
     
 end
 
@@ -3328,7 +3327,7 @@ function Player:OnGetIsVisible(visibleTable)
     local isLocal = Client.GetLocalPlayer() == self
     
     local drawWorld = self:GetDrawWorld(isLocal)
-    local drawPlayer = not self:isa("Commander") and self:GetDrawPlayer(isLocal) and not self:isa("Spectator")
+    local drawPlayer = not self:isa("Commander") and self:GetDrawPlayer(isLocal) and not self:isa("Spectator") and not self:isa("FilmSpectator")
     
     visibleTable.Visible = drawPlayer
     
@@ -3527,4 +3526,13 @@ function Player:OnTakeDamageClient(doer, position)
     
     // TODO: trigger camera tilt, somehow, somewhere (probably 'global' tilt for smoothing transistion to spectator camera / death anim)
 
+end
+
+/**
+ * This is called from BaseModelMixin. This will force all player animations to process so we
+ * get animation tags on the Client for other player models. These tags are needed to trigger
+ * footstep sound effects.
+ */
+function Player:GetClientSideAnimationEnabled()
+    return true
 end

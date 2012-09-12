@@ -708,7 +708,7 @@ local kChatMessage =
     playerName = "string (" .. kMaxNameLength .. ")",
     locationId = "integer (-1 to 1000)",
     teamNumber = "integer (" .. kTeamInvalid .. " to " .. kSpectatorIndex .. ")",
-    teamType = "integer (" .. kNeutralTeamType .. " to " .. kAlienTeamType .. ")",
+    teamType = "integer (" .. kNeutralTeamType .. " to " .. kRedTeamType .. ")",
     message = string.format("string (%d)", kMaxChatLength)
 }
 

@@ -14,7 +14,7 @@ kTeamMessageTypes = enum({ 'GameStarted', 'PowerLost', 'PowerRestored', 'Eject',
 
 local kTeamMessages = { }
 
-kTeamMessages[kTeamMessageTypes.GameStarted] = { text = { [kMarineTeamType] = "MARINE_TEAM_GAME_STARTED", [kAlienTeamType] = "ALIEN_TEAM_GAME_STARTED" } }
+kTeamMessages[kTeamMessageTypes.GameStarted] = { text = { [kMarineTeamType] = "MARINE_TEAM_GAME_STARTED", [kRedTeamType] = "ALIEN_TEAM_GAME_STARTED" } }
 
 // This function will generate the string to display based on a location Id.
 local locationStringGen = function(locationId, messageString) return string.format(Locale.ResolveString(messageString), Shared.GetString(locationId)) end
@@ -26,37 +26,37 @@ kTeamMessages[kTeamMessageTypes.PowerLost] = { text = { [kMarineTeamType] = func
 
 kTeamMessages[kTeamMessageTypes.PowerRestored] = { text = { [kMarineTeamType] = function(data) return locationStringGen(data, "POWER_RESTORED") end } }
 
-kTeamMessages[kTeamMessageTypes.Eject] = { text = { [kMarineTeamType] = "COMM_EJECT", [kAlienTeamType] = "COMM_EJECT" } }
+kTeamMessages[kTeamMessageTypes.Eject] = { text = { [kMarineTeamType] = "COMM_EJECT", [kRedTeamType] = "COMM_EJECT" } }
 
 kTeamMessages[kTeamMessageTypes.CannotSpawn] = { text = { [kMarineTeamType] = "NO_IPS" } }
 
-kTeamMessages[kTeamMessageTypes.SpawningWait] = { text = { [kAlienTeamType] = "WAITING_TO_SPAWN" } }
+kTeamMessages[kTeamMessageTypes.SpawningWait] = { text = { [kRedTeamType] = "WAITING_TO_SPAWN" } }
 
-kTeamMessages[kTeamMessageTypes.Spawning] = { text = { [kMarineTeamType] = "SPAWNING", [kAlienTeamType] = "SPAWNING" } }
+kTeamMessages[kTeamMessageTypes.Spawning] = { text = { [kMarineTeamType] = "SPAWNING", [kRedTeamType] = "SPAWNING" } }
 
-kTeamMessages[kTeamMessageTypes.ResearchComplete] = { text = { [kAlienTeamType] = function(data) return researchStringGen(data, "EVOLUTION_AVAILABLE") end } }
+kTeamMessages[kTeamMessageTypes.ResearchComplete] = { text = { [kRedTeamType] = function(data) return researchStringGen(data, "EVOLUTION_AVAILABLE") end } }
 
-kTeamMessages[kTeamMessageTypes.ResearchLost] = { text = { [kAlienTeamType] = function(data) return researchStringGen(data, "EVOLUTION_LOST") end } }
+kTeamMessages[kTeamMessageTypes.ResearchLost] = { text = { [kRedTeamType] = function(data) return researchStringGen(data, "EVOLUTION_LOST") end } }
 
-kTeamMessages[kTeamMessageTypes.HiveConstructed] = { text = { [kAlienTeamType] = function(data) return locationStringGen(data, "HIVE_CONSTRUCTED") end } }
+kTeamMessages[kTeamMessageTypes.HiveConstructed] = { text = { [kRedTeamType] = function(data) return locationStringGen(data, "HIVE_CONSTRUCTED") end } }
 
 kTeamMessages[kTeamMessageTypes.HiveLowHealth] = { text = { [kMarineTeamType] = function(data) return locationStringGen(data, "HIVE_LOW_HEALTH") end,
-                                                            [kAlienTeamType] = function(data) return locationStringGen(data, "HIVE_LOW_HEALTH") end } }
+                                                            [kRedTeamType] = function(data) return locationStringGen(data, "HIVE_LOW_HEALTH") end } }
 
 kTeamMessages[kTeamMessageTypes.HiveKilled] = { text = { [kMarineTeamType] = function(data) return locationStringGen(data, "HIVE_KILLED") end,
-                                                         [kAlienTeamType] = function(data) return locationStringGen(data, "HIVE_KILLED") end } }
+                                                         [kRedTeamType] = function(data) return locationStringGen(data, "HIVE_KILLED") end } }
 
 kTeamMessages[kTeamMessageTypes.CommandStationUnderAttack] = { text = { [kMarineTeamType] = function(data) return locationStringGen(data, "COMM_STATION_UNDER_ATTACK") end } }
 
 kTeamMessages[kTeamMessageTypes.IPUnderAttack] = { text = { [kMarineTeamType] = function(data) return locationStringGen(data, "IP_UNDER_ATTACK") end } }
 
-kTeamMessages[kTeamMessageTypes.HiveUnderAttack] = { text = { [kAlienTeamType] = function(data) return locationStringGen(data, "HIVE_UNDER_ATTACK") end } }
+kTeamMessages[kTeamMessageTypes.HiveUnderAttack] = { text = { [kRedTeamType] = function(data) return locationStringGen(data, "HIVE_UNDER_ATTACK") end } }
 
 kTeamMessages[kTeamMessageTypes.PowerPointUnderAttack] = { text = { [kMarineTeamType] = function(data) return locationStringGen(data, "POWER_POINT_UNDER_ATTACK") end } }
 
 kTeamMessages[kTeamMessageTypes.Beacon] = { text = { [kMarineTeamType] = function(data) return locationStringGen(data, "BEACON_TO") end } }
 
-kTeamMessages[kTeamMessageTypes.NoCommander] = { text = { [kMarineTeamType] = "NO_COMM", [kAlienTeamType] = "NO_COMM" } }
+kTeamMessages[kTeamMessageTypes.NoCommander] = { text = { [kMarineTeamType] = "NO_COMM", [kRedTeamType] = "NO_COMM" } }
 
 // Silly name but it fits the convention.
 local kTeamMessageMessage =

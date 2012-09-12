@@ -1,0 +1,4 @@
+shader = "shaders/Level.surface_shader"
+albedoMap = "materials/fx/fx_ceil_01.dds"
+normalMap = "materials/fx/fx_ceil_01_normal.dds"
+surface = "thin_metal"

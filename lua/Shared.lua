@@ -50,8 +50,6 @@ Script.Load("lua/BalanceHealth.lua")
 Script.Load("lua/BalanceMisc.lua")
 
 // Neutral structures
-Script.Load("lua/ResourcePoint.lua")
-Script.Load("lua/ResourceTower.lua")
 Script.Load("lua/Door.lua")
 Script.Load("lua/Reverb.lua")
 Script.Load("lua/Location.lua")
@@ -61,10 +59,10 @@ Script.Load("lua/MinimapExtents.lua")
 Script.Load("lua/DeathTrigger.lua")
 Script.Load("lua/TimedEmitter.lua")
 Script.Load("lua/Gamerules.lua")
-Script.Load("lua/NS2Gamerules.lua")
-Script.Load("lua/TechPoint.lua")
+Script.Load("lua/PGGamerules.lua")
 Script.Load("lua/BaseSpawn.lua")
 Script.Load("lua/ReadyRoomSpawn.lua")
+Script.Load("lua/TeamSpawn.lua")
 Script.Load("lua/Pheromone.lua")
 Script.Load("lua/Weapons/ViewModel.lua")
 
@@ -120,6 +118,7 @@ Script.Load("lua/Hallucination.lua")
 // Base players
 Script.Load("lua/ReadyRoomPlayer.lua")
 Script.Load("lua/Spectator.lua")
+Script.Load("lua/FilmSpectator.lua")
 Script.Load("lua/AlienSpectator.lua")
 Script.Load("lua/MarineSpectator.lua")
 Script.Load("lua/Ragdoll.lua")
@@ -152,7 +151,7 @@ Script.Load("lua/Weapons/Marine/Welder.lua")
 Script.Load("lua/Jetpack.lua")
 
 Script.Load("lua/PowerPoint.lua")
-Script.Load("lua/PowerPack.lua")
+Script.Load("lua/SentryBattery.lua")
 Script.Load("lua/Sayings.lua")
 Script.Load("lua/NS2Utility.lua")
 Script.Load("lua/WeaponUtility.lua")
@@ -179,6 +178,7 @@ end
 
 local function OnMapPostLoad()
     LoadHeightmap()
+
 end
 
 function GetHeightmap()

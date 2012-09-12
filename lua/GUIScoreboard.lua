@@ -331,6 +331,21 @@ function GUIScoreboard:CreateTeamBackground(teamNumber)
     
 end
 
+local function SetMouseVisible(self, setVisible)
+
+    if self.mouseVisible ~= setVisible then
+    
+        self.mouseVisible = setVisible
+        
+        MouseTracker_SetIsVisible(self.mouseVisible, "ui/Cursor_MenuDefault.dds", true)
+        if self.mouseVisible then
+            self.clickForMouseBackground:SetIsVisible(false)
+        end
+        
+    end
+    
+end
+
 function GUIScoreboard:Update(deltaTime)
 
     PROFILE("GUIScoreboard:Update")
@@ -340,16 +355,18 @@ function GUIScoreboard:Update(deltaTime)
     ASSERT(teamsVisible ~= nil)
     
     if not teamsVisible then
-        self:_SetMouseVisible(false)
+        SetMouseVisible(self, false)
     end
     
     if not self.mouseVisible then
+    
         // Click for mouse only visible when not a commander and when the scoreboard is visible.
         local clickForMouseBackgroundVisible = (not PlayerUI_IsACommander()) and teamsVisible
         self.clickForMouseBackground:SetIsVisible(clickForMouseBackgroundVisible)
         local backgroundColor = PlayerUI_GetTeamColor()
         backgroundColor.a = 0.8
         self.clickForMouseBackground:SetColor(backgroundColor)
+        
     end
     
     //First, update teams.
@@ -458,11 +475,7 @@ function GUIScoreboard:UpdateTeam(updateTeam)
     
     // Update the team name text.
     teamNameGUIItem:SetText(string.format("%s (%d %s)", teamNameText, numPlayers, numPlayers == 1 and Locale.ResolveString("SB_PLAYER") or Locale.ResolveString("SB_PLAYERS")))
-    
-    // Update team resource display
-    local teamResourcesString = ConditionalValue(isVisibleTeam, string.format(Locale.ResolveString("SB_TEAM_RES"), ScoreboardUI_GetTeamResources(updateTeam["TeamNumber"])), "")
-    teamInfoGUIItem:SetText(string.format("%s", teamResourcesString))
-    
+      
     // Make sure there is enough room for all players on this team GUI.
     teamGUIItem:SetSize(Vector(self:GetTeamItemWidth(), (GUIScoreboard.kTeamItemHeight) + ((GUIScoreboard.kPlayerItemHeight + GUIScoreboard.kPlayerSpacing) * numPlayers), 0))
     
@@ -706,6 +719,28 @@ function GUIScoreboard:CreatePlayerItem()
     
 end
 
+local function HandlePlayerVoiceClicked(self)
+
+    local mouseX, mouseY = Client.GetCursorPosScreen()
+    for t = 1, #self.teams do
+    
+        local playerList = self.teams[t]["PlayerList"]
+        for p = 1, #playerList do
+        
+            local playerItem = playerList[p]
+            if GUIItemContainsPoint(playerItem["Voice"], mouseX, mouseY) then
+            
+                local clientIndex = playerItem["ClientIndex"]
+                ChatUI_SetClientMuted(clientIndex, not ChatUI_GetClientMuted(clientIndex))
+                
+            end
+            
+        end
+        
+    end
+    
+end
+
 function GUIScoreboard:SendKeyEvent(key, down)
 
     if not ScoreboardUI_GetVisible() then
@@ -713,46 +748,18 @@ function GUIScoreboard:SendKeyEvent(key, down)
     end
     
     if key == InputKey.MouseButton0 and self.mousePressed["LMB"]["Down"] ~= down then
+    
         self.mousePressed["LMB"]["Down"] = down
         if down then
-
-            if not self.mouseVisible then
-                self:_SetMouseVisible(true)
+        
+            if not MouseTracker_GetIsVisible() then
+                SetMouseVisible(self, true)
             else
-                self:_HandlePlayerVoiceClicked()
+                HandlePlayerVoiceClicked(self)
             end
             
         end
-    end
-    
-end
-
-function GUIScoreboard:_HandlePlayerVoiceClicked()
-
-    local mouseX, mouseY = Client.GetCursorPosScreen()
-    for index, team in ipairs(self.teams) do
-        local playerList = team["PlayerList"]
-        for playerIndex, playerItem in ipairs(playerList) do
-            if GUIItemContainsPoint(playerItem["Voice"], mouseX, mouseY) then
-                local clientIndex = playerItem["ClientIndex"]
-                ChatUI_SetClientMuted(clientIndex, not ChatUI_GetClientMuted(clientIndex))
-            end
-        end
-    end
-    
-end
-
-function GUIScoreboard:_SetMouseVisible(setVisible)
-
-    if self.mouseVisible ~= setVisible then
-    
-        self.mouseVisible = setVisible
-
-        MouseTracker_SetIsVisible(self.mouseVisible, "ui/Cursor_MenuDefault.dds", true)
-        if self.mouseVisible then
-            self.clickForMouseBackground:SetIsVisible(false)
-        end
         
     end
-
+    
 end

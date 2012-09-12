@@ -187,14 +187,6 @@ function Team:ResetPreservePlayers(techPoint)
     local playersOnTeam = {}
     table.copy(self.playerIds, playersOnTeam)
     
-    if Shared.GetCheatsEnabled() and techPoint ~= nil then
-        Print("Setting team %d team location: %s", self:GetTeamNumber(), techPoint:GetLocationName())
-    end
-    
-    if techPoint then
-        self.initialTechPointId = techPoint:GetId()
-    end
-    
     self:Reset()
     
     table.copy(playersOnTeam, self.playerIds)    
@@ -403,25 +395,6 @@ function Team:GetHasAbilityToRespawn()
 end
 
 function Team:Update(timePassed)
-end
-
-function Team:GetNumCommandStructures()
-
-    local commandStructures = GetEntitiesForTeam("CommandStructure", self:GetTeamNumber())
-    return table.maxn(commandStructures)
-    
-end
-
-function Team:GetNumAliveCommandStructures()
-
-    local commandStructures = GetEntitiesForTeam("CommandStructure", self:GetTeamNumber())
-    
-    local numAlive = 0
-    for c = 1, #commandStructures do
-        numAlive = commandStructures[c]:GetIsAlive() and (numAlive + 1) or numAlive
-    end
-    return numAlive
-    
 end
 
 function Team:GetHasTeamLost()

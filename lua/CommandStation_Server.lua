@@ -22,7 +22,7 @@ function CommandStation:GetIsPlayerInside(player)
 end
 
 function CommandStation:GetIsPlayerValidForCommander(player)
-    return player ~= nil and player:isa("Marine") and self:GetIsPlayerInside(player) and CommandStructure.GetIsPlayerValidForCommander(self, player)
+    return false
 end
 
 local function KillPlayersInside(self)
@@ -47,12 +47,7 @@ local function KillPlayersInside(self)
 
 end
 
-function CommandStation:LoginPlayer(player)
-
-    local commander = CommandStructure.LoginPlayer(self, player)
-    
-    KillPlayersInside(self)
-    
+function CommandStation:LoginPlayer(player)    
 end
 
 function CommandStation:OnConstructionComplete()

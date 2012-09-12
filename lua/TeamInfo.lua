@@ -19,19 +19,12 @@ TeamInfo.kMapName = "TeamInfo"
 
 TeamInfo.kTechTreeUpdateInterval = 1
 
-// max 100 tres/min, max 1000 minute game; should be enough 
-kMaxTotalTeamResources = 100000
 kMaxTotalPersonalResources = 100000
 
 local networkVars =
 {
-    teamResources =  "float (0 to " .. kMaxResources .. " by 0.1 [ 4 ])",
-    totalTeamResources = "float (0 to " .. kMaxTotalTeamResources .. " by 1 [ 1 ])",
     personalResources = "float (0 to " .. kMaxTotalPersonalResources .. " by 0.1) [ 4 ]",
-    numResourceTowers = "integer (0 to 99)",
-    numCapturedResPoints = "integer (0 to 99)",
     latestResearchId = "integer",
-    numCapturedTechPoint = "integer (0 to 99)",
     lastCommPingTime = "time",
     lastCommPingPosition       = "vector",
     techResearchingMaskMarine  = "integer",
@@ -148,16 +141,12 @@ function TeamInfo:OnCreate()
     if Server then
     
         self:SetUpdates(true)
-        
-        self.teamResources = 0
         self.personalResources = 0
-        self.numResourceTowers = 0
         self.latestResearchId = 0
         self.researchDisplayTime = 0
         self.lastTechPriority = 0
         self.lastCommPingTime = 0
         self.lastCommPingPosition = 0
-        self.totalTeamResources = 0
         self.techResearchingMaskMarine = 0
         self.techResearchedMaskMarine = 0
         self.techResearchingMaskAlien = 0
@@ -169,8 +158,6 @@ function TeamInfo:OnCreate()
         
     end
     
-    self:SetSynchronizes(false)
-    
     InitMixin(self, TeamMixin)
     
 end
@@ -180,28 +167,12 @@ local function UpdateInfo(self)
     if self.team then
     
         self:SetTeamNumber(self.team:GetTeamNumber())
-        self.teamResources = self.team:GetTeamResources()
-        
-        self.totalTeamResources = self.team:GetTotalTeamResources()
         self.personalResources = 0
         for index, player in ipairs(self.team:GetPlayers()) do
             self.personalResources = self.personalResources + player:GetResources()
         end
         
-        local rtCount = 0
-        local rts = GetEntitiesForTeam("ResourceTower", self:GetTeamNumber())
-        for index, rt in ipairs(rts) do
-        
-            if rt:GetIsCollecting() then
-                rtCount = rtCount + 1
-            end
-            
-        end
-        
-        self.numResourceTowers = rtCount
-        self.numCapturedResPoints = #rts
-        
-        if self.lastTechTreeUpdate == nil or (Shared.GetTime() > (self.lastTechTreeUpdate + TeamInfo.kTechTreeUpdateInterval)) then
+        if self.team:GetTeamNumber() == kTeam1Index then
 
             self:UpdateTechTreeInfo(self.team:GetTechTree(), self.team:GetTeamNumber())
 
@@ -295,20 +266,8 @@ function TeamInfo:SetWatchTeam(team)
     
 end
 
-function TeamInfo:GetNumCapturedResPoints()
-    return self.numCapturedResPoints
-end
-
-function TeamInfo:GetTeamResources()
-    return self.teamResources
-end
-
 function TeamInfo:GetPersonalResources()
     return self.personalResources
-end
-
-function TeamInfo:GetNumResourceTowers()
-    return self.numResourceTowers
 end
 
 function TeamInfo:UpdateRelevancy()

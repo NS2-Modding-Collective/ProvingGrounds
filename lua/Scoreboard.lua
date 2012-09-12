@@ -265,17 +265,6 @@ function ScoreboardUI_GetAllScores()
     return GetScoreData({ kTeam1Index, kTeam2Index, kTeamReadyRoom, kSpectatorIndex })
 end
 
-function ScoreboardUI_GetTeamResources(teamNumber)
-
-    local teamInfo = GetEntitiesForTeam("TeamInfo", teamNumber)
-    if table.count(teamInfo) > 0 then
-        return teamInfo[1]:GetTeamResources()
-    end
-    
-    return 0
-
-end
-
 /**
  * Get the name of the blue team
  */
@@ -334,21 +323,6 @@ function ScoreboardUI_IsPlayerCommander(playerName)
         end
         
     end  
-    
-    return false
-    
-end
-
-function ScoreboardUI_GetTeamHasCommander(teamNumber)
-
-    for i = 1, #playerData do
-    
-        local playerRecord = playerData[i]
-        if playerRecord.EntityTeamNumber == teamNumber and playerRecord.IsCommander then
-            return true
-        end
-        
-    end
     
     return false
     

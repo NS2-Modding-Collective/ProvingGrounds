@@ -1,4 +1,4 @@
-shader = "models/player/bmfg_view.surface_shader"
+shader = "models/player/marine.surface_shader"
 albedoMap = "models/player/bmfg_view.dds"
 specularMap = "models/player/bmfg_view_spec.dds"
 normalMap = "models/player/bmfg_view_normal.dds"

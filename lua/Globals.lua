@@ -13,7 +13,7 @@ kBaseScreenHeight = 1080
 // Team types - corresponds with teamNumber in editor_setup.xml
 kNeutralTeamType = 0
 kMarineTeamType = 1
-kAlienTeamType = 2
+kRedTeamType = 2
 kRandomTeamType = 3
 
 // Team colors
@@ -41,7 +41,7 @@ kNeutralTeamColor = 0xEEEEEE
 kChatPrefixTextColor = 0xFFFFFF
 kChatTextColor = { [kNeutralTeamType] = kNeutralFontColor,
                    [kMarineTeamType] = kMarineFontColor,
-                   [kAlienTeamType] = kAlienFontColor }
+                   [kRedTeamType] = kAlienFontColor }
 kChatTypeTextColor = 0xDD4444
 kFriendlyColor = 0xFFFFFF
 kNeutralColor = 0xAAAAFF
@@ -62,13 +62,13 @@ kSpectatorIndex = 3
 
 // Marines vs. Aliens
 kTeam1Type = kMarineTeamType
-kTeam2Type = kAlienTeamType
+kTeam2Type = kRedTeamType //Changed From: kAlienTeamType
 
 // Used for playing team and scoreboard
-kTeam1Name = "Frontiersmen"
-kTeam2Name = "Kharaa"
+kTeam1Name = "Blue Team"
+kTeam2Name = "Red Team"
 kSpectatorTeamName = "Ready room"
-kDefaultPlayerName = "NsPlayer"
+kDefaultPlayerName = "NanoBot"
 
 kDefaultWaypointGroup = "GroundWaypoints"
 kAirWaypointsGroup = "AirWaypoints"
@@ -288,19 +288,19 @@ kCatalyzURL = "https://catalyz.herokuapp.com/v1"
 kResourceType = enum( {'Team', 'Personal', 'Energy', 'Ammo'} )
 
 kNameTagFontColors = { [kMarineTeamType] = kMarineFontColor,
-                       [kAlienTeamType] = kAlienFontColor,
+                       [kRedTeamType] = kAlienFontColor,
                        [kNeutralTeamType] = kNeutralFontColor }
 
 kNameTagFontNames = { [kMarineTeamType] = kMarineFontName,
-                      [kAlienTeamType] = kAlienFontName,
+                      [kRedTeamType] = kAlienFontName,
                       [kNeutralTeamType] = kNeutralFontName }
 
 kHealthBarColors = { [kMarineTeamType] = Color(0.725, 0.921, 0.949, 1),
-                     [kAlienTeamType] = Color(0.776, 0.364, 0.031, 1),
+                     [kRedTeamType] = Color(0.776, 0.364, 0.031, 1),
                      [kNeutralTeamType] = Color(1, 1, 1, 1) }
                      
 kArmorBarColors = { [kMarineTeamType] = Color(0.078, 0.878, 0.984, 1),
-                    [kAlienTeamType] = Color(0.576, 0.194, 0.011, 1),
+                    [kRedTeamType] = Color(0.576, 0.194, 0.011, 1),
                     [kNeutralTeamType] = Color(0.5, 0.5, 0.5, 1) }
 
 

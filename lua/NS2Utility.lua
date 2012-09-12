@@ -68,17 +68,18 @@ function GetIsUnitActive(unit, debug)
     local powered = not HasMixin(unit, "PowerConsumer") or not unit:GetRequiresPower() or unit:GetIsPowered()
     local alive = not HasMixin(unit, "Live") or unit:GetIsAlive()
     local isBuilt = not HasMixin(unit, "Construct") or unit:GetIsBuilt()
-    local isRecycled = not HasMixin(unit, "Recycle") or not unit:GetIsRecycled()
+    local isRecycled = HasMixin(unit, "Recycle") and unit:GetIsRecycled()
     
     if debug then
         Print("------------ GetIsUnitActive(%s) -----------------", ToString(unit))
         Print("powered: %s", ToString(powered))
         Print("alive: %s", ToString(alive))
         Print("isBuilt: %s", ToString(isBuilt))
+        Print("isRecycled: %s", ToString(isRecycled))
         Print("-----------------------------")
     end
     
-    return not GetIsVortexed(unit) and powered and alive and isBuilt
+    return not GetIsVortexed(unit) and powered and alive and isBuilt and not isRecycled
     
 end
 
@@ -749,8 +750,8 @@ end
 
 function GetAreEnemies(entityOne, entityTwo)
     return entityOne and entityTwo and HasMixin(entityOne, "Team") and HasMixin(entityTwo, "Team") and (
-            (entityOne:GetTeamNumber() == kMarineTeamType and entityTwo:GetTeamNumber() == kAlienTeamType) or
-            (entityOne:GetTeamNumber() == kAlienTeamType and entityTwo:GetTeamNumber() == kMarineTeamType)
+            (entityOne:GetTeamNumber() == kMarineTeamType and entityTwo:GetTeamNumber() == kRedTeamType) or
+            (entityOne:GetTeamNumber() == kRedTeamType and entityTwo:GetTeamNumber() == kMarineTeamType)
            )
 end
 
@@ -764,7 +765,7 @@ function GetIsMarineUnit(entity)
 end
 
 function GetIsAlienUnit(entity)
-    return entity and HasMixin(entity, "Team") and entity:GetTeamType() == kAlienTeamType
+    return entity and HasMixin(entity, "Team") and entity:GetTeamType() == kRedTeamType
 end
 
 function GetEnemyTeamNumber(entityTeamNumber)
@@ -922,7 +923,7 @@ function GetCanSeeEntity(seeingEntity, targetEntity)
         if withinFOV then
         
             // See if there's something blocking our view of the entity.
-            local trace = Shared.TraceRay(eyePos, targetOrigin, CollisionRep.LOS, PhysicsMask.All, EntityFilterOnly(targetEntity))
+            local trace = Shared.TraceRay(eyePos, targetOrigin + toEntity, CollisionRep.LOS, PhysicsMask.All, EntityFilterOnly(targetEntity))
             
             if trace.entity == targetEntity then
                 seen = true
@@ -1075,9 +1076,18 @@ if Client then
     
 end
 
-local horizontalVelocity = Vector()
 function SetPlayerPoseParameters(player, viewModel)
 
+    if not player or not player:isa("Player") then
+        Log("SetPlayerPoseParameters: player %s is not a player", player);
+    end
+    ASSERT(player and player:isa("Player"))
+    
+    if viewmodel and not viewmodel:isa("Viewmodel") then
+        Log("SetPlayerPoseParameters: player %s s viewmodel is a %s", player, viewmodel);
+    end
+    ASSERT(not viewmodel or viewmodel:isa("Viewmodel"))    
+    
     local viewAngles = player:GetViewAngles()
     
     local pitch = -Math.Wrap(Math.Degrees(viewAngles.pitch), -180, 180)
@@ -1089,7 +1099,19 @@ function SetPlayerPoseParameters(player, viewModel)
         bodyYaw = Math.Wrap(Math.Degrees(player.bodyYaw), -180, 180)
     end
     
-    local moveYaw = Math.Wrap(Math.Degrees(player:GetVelocityYaw()), -180, 180) 
+    local viewAngles = player:GetViewAngles()    
+    local viewCoords = viewAngles:GetCoords()
+
+    local horizontalVelocity = player:GetVelocityFromPolar()
+    // Not all players will contrain their movement to the X/Z plane only.
+    if player.GetMoveSpeedIs2D and player:GetMoveSpeedIs2D() then
+        horizontalVelocity.y = 0
+    end
+    
+    local x = Math.DotProduct(viewCoords.xAxis, horizontalVelocity)
+    local z = Math.DotProduct(viewCoords.zAxis, horizontalVelocity)
+
+    local moveYaw = Math.Wrap(Math.Degrees( math.atan2(z,x) ), -180, 180) 
     local speedScalar = player:GetVelocityLength() / player:GetMaxSpeed(true)
     
     player:SetPoseParam("move_yaw", moveYaw)
@@ -1099,6 +1121,7 @@ function SetPlayerPoseParameters(player, viewModel)
     player:SetPoseParam("crouch", player:GetCrouchAmount())
     player:SetPoseParam("land_intensity", landIntensity)
 
+    
     if viewModel then
         viewModel:SetPoseParam("body_pitch", pitch)
         viewModel:SetPoseParam("move_yaw", moveYaw)
@@ -1765,7 +1788,7 @@ function BuildClassToGrid()
     ClassToGrid["Sentry"] = { 5, 4 }
     ClassToGrid["ARC"] = { 6, 4 }
     ClassToGrid["ARCDeployed"] = { 7, 4 }
-    ClassToGrid["PowerPack"] = { 8, 4 }
+    ClassToGrid["SentryBattery"] = { 8, 4 }
 
     ClassToGrid["InfantryPortal"] = { 1, 5 }
     ClassToGrid["Armory"] = { 2, 5 }

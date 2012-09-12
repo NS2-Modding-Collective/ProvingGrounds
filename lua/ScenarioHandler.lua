@@ -271,7 +271,7 @@ function ScenarioEntityHandler:GetTeamType(entityClassName)
     //otherwise, get the teamType from check GetIsAlienStructure
     local cls = _G[entityClassName]
     if cls.GetIsAlienStructure then
-        return cls.GetIsAlienStructure() and kAlienTeamType or kMarineTeamType
+        return cls.GetIsAlienStructure() and kRedTeamType or kMarineTeamType
     end
     Log("Unable to find team for %s", entityClassName)
     return nil 

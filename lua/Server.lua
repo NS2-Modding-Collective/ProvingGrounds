@@ -16,7 +16,7 @@ Script.Load("lua/TechData.lua")
 Script.Load("lua/TargetCache.lua")
 
 Script.Load("lua/MarineTeam.lua")
-Script.Load("lua/AlienTeam.lua")
+Script.Load("lua/RedTeam.lua")
 Script.Load("lua/TeamJoin.lua")
 Script.Load("lua/Bot.lua")
 Script.Load("lua/VoteManager.lua")
@@ -39,19 +39,22 @@ Script.Load("lua/NetworkDebug.lua")
 Server.dbgTracer = DbgTracer()
 Server.dbgTracer:Init()
 
-Server.readyRoomSpawnList = { }
+Server.readyRoomSpawnList = table.array(32)
+
+Server.team1SpawnList = table.array(16)
+Server.team2SpawnList = table.array(16)
 
 // map name, group name and values keys for all map entities loaded to
 // be created on game reset
-Server.mapLoadLiveEntityValues = { }
+Server.mapLoadLiveEntityValues = table.array(100)
 
 // Game entity indices created from mapLoadLiveEntityValues. They are all deleted
 // on and rebuilt on map reset.
-Server.mapLiveEntities = { }
+Server.mapLiveEntities = table.array(32)
 
 // Map entities are stored here in order of their priority so they are loaded
 // in the correct order (Structure assumes that Gamerules exists upon loading for example).
-Server.mapPostLoadEntities = { }
+Server.mapPostLoadEntities = table.array(32)
 
 // Recent chat messages are stored on the server.
 Server.recentChatMessages = CreateRingBuffer(20)
@@ -69,7 +72,7 @@ end
  * Map entities with a higher priority are loaded first.
  */
 local kMapEntityLoadPriorities = { }
-kMapEntityLoadPriorities[NS2Gamerules.kMapName] = 1
+kMapEntityLoadPriorities[PGGamerules.kMapName] = 1
 local function GetMapEntityLoadPriority(mapName)
 
     local priority = 0
@@ -106,9 +109,6 @@ local function LoadServerMapEntity(mapName, groupName, values)
        and mapName ~= ReadyRoomSpawn.kMapName
        and mapName ~= AmbientSound.kMapName
        and mapName ~= Reverb.kMapName
-       and mapName ~= Hive.kMapName
-       and mapName ~= CommandStation.kMapName
-       and mapName ~= Cyst.kMapName
        and mapName ~= Particles.kMapName then
         
         local entity = Server.CreateEntity(mapName, values)
@@ -127,14 +127,6 @@ local function LoadServerMapEntity(mapName, groupName, values)
                 
             end
             
-            // $AS FIXME: We are special caasing techPoints for pathing right now :/ 
-            if (mapName == "tech_point") or values.pathInclude == true then
-            
-                local coords = values.angles:GetCoords(values.origin)
-                Pathing.CreatePathingObject(entity:GetModelName(), coords)
-                
-            end
-            
             local renderModelCommAlpha = GetAndCheckValue(values.commAlpha, 0, 1, "commAlpha", 1, true)
             local blocksPlacement = groupName == kCommanderInvisibleGroupName or
                                     groupName == kCommanderNoBuildGroupName
@@ -145,14 +137,6 @@ local function LoadServerMapEntity(mapName, groupName, values)
 
         end
         
-    end
-    
-    if mapName == Hive.kMapName
-       or mapName == CommandStation.kMapName
-       or mapName == Cyst.kMapName then
-       
-       table.insert(Server.mapLoadLiveEntityValues, {mapName, groupName, values})
-       
     end   
     
     if mapName == ReadyRoomSpawn.kMapName then
@@ -161,6 +145,18 @@ local function LoadServerMapEntity(mapName, groupName, values)
         entity:OnCreate()
         LoadEntityFromValues(entity, values)
         table.insert(Server.readyRoomSpawnList, entity)
+        
+    elseif mapName == TeamSpawn.kMapName then
+    
+        local entity = TeamSpawn()
+        entity:OnCreate()
+        LoadEntityFromValues(entity, values)
+        if entity.teamNumber == kTeam1Index then
+            table.insert(Server.team1SpawnList, entity)
+        end
+        if entity.teamNumber == kTeam2Index then
+            table.insert(Server.team2SpawnList, entity)
+        end
 
     elseif (mapName == AmbientSound.kMapName) then
 
@@ -168,7 +164,6 @@ local function LoadServerMapEntity(mapName, groupName, values)
         Shared.PrecacheSound(values.eventName)
 
     elseif (mapName == Particles.kMapName) then
-
         Shared.PrecacheCinematic(values.cinematicName)
     elseif (mapName == "pathing_settings") then
         ParsePathingSettings(values)
@@ -190,11 +185,6 @@ function OnMapLoadEntity(mapName, groupName, values)
     if Server.mapPostLoadEntities[priority] == nil then
         Server.mapPostLoadEntities[priority] = { }
     end
-    
-    if mapName == "tech_point" then
-        Pathing.AddFillPoint(values.origin) 
-    end
-
     table.insert(Server.mapPostLoadEntities[priority], { MapName = mapName, GroupName = groupName, Values = values })
 
 end
@@ -216,6 +206,8 @@ function OnMapPreLoad()
     
     // Clear spawn points
     Server.readyRoomSpawnList = {}
+    Server.team1SpawnList = {}
+    Server.team2SpawnList = {}
     
     Server.mapLoadLiveEntityValues = {}
     Server.mapLiveEntities = {}

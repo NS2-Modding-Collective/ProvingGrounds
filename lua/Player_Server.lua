@@ -302,29 +302,12 @@ function Player:GetDeathMapName()
     return Spectator.kMapName
 end
 
-function Player:OnUpdatePlayer(deltaTime)
-    
-    self:_UpdateChangeToSpectator()
-
-    local gamerules = GetGamerules()
-    self.gameStarted = gamerules:GetGameStarted()
-    // TODO: Change this after making NS2Player
-    if self:GetTeamNumber() == kTeam1Index or self:GetTeamNumber() == kTeam2Index then
-        self.countingDown = gamerules:GetCountingDown()
-    else
-        self.countingDown = false
-    end
-    self.teamLastThink = self:GetTeam()
-
-end
-
-function Player:_UpdateChangeToSpectator()
+local function UpdateChangeToSpectator(self)
 
     if not self:GetIsAlive() and not self:isa("Spectator") then
     
         local time = Shared.GetTime()
-        
-        if (self.timeOfDeath ~= nil) and (time - self.timeOfDeath > kFadeToBlackTime) then
+        if self.timeOfDeath ~= nil and (time - self.timeOfDeath > kFadeToBlackTime) then
         
             // Destroy the existing player and create a spectator in their place (but only if it has an owner, ie not a body left behind by Phantom use)
             local owner  = Server.GetOwner(self)
@@ -337,16 +320,30 @@ function Player:_UpdateChangeToSpectator()
             end
             
         end
+        
+    end
+    
+end
 
-    end 
+function Player:OnUpdatePlayer(deltaTime)
 
+    UpdateChangeToSpectator(self)
+    
+    local gamerules = GetGamerules()
+    self.gameStarted = gamerules:GetGameStarted()
+    // TODO: Change this after making NS2Player
+    if self:GetTeamNumber() == kTeam1Index or self:GetTeamNumber() == kTeam2Index then
+        self.countingDown = gamerules:GetCountingDown()
+    else
+        self.countingDown = false
+    end
+    self.teamLastThink = self:GetTeam()
+    
 end
 
 // Remember game time player enters queue so they can be spawned in FIFO order
 function Player:SetRespawnQueueEntryTime(time)
-
     self.respawnQueueEntryTime = time
-    
 end
 
 function Player:ReplaceRespawn()
@@ -396,7 +393,7 @@ function Player:CopyPlayerDataFrom(player)
     self.client = player.client
     
     // Preserve hotkeys when logging in/out of command structures
-    if player:GetTeamType() == kMarineTeamType or player:GetTeamType() == kAlienTeamType then
+    if player:GetTeamType() == kMarineTeamType or player:GetTeamType() == kRedTeamType then
         table.copy(player.hotkeyGroups, self.hotkeyGroups)
     end
     
@@ -436,7 +433,7 @@ function Player:CopyPlayerDataFrom(player)
     
     // Don't lose purchased upgrades when becoming commander
     
-    if self:GetTeamNumber() == kAlienTeamType or self:GetTeamNumber() == kMarineTeamType then
+    if self:GetTeamNumber() == kRedTeamType or self:GetTeamNumber() == kMarineTeamType then
     
         self.upgrade1 = player.upgrade1
         self.upgrade2 = player.upgrade2
@@ -720,9 +717,10 @@ end
 
 function Player:UpdateArmorAmount()
 
-    local armorPercent = self.armor/self.maxArmor
+    // note: some player may have maxArmor == 0
+    local armorPercent = self.maxArmor > 0 and self.armor/self.maxArmor or 0
     self.maxArmor = self:GetArmorAmount()
-    self.armor = self.maxArmor * armorPercent
+    self:SetArmor(self.maxArmor * armorPercent)
     
 end
 

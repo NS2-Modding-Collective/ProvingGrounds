@@ -31,6 +31,7 @@ Script.Load("lua/LOSMixin.lua")
 Script.Load("lua/CombatMixin.lua")
 Script.Load("lua/SelectableMixin.lua")
 Script.Load("lua/ParasiteMixin.lua")
+Script.Load("lua/Weapons/Marine/ExoWeaponHolder.lua")
 
 if Client then
     Script.Load("lua/TeamMessageMixin.lua")
@@ -86,7 +87,7 @@ Marine.kWeldedEffectsInterval = .5
 
 Marine.kSpitSlowDuration = 3
 
-Marine.kWalkBackwardSpeedScalar = 0.4
+Marine.kWalkBackwardSpeedScalar = 1
 
 // start the get up animation after stun before giving back control
 Marine.kGetUpAnimationLength = 0.5
@@ -102,6 +103,16 @@ Marine.kSprintAcceleration = 60 // 70
 Marine.kSprintInfestationAcceleration = 60
 
 Marine.kAirStrafeWeight = 2
+
+//Added for Proving Grounds
+Marine.kShadowStepCooldown = 1.5
+Marine.kShadowStepJumpDelay = 0.25
+Marine.kShadowStepForce = 30
+Marine.kShadowStepAirForce = 15
+Marine.kShadowStepDuration = 0.15
+
+// when using shadow step before 1.4 seconds passed it decreases in effectiveness
+Marine.kShadowStepSoftCooldDown = 1.4
 
 local networkVars =
 {      
@@ -119,8 +130,13 @@ local networkVars =
     ruptured = "boolean",
     interruptAim = "private boolean",
     poisoned = "boolean",
-    hasArmsLab = "private boolean",
-    catpackboost = "private boolean"
+    catpackboost = "private boolean",
+    //Added for Proving Grounds
+    shadowStepping = "boolean",
+    timeShadowStep = "private time",
+    shadowStepDirection = "private vector",
+    hasDoubleJumped = "private compensated boolean", 
+    movementModiferState = "boolean"
 }
 
 AddMixinNetworkVars(BaseMoveMixin, networkVars)
@@ -168,6 +184,10 @@ function Marine:OnCreate()
         
         self.timePoisoned = 0
         self.poisoned = false
+        //Added for Proving Grounds
+        self.timeShadowStep = 0
+        self.shadowStepping = false
+        self.hasDoubleJumped = false
         
     elseif Client then
     
@@ -273,11 +293,6 @@ if Server then
     Event.Hook("Console_blockblackarmor", function() if Shared.GetCheatsEnabled() then blockBlackArmor = not blockBlackArmor end end)
 end
 
-function Marine:GetHasArmsLab()
-    return self.hasArmsLab
-end
-
-
 function Marine:GetArmorLevel()
 
     local armorLevel = 0
@@ -348,7 +363,7 @@ function Marine:GetCanRepairOverride(target)
 end
 
 function Marine:GetSlowOnLand()
-    return true
+    return false
 end
 
 function Marine:GetArmorAmount()
@@ -465,7 +480,7 @@ function Marine:OnDestroy()
 end
 
 function Marine:GetGroundFrictionForce()
-    return Player.GetGroundFrictionForce(self)
+    return ConditionalValue(self:GetIsShadowStepping(), 0, 9)
 end
 
 function Marine:HandleButtons(input)
@@ -477,7 +492,12 @@ function Marine:HandleButtons(input)
     if self:GetCanControl() then
     
         // Update sprinting state
-        self:UpdateSprintingState(input)
+        local newMovementState = bit.band(input.commands, Move.MovementModifier) ~= 0
+        if newMovementState ~= self.movementModiferState and self.movementModiferState ~= nil then
+            self:MovementModifierChanged(newMovementState, input)
+        end
+    
+    self.movementModiferState = newMovementState
         
         local flashlightPressed = bit.band(input.commands, Move.ToggleFlashlight) ~= 0
         if not self.flashlightLastFrame and flashlightPressed then
@@ -546,7 +566,7 @@ function Marine:GetFlashlightOn()
 end
 
 function Marine:GetInventorySpeedScalar()
-    return 1 - self:GetWeaponsWeight()
+    return 1
 end
 
 function Marine:GetCrouchSpeedScalar()
@@ -591,15 +611,15 @@ function Marine:GetMaxBackwardSpeedScalar()
 end
 
 function Marine:GetAirMoveScalar()
-    return 0.1
+    return 0.5
 end
 
 function Marine:GetAirFrictionForce()
-    return 2 * self.slowAmount
+    return 0
 end
 
 function Marine:GetJumpHeight()
-    return Player.kJumpHeight - Player.kJumpHeight * self.slowAmount * 0.8
+    return Player.kJumpHeight
 end
 
 function Marine:GetCanBeWeldedOverride()
@@ -608,12 +628,12 @@ end
 
 function Marine:GetAcceleration()
 
-    local acceleration = Marine.kAcceleration 
-    
-    if self:GetIsSprinting() then
-        acceleration = Marine.kAcceleration + (Marine.kSprintAcceleration - Marine.kAcceleration) * self:GetSprintingScalar()
+    if self:GetIsShadowStepping() then
+        return 0
     end
 
+    local acceleration = Marine.kAcceleration 
+    
     acceleration = acceleration * self:GetSlowSpeedModifier()
     acceleration = acceleration * self:GetInventorySpeedScalar()
 
@@ -904,10 +924,10 @@ function Marine:OnUpdateAnimationInput(modelMixin)
     if self:GetIsStunned() then
     
         local forceToss = self:GetRemainingStunTime() > kGoreMarineFallTime
-        local move = "stun" // ConditionalValue(self:GetIsCloseToGround(0.25) and not forceToss, "stun", "toss")
+        local move = "stun"
         
         // trigger get up animation before the stun is over
-        if self:GetRemainingStunTime() < Marine.kGetUpAnimationLength and self:GetIsCloseToGround(0.25) then
+        if self:GetRemainingStunTime() < Marine.kGetUpAnimationLength and self:GetIsOnGround() then
             move = "idle"
         end
         
@@ -977,17 +997,15 @@ function Marine:OnProcessMove(input)
             
                 self.timePoisoned = 0
                 self.poisoned = false
-            
+                
             end
-        
+            
         end
         
-        self.hasArmsLab = GetHasTech(self, kTechId.ArmsLab, true)
-    
     end
     
     Player.OnProcessMove(self, input)
-
+    
 end
 
 function Marine:GetIsInterrupted()
@@ -1008,4 +1026,125 @@ function Marine:GetHasCatpackBoost()
     return self.catpackboost
 end
 
+//Proving Grounds New Functions
+function Marine:SelectNextWeapon()
+    //todo - create function to select from list of ammo types
+end
+
+function Marine:SelectPrevWeapon()
+    //todo - create function to select from list of ammo types
+end
+
+function Marine:MovementModifierChanged(newMovementModifierState, input)
+
+    if newMovementModifierState then
+        self:TriggerShadowStep(input.move)
+    end
+
+end
+
+function Marine:TriggerShadowStep(direction)
+
+    if direction:GetLength() == 0 then
+        return
+    end   
+
+    direction:Normalize() 
+
+    local movementDirection = self:GetViewCoords():TransformVector( direction )
+
+    local canShadowStep = true
+    
+    if canShadowStep and not self:GetRecentlyJumped() then
+
+        local velocity = self:GetVelocity()
+        
+        local shadowStepStrength = ConditionalValue(self:GetIsOnGround(), Marine.kShadowStepForce, Marine.kShadowStepAirForce)
+        self:SetVelocity(velocity * 0.5 + movementDirection * shadowStepStrength * self:GetSlowSpeedModifier())
+        
+        self.timeShadowStep = Shared.GetTime()
+        self.shadowStepping = true
+        self.shadowStepDirection = direction
+        
+        self:TriggerEffects("shadow_step", {effecthostcoords = Coords.GetLookIn(self:GetOrigin(), movementDirection)})
+        
+        /*
+        if Client and Client.GetLocalPlayer() == self then
+            self:TriggerFirstPersonMiniBlinkEffect(direction)
+        end
+        */
+    
+    end
+
+end
+
+function Marine:GetHasShadowStepCooldown()
+    return self.timeShadowStep + Marine.kShadowStepCooldown > Shared.GetTime()
+end
+
+function Marine:GetCanJump()
+    return not self.hasDoubleJumped and self.timeShadowStep + Marine.kShadowStepJumpDelay < Shared.GetTime()
+end
+
+function Marine:GetIsShadowStepping()
+    return self.shadowStepping
+end
+
+function Marine:GetMoveDirection(moveVelocity)
+
+    if self:GetIsShadowStepping() then
+        
+        local direction = GetNormalizedVector(moveVelocity)
+        
+        // check if we attempt to blink into the ground
+        // TODO: get rid of this hack here once UpdatePosition is adjusted for blink
+        if direction.y < 0 then
+        
+            local trace = Shared.TraceRay(self:GetOrigin() + kBlinkTraceOffset, self:GetOrigin() + kBlinkTraceOffset + direction * 1.7, CollisionRep.Move, PhysicsMask.Movement, EntityFilterAll())
+            if trace.fraction ~= 1 then
+                direction.y = 0.1
+            end
+            
+        end
+        
+        return direction
+        
+    end
+
+    return Player.GetMoveDirection(self, moveVelocity)    
+
+end
+
+
+function Marine:OverrideInput(input)
+
+    Player.OverrideInput(self, input)
+    
+    if self:GetIsShadowStepping() then
+        input.move = self.shadowStepDirection
+    end
+    
+    return input
+    
+end
+
+function Marine:PreUpdateMove(input, runningPrediction)
+    self.shadowStepping = self.timeShadowStep + Marine.kShadowStepDuration > Shared.GetTime()
+end
+
+function Marine:GetRecentlyJumped()
+    return self.timeOfLastJump ~= nil and self.timeOfLastJump + 0.15 > Shared.GetTime()
+end
+
+function Marine:OnJumpLand(landIntensity, slowDown)
+    Player.OnJumpLand(self, landIntensity, slowDown)
+    self.hasDoubleJumped = false    
+end
+function Marine:OnJump()
+
+    if not self:GetIsOnGround() then
+        self.hasDoubleJumped = true
+    end
+    
+end
 Shared.LinkClassToMap("Marine", Marine.kMapName, networkVars)

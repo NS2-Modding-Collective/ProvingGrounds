@@ -60,16 +60,7 @@ function ResearchMixin:UpdateResearch(deltaTime)
         
         // avoid division with 0
         researchDuration = math.max(researchDuration, 0.01)
-        
-        // consider nutrient mist for alien type researches
-        if self:GetTeam():GetTeamType() == kAlienTeamType then
-        
-            if HasMixin(self, "Catalyst") and self:GetIsCatalysted() then
-                deltaTime = deltaTime + deltaTime * (kNutrientMistPercentageIncrease / 100)
-            end
-
-        end
-        
+              
         local progress = self.researchProgress + deltaTime / researchDuration
         progress = math.min(progress, 1)
 

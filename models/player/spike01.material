@@ -1,5 +1,0 @@
-shader = "models/player/marine.surface_shader"
-albedoMap = "models/player/spike01.dds"
-specularMap = "models/player/spike01_spec.dds"
-normalMap = "models/player/spike01_normal.dds"
-surface = "metal"
