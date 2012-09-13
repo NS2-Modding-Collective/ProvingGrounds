@@ -1,13 +1,10 @@
-// ======= Copyright (c) 2003-2011, Unknown Worlds Entertainment, Inc. All rights reserved. =======
+// ======= Copyright (c) 2012, SoulRider - ModBeans,  All rights reserved. =======
 //
-// lua\MarineTeam.lua
+// lua\RedTeam.lua
 //
-//    Created by:   Charlie Cleveland (charlie@unknownworlds.com) and
-//                  Max McGuire (max@unknownworlds.com)
+//    Created by:   Andy Wilson - SoulRider@ModBeans.com
 //
-// This class is used for teams that are actually playing the game, e.g. Marines or Aliens.
-//
-// ========= For more information, visit us at http://www.unknownworlds.com =====================
+// ========= For more information, visit us at http://www.modbeans.com =====================
 
 Script.Load("lua/Marine.lua")
 Script.Load("lua/PlayingTeam.lua")

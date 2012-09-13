@@ -121,7 +121,6 @@ Script.Load("lua/MarineSpectator.lua")
 Script.Load("lua/Ragdoll.lua")
 
 // Character class behaviors
-Script.Load("lua/Marine.lua")
 Script.Load("lua/JetpackMarine.lua")
 Script.Load("lua/Exosuit.lua") // pickupable version
 Script.Load("lua/Exo.lua")

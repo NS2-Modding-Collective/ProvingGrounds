@@ -50,7 +50,6 @@ Shared.PrecacheSurfaceShader("models/marine/marine.surface_shader")
 Shared.PrecacheSurfaceShader("models/marine/marine_noemissive.surface_shader")
 
 Marine.kModelName = PrecacheAsset("models/marine/male/male.model")
-Marine.kSpecialModelName = PrecacheAsset("models/marine/male/male_special.model")
 Marine.kMarineAnimationGraph = PrecacheAsset("models/marine/male/male.animation_graph")
 
 Marine.kDieSoundName = PrecacheAsset("sound/NS2.fev/marine/common/death")
@@ -344,8 +343,7 @@ function Marine:MakeSpecialEdition()
 
     if not blockBlackArmor then
         self:SetModel(Marine.kSpecialModelName, Marine.kMarineAnimationGraph)
-    end
-    
+    end    
 end
 
 // Currently there are some issues with a jumping Marine getting disrupted (weapons becoming locked).
@@ -489,7 +487,7 @@ function Marine:HandleButtons(input)
             self:MovementModifierChanged(newMovementState, input)
         end
     
-    self.movementModiferState = newMovementState
+        self.movementModiferState = newMovementState
         
         local flashlightPressed = bit.band(input.commands, Move.ToggleFlashlight) ~= 0
         if not self.flashlightLastFrame and flashlightPressed then
@@ -568,7 +566,7 @@ end
 function Marine:GetMaxSpeed(possible)
 
     if possible then
-        return Marine.kRunMaxSpeed
+        return Marine.kWalkMaxSpeed
     end
 
     local onInfestation = self:GetGameEffectMask(kGameEffect.OnInfestation)
@@ -699,11 +697,7 @@ function Marine:GetChatSound()
 end
 
 function Marine:GetDeathMapName()
-    if self:GetTeamNumber() == 1 then
-        return MarineSpectator.kMapName
-    elseif self:GetTeamNumber() == 2 then
-        return RedSpectator.kMapName
-    end
+    return MarineSpectator.kMapName
 end
 
 // Returns the name of the primary weapon
