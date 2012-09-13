@@ -183,22 +183,6 @@ function PlayingTeam:InitTechTree()
     self.techTree:AddMenu(kTechId.AdvancedMenu)
     self.techTree:AddMenu(kTechId.AssistMenu)
     
-    // Orders
-    self.techTree:AddOrder(kTechId.Default)
-    self.techTree:AddOrder(kTechId.Move)
-    self.techTree:AddOrder(kTechId.Attack)
-    self.techTree:AddOrder(kTechId.Build)
-    self.techTree:AddOrder(kTechId.Construct)
-    
-    self.techTree:AddAction(kTechId.Cancel)
-    
-    self.techTree:AddOrder(kTechId.Weld)   
-    
-    self.techTree:AddAction(kTechId.Stop)
-    
-    self.techTree:AddOrder(kTechId.SetRally)
-    self.techTree:AddOrder(kTechId.SetTarget)
-    
 end
 
 // Returns marine or alien type
@@ -367,8 +351,13 @@ end
 function PlayingTeam:GetHasTeamLost()
 
     if GetGamerules():GetGameStarted() and not Shared.GetCheatsEnabled() then
+    
+        // Team can't respawn or last Command Station or Hive destroyed
+        local activePlayers = self:GetHasActivePlayers()
+        local abilityToRespawn = self:GetHasAbilityToRespawn()
         
-        if  (self:GetNumPlayers() == 0) then
+        if  (not activePlayers and not abilityToRespawn) or
+            (self:GetNumPlayers() == 0) then
             
             return true
             

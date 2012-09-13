@@ -138,10 +138,10 @@ kMinimapBlipType = enum( { 'Undefined', 'TechPoint', 'ResourcePoint', 'Scan',
                            'Sentry', 'CommandStation', 'CommandStationL2', 'CommandStationL3',
                            'Extractor', 'InfantryPortal', 'Armory', 'PhaseGate', 'Observatory',
                            'RoboticsFactory', 'ArmsLab', 'PrototypeLab', 'PowerPack',
-                           'Hive', 'Harvester', 'Hydra', 'Egg', 'Crag', 'Whip', 'Shade', 'Shift',
+                           'Hydra', 'Egg', 'Crag', 'Whip', 'Shade', 'Shift',
                            'Marine', 'JetpackMarine', 'Exo', 'Jetpack', 'Skulk', 'Lerk', 'Onos', 'Fade', 'Gorge',
                            'Door', 'PowerPoint', 'DestroyedPowerPoint',
-                           'ARC', 'Drifter', 'MAC', 'Infestation', 'InfestationDying', 'MoveOrder', 'AttackOrder', 'BuildOrder', 'SensorBlip' } )
+                           'ARC', 'Drifter', 'MAC', 'InfestationDying', 'MoveOrder', 'AttackOrder', 'BuildOrder', 'SensorBlip' } )
 
 // Friendly IDs
 // 0 = friendly

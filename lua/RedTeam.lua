@@ -14,8 +14,6 @@ Script.Load("lua/PlayingTeam.lua")
 
 class 'RedTeam' (PlayingTeam)
 
-local kCannotSpawnSound = PrecacheAsset("sound/NS2.fev/marine/voiceovers/commander/need_ip")
-
 function RedTeam:ResetTeam()
 
     PlayingTeam.ResetTeam(self)
@@ -79,4 +77,8 @@ function RedTeam:InitTechTree()
     
     self.techTree:SetComplete()
 
+end
+
+function RedTeam:GetSpectatorMapName()
+    return RedSpectator.kMapName
 end

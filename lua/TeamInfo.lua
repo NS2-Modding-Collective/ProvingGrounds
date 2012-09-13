@@ -83,16 +83,13 @@ TeamInfo.kRelevantTechIdsAlien =
     kTechId.Vortex,
     kTechId.PrimalScream,
     
-    kTechId.CragHive,
     kTechId.RegenerationShell,
     kTechId.CarapaceShell,
     
-    kTechId.ShadeHive,
     kTechId.SilenceVeil,
     kTechId.CamouflageVeil,
     kTechId.FeintVeil,
     
-    kTechId.ShiftHive,
     kTechId.CeleritySpur,
     kTechId.HyperMutationSpur,
     kTechId.AdrenalineSpur

@@ -55,7 +55,6 @@ function ScenarioHandler:Init()
         OrientedEntityHandler():Init("Observatory",kMarineTeamType),
         OrientedEntityHandler():Init("Extractor",kMarineTeamType),
         
-        OrientedEntityHandler():Init("Hive",kAlienTeamType),
         OrientedEntityHandler():Init("Whip",kAlienTeamType),
         OrientedEntityHandler():Init("Crag",kAlienTeamType),
         OrientedEntityHandler():Init("Shade",kAlienTeamType),
@@ -64,7 +63,6 @@ function ScenarioHandler:Init()
         OrientedEntityHandler():Init("Spur",kAlienTeamType),
         OrientedEntityHandler():Init("Shell",kAlienTeamType),
         OrientedEntityHandler():Init("Hydra",kAlienTeamType),
-        OrientedEntityHandler():Init("Harvester",kAlienTeamType),
         
     }
 

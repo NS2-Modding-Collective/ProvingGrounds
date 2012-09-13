@@ -295,10 +295,6 @@ function PlayerUI_GetBuyMenuDisplaying()
     
 end
 
-local function LocalIsFriendlyMarineComm(player, unit)
-    return player:isa("MarineCommander") and unit:isa("Player")
-end
-
 local kUnitStatusDisplayRange = 13
 local kUnitStatusCommanderDisplayRange = 50
 local kDefaultHealthOffset = Vector(0, 1.2, 0)
@@ -398,7 +394,7 @@ function PlayerUI_GetUnitStatusInfo()
                         StatusFraction = statusFraction,
                         HealthFraction = health,
                         ArmorFraction = armor,
-                        IsCrossHairTarget = (unit == crossHairTarget and visibleToPlayer) or LocalIsFriendlyMarineComm(player, unit),
+                        IsCrossHairTarget = (unit == crossHairTarget and visibleToPlayer),
                         TeamType = kNeutralTeamType,
                         ForceName = unit:isa("Player") and not GetAreEnemies(player, unit),
                         OnScreen = onScreen,

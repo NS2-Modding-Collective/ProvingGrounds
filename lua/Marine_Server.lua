@@ -428,12 +428,7 @@ function Marine:OnKill(attacker, doer, point, direction)
     
     Player.OnKill(self, attacker, doer, point, direction)
     self:PlaySound(Marine.kDieSoundName)
-    
-    // Don't play alert if we suicide
-    if attacker ~= self then
-        self:GetTeam():TriggerAlert(kTechId.MarineAlertSoldierLost, self)
-    end
-    
+        
     // Note: Flashlight is powered by Marine's beating heart. Eco friendly.
     self:SetFlashlightOn(false)
     self.originOnDeath = self:GetOrigin()

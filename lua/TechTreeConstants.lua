@@ -10,11 +10,6 @@ kTechId = enum({
     
     'None', 
     
-    // General orders and actions ("Default" is right-click)
-    'Default', 'Move', 'Attack', 'Build', 'Construct', 'Cancel', 'Recycle', 'Weld', 'AutoWeld', 'Stop', 'SetRally', 'SetTarget',
-    // Alien specific orders
-    'AlienMove', 'AlienAttack', 'AlienConstruct', 'Heal', 'AutoHeal',
-    
     // Commander menus for selected units
     'RootMenu', 'BuildMenu', 'AdvancedMenu', 'AssistMenu', 'MarkersMenu', 'UpgradesMenu', 'WeaponsMenu',
     
@@ -34,18 +29,7 @@ kTechId = enum({
     /////////////
     
     // Marine classes + spectators
-    'Marine', 'Exo', 'MarineCommander', 'JetpackMarine', 'Spectator', 'AlienSpectator',
-    
-    // Marine alerts (specified alert sound and text in techdata if any)
-    'MarineAlertAcknowledge', 'MarineAlertNeedMedpack', 'MarineAlertNeedAmmo', 'MarineAlertNeedOrder', 'MarineAlertHostiles', 'MarineCommanderEjected', 'MACAlertConstructionComplete',    
-    'MarineAlertSentryFiring', 'MarineAlertCommandStationUnderAttack',  'MarineAlertSoldierLost', 'MarineAlertCommandStationComplete',
-    
-    'MarineAlertInfantryPortalUnderAttack', 'MarineAlertSentryUnderAttack', 'MarineAlertStructureUnderAttack', 'MarineAlertExtractorUnderAttack', 'MarineAlertSoldierUnderAttack',
-    
-    'MarineAlertResearchComplete', 'MarineAlertManufactureComplete', 'MarineAlertUpgradeComplete', 'MarineAlertOrderComplete', 'MarineAlertWeldingBlocked', 'MarineAlertMACBlocked', 'MarineAlertNotEnoughResources', 'MarineAlertObjectiveCompleted', 'MarineAlertConstructionComplete',
-    
-    // Marine orders 
-    'Defend',
+    'Marine', 'Exo', 'JetpackMarine', 'Spectator', 'AlienSpectator',
     
     // Special tech
     'TwoCommandStations', 'ThreeCommandStations',
@@ -89,10 +73,10 @@ kTechId = enum({
     ////////////
 
     // Alien lifeforms 
-    'Skulk', 'Gorge', 'Lerk', 'Fade', 'Onos', "AlienCommander", "AllAliens", "Hallucination",
+    'Skulk', 'Gorge', 'Lerk', 'Fade', 'Onos', "AllAliens", "Hallucination",
     
     // Special tech
-    'TwoHives', 'ThreeHives', 'UpgradeToCragHive', 'UpgradeToShadeHive', 'UpgradeToShiftHive',
+    'TwoHives', 'ThreeHives', 
     
     // Alien abilities (not all are needed, only ones with damage types)
     'Bite', 'LerkBite', 'Parasite',  'Spit', 'BuildAbility', 'Spray', 'Spores', 'HydraSpike', 'SwipeBlink', 'StabBlink', 'Gore', 'Smash',
@@ -103,7 +87,7 @@ kTechId = enum({
     'BileBomb', 'Leap', 'Blink', 'Stomp', 'Spikes', 'Umbra', 'PoisonDart', 'Xenocide', 'Vortex', 'PrimalScream', 'WebStalk',
 
     // Alien structures 
-    'Hive', 'HiveHeal', 'CragHive', 'ShadeHive', 'ShiftHive','Harvester', 'Drifter', 'Egg', 'Embryo', 'Hydra', 'Cyst', 'Clog', 'WebStalk',
+    'Drifter', 'Egg', 'Embryo', 'Hydra', 'Cyst', 'Clog', 'WebStalk',
     'GorgeEgg', 'LerkEgg', 'FadeEgg', 'OnosEgg',
     
     // Infestation upgrades
@@ -120,7 +104,7 @@ kTechId = enum({
     'DrifterCamouflage',
     
     // echo menu
-    'TeleportHydra', 'TeleportWhip', 'TeleportCrag', 'TeleportShade', 'TeleportShift', 'TeleportVeil', 'TeleportSpur', 'TeleportShell', 'TeleportHive', 'TeleportEgg',
+    'TeleportHydra', 'TeleportWhip', 'TeleportCrag', 'TeleportShade', 'TeleportShift', 'TeleportVeil', 'TeleportSpur', 'TeleportShell', 'TeleportEgg',
     
     // Whip movement
     'WhipRoot', 'WhipUnroot',
@@ -129,10 +113,10 @@ kTechId = enum({
     'Carapace', 'Regeneration', 'Aura', 'Silence', 'Feint', 'Camouflage', 'Celerity', 'Adrenaline', 'HyperMutation',  
     
     // Alien alerts
-    'AlienAlertNeedHealing', 'AlienAlertStructureUnderAttack', 'AlienAlertHiveUnderAttack', 'AlienAlertHiveDying', 'AlienAlertHarvesterUnderAttack',
-    'AlienAlertLifeformUnderAttack', 'AlienAlertGorgeBuiltHarvester', 'AlienCommanderEjected',
+    'AlienAlertNeedHealing', 'AlienAlertStructureUnderAttack', 
+    'AlienAlertLifeformUnderAttack', 'AlienCommanderEjected',
     'AlienAlertOrderComplete',
-    'AlienAlertNotEnoughResources', 'AlienAlertResearchComplete', 'AlienAlertManufactureComplete', 'AlienAlertUpgradeComplete', 'AlienAlertHiveComplete',
+    'AlienAlertNotEnoughResources', 'AlienAlertResearchComplete', 'AlienAlertManufactureComplete', 'AlienAlertUpgradeComplete', 
     
     // Pheromones
     'ThreatMarker', 'LargeThreatMarker', 'NeedHealingMarker', 'WeakMarker', 'ExpandingMarker',
@@ -145,7 +129,7 @@ kTechId = enum({
     
     // Alien Commander hallucinations
     'HallucinateDrifter', 'HallucinateSkulk', 'HallucinateGorge', 'HallucinateLerk', 'HallucinateFade', 'HallucinateOnos',
-    'HallucinateHive', 'HallucinateWhip', 'HallucinateShade', 'HallucinateCrag', 'HallucinateShift', 'HallucinateHarvester', 'HallucinateHydra',
+    'HallucinateWhip', 'HallucinateShade', 'HallucinateCrag', 'HallucinateShift', 'HallucinateHydra',
     
     // Voting commands
     'VoteDownCommander1', 'VoteDownCommander2', 'VoteDownCommander3',

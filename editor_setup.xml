@@ -14,9 +14,6 @@
         <parameter name="model" type="file" label="model" filter="*.model"/>
 		<parameter name="castsShadows" type="boolean" label="Casts Shadows" default="true"/>
 
-		<!-- Allow prop to be shown or not for commander -->
-		<parameter name="commAlpha" type="real" label="Commander Alpha" help="0-1. Doesn't collide if less than 1." default="1.0"/>
-
 		<!-- Allow prop to be excluded/included from the nav mesh generation -->
 		<parameter name="pathInclude" type="boolean" label="Pathing Include" help="On will include in NavMesh. Off excludes prop from nav mesh" default="true"/>
 		<parameter name="collidable" type="boolean" label="Collidable" help="The prop can be sollided with" default="true"/>
@@ -215,21 +212,6 @@
             <file>models/system/editor/team_location.model</file>
         </model>            
     </class>
-    <!-- Placeable structures -->
-    <class name="base_alien_structure">
-        <parameter name="startsBuilt" type="boolean" default="true" />
-		<parameter name="startsMature" type="boolean" default="false" />
-        
-        <!-- Team number -->
-        <parameter name="teamNumber" type="choice" label="Team Number" default="2">
-            <choice label="World" value="0"/>
-            <choice label="Marine" value="1"/>
-            <choice label="Alien" value="2"/>
-        </parameter>
-		
-		<parameter name="onlyexplore" type="boolean" default="true" />
-
-    </class>
     
     <!-- Placeable structures -->
     <class name="base_structure">
@@ -241,58 +223,11 @@
             <choice label="Marine" value="1"/>
             <choice label="Alien" value="2"/>
         </parameter>
-		
-		<parameter name="onlyexplore" type="boolean" default="true" />
 
     </class>
     
-    <class name="commandstation"> <parent>base_structure</parent><model><file>models/marine/command_station/command_station.model</file></model></class>
-	<class name="extractor"> <parent>base_structure</parent><model><file>models/marine/extractor/extractor.model</file></model></class>
-    <class name="infantryportal"> <parent>base_structure</parent><model><file>models/marine/infantry_portal/infantry_portal.model</file></model></class>
-    <class name="sentry"> <parent>base_structure</parent><model><file>models/marine/sentry/sentry.model</file></model></class>
-	<class name="powerpack"> <parent>base_structure</parent><model><file>models/marine/portable_node/portable_node.model</file></model></class>
-	<class name="prototypelab"> <parent>base_structure</parent><model><file>models/marine/prototype_lab/prototype_lab.model</file></model></class>
-	<class name="roboticsfactory"> <parent>base_structure</parent><model><file>models/marine/robotics_factory/robotics_factory.model</file></model></class>
-	<class name="armslab"> <parent>base_structure</parent><model><file>models/marine/arms_lab/arms_lab.model</file></model></class>
-    <class name="arc"> <parent>base_structure</parent><model><file>models/marine/arc/arc.model</file></model></class>
-	<class name="phasegate"> <parent>base_structure</parent><model><file>models/marine/phase_gate/phase_gate.model</file></model></class>
-	
-    <class name="harvester"> <parent>base_alien_structure</parent><model><file>models/alien/harvester/harvester.model</file></model></class>
-    <class name="hydra"> <parent>base_alien_structure</parent><model><file>models/alien/hydra/hydra.model</file></model></class>
-    <class name="crag"> <parent>base_alien_structure</parent><model><file>models/alien/crag/crag.model</file></model></class>
-	<class name="cyst"> <parent>base_alien_structure</parent><model><file>models/alien/cyst/cyst.model</file></model></class>
-    <class name="shift"> <parent>base_alien_structure</parent><model><file>models/alien/shift/shift.model</file></model></class>
-    <class name="shade"> <parent>base_alien_structure</parent><model><file>models/alien/shade/shade.model</file></model></class>
-	<class name="whip"> <parent>base_alien_structure</parent><model><file>models/alien/whip/whip.model</file></model></class>
-	<class name="egg"> <parent>base_alien_structure</parent><model><file>models/alien/egg/egg.model</file></model></class>
-	<class name="veil"> <parent>base_alien_structure</parent><model><file>models/alien/veil/veil.model</file></model></class>
-	<class name="shell"> <parent>base_alien_structure</parent><model><file>models/alien/shell/shell.model</file></model></class>
-	<class name="spur"> <parent>base_alien_structure</parent><model><file>models/alien/spur/spur.model</file></model></class>
-	
-	<class name="armory"> <parent>base_structure</parent>
-	
-		<model><file>models/marine/armory/armory.model</file></model>
-        <parameter name="startsUpgradet" type="boolean" default="false" />
-		
-	</class>
-	
-	<class name="observatory"> <parent>base_structure</parent>
-		<model><file>models/marine/observatory/observatory.model</file></model>
-		<parameter name="phaseTechResearched" type="boolean" default="false" />		
-	</class>
-	
-	<class name="hive"> <parent>base_alien_structure</parent>
-		<model><file>models/alien/hive/hive.model</file></model>
-        <parameter name="hiveType" type="choice" label="Hive Type" default="0">
-            <choice label="not upgraded" value="0"/>
-            <choice label="Crag Hive" value="1"/>
-            <choice label="Shade Hive" value="2"/>
-			<choice label="Shift Hive" value="3"/>
-        </parameter>
-	</class>
-    
-    <!-- PG gameplay rules -->
-    <class name="pg_gamerules" label="Use core PG gameplay">
+    <!-- PG strategy gameplay rules -->
+    <class name="pg_gamerules" label="Use core pg strategy gameplay">
 
         <parent>gamerules</parent>
         
@@ -374,16 +309,6 @@
         <parameter name="name" type="string" label="name" help="Name of trigger which can be referenced by other entities" />
 
     </class>
-	
-	<class name="worldtooltip">	
-	
-		<parameter name="tooltip" type="string" label="tooltip" help="Displays a tooltip to the player when looking at it, active only in explore mode." />
-		
-        <model>
-            <file>models/misc/attentionmark/attentionmark.model</file>
-        </model> 
-	
-	</class>
 
     <!-- Ladder -->
     <class name="ladder"> <parent>trigger</parent> </class>
@@ -563,8 +488,7 @@
         <parameter name="scale" type="vector" label="scale" default="1.0, 1.0, 1.0"/>
         <parameter name="model" type="file" label="model" filter="*.model"/>
         <parameter name="animation" type="string" label="animation" />
-        <parameter name="commAlpha" type="real" label="commander alpha" help="0-1. Doesn't collide if less than 1." default="1.0"/>
-		<parameter name="dynamic" type="boolean" label="Dynamic" default="false"/>
+        <parameter name="dynamic" type="boolean" label="Dynamic" default="false"/>
         <parameter name="pathInclude" type="boolean" label="Pathing Include" help="On will include in NavMesh. Off excludes prop from nav mesh" default="false"/>
 		<parameter name="collidable" type="boolean" label="Collidable" help="The prop can be sollided with" default="true"/>
         <parameter name="emitChannel" type="integer" label="Tag emit channel" help="All animation tags will be emitted as a signal on this channel." default="0"/>
@@ -584,37 +508,7 @@
 
   </class>
   
-	<class name="target" placeable="true">
-		<model>
-		  <file>model</file>
-		</model>
-		<parameter name="model" type="file" label="model" default="models/misc/target/target.model" filter="*.model"/>
-
-		<parameter name="teamNumber" type="choice" label="Team Number" default="3">
-			<choice label="Always take damage" value="0"/>
-			<choice label="Marine" value="1"/>
-			<choice label="Alien" value="2"/>        
-		</parameter>
-			
-		<parameter name="health" type="real" label="Health before dying" default="1.0"/>
-
-		<parameter name="deathSoundName" type="file" filter="sound" label="Kill sound" default="" help="Sound to play when killed."/>
-
-		<parameter name="spawnAnimation" type="string" label="Spawn animation" default="idle" help="Animation played when target is first spawned." />
-
-		<parameter name="popupAnimation" type="string" label="Popup animation" default="popup" help="Animation played when player is nearby." />
-
-		<parameter name="popupSoundName" type="file" filter="sound" label="Popup sound" default="" help="Sound to play when target pops up."/>
-
-		<parameter name="popupRadius" type="distance" label="Popup radius" default="10.0" help="Target plays popup animation when any player comes within this range."/>
-		<sphere>
-		   <radius>popupRadius</radius>
-		</sphere>
-		
-		<parameter name="popupDelay" type="real" label="Random delay before popping up" default="0.0"/>
-		
-</class>
-
+	
     <!-- Base class for fog controls -->
   <class name="fog_controls" placeable="true">
 

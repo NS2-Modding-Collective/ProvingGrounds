@@ -26,7 +26,7 @@ PGGamerules.kGameEndCheckInterval = .75
 PGGamerules.kPregameLength = 15
 PGGamerules.kCountDownLength = kCountDownLength
 PGGamerules.kTimeToReadyRoom = 8
-PGGamerules.kPauseToSocializeBeforeMapcycle = 20
+PGGamerules.kPauseToSocializeBeforeMapcycle = 40
 
 // Find team start with team 0 or for specified team. Remove it from the list so other teams don't start there. Return nil if there are none.
 
@@ -80,6 +80,17 @@ if Server then
                 
                 SendTeamMessage(self.team1, kTeamMessageTypes.GameStarted)
                 SendTeamMessage(self.team2, kTeamMessageTypes.GameStarted)
+                
+            end
+            
+            // On end game, check for map switch conditions
+            if state == kGameState.Team1Won or state == kGameState.Team2Won then
+            
+                if MapCycle_TestCycleMap() then
+                    self.timeToCycleMap = Shared.GetTime() + PGGamerules.kPauseToSocializeBeforeMapcycle
+                else
+                    self.timeToCycleMap = nil
+                end
                 
             end
             
@@ -662,16 +673,7 @@ if Server then
         if(state == kGameState.Team1Won or state == kGameState.Team2Won or state == kGameState.Draw) then
         
             if self.timeSinceGameStateChanged >= PGGamerules.kTimeToReadyRoom then
-            
-
-            
-                if MapCycle_TestCycleMap() then
-                    self.timeToCycleMap = Shared.GetTime() + PGGamerules.kPauseToSocializeBeforeMapcycle
-                else
-                    self.timeToCycleMap = nil
-                end
-                
-        
+                   
                 // Set all players to ready room team
                 local function SetReadyRoomTeam(player)
                     player:SetCameraDistance(0)
@@ -803,6 +805,9 @@ if Server then
             }
             Shared.SendHTTPRequest(kStatisticsURL .. url, "POST", params)
             
+            // Automatically end any performance logging when the round has ended.
+            Shared.ConsoleCommand("p_endlog")
+            
         end
         
     end
@@ -812,10 +817,6 @@ if Server then
         if self:GetGameState() == kGameState.Started then
         
             self:SetGameState(kGameState.Draw)
-            
-            // Play loss sounds for both teams
-            self.team1:PlayPrivateTeamSound(PGGamerules.kDefeatSound)
-            self.team2:PlayPrivateTeamSound(PGGamerules.kDefeatSound)
             
             // Display "draw" message
             local drawMessage = "The game was a draw!"

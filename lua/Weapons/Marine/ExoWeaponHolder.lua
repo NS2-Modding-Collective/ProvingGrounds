@@ -18,7 +18,7 @@ local networkVars =
     rightWeaponId = "entityid"
 }
 
-local kViewModelName = PrecacheAsset("models/player/bmfg_view.model")
+local kViewModelName = PrecacheAsset("models/marine/exosuit/exosuit_mm_view.model")
                         
 local kAnimationGraph = PrecacheAsset("models/marine/exosuit/exosuit_mm_view.animation_graph")
 

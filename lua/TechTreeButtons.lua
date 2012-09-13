@@ -81,26 +81,9 @@ function InitTechTreeMaterialOffsets()
     kMarineTechIdToMaterialOffset[kTechId.SentryBattery] = 71
     kMarineTechIdToMaterialOffset[kTechId.ArmsLab] = 11
     
-    // Second row - Non-player orders
-    kMarineTechIdToMaterialOffset[kTechId.Recycle] = 12
-    kMarineTechIdToMaterialOffset[kTechId.Move] = 13
-    kMarineTechIdToMaterialOffset[kTechId.Stop] = 14
-    kMarineTechIdToMaterialOffset[kTechId.RootMenu] = 15
-    kMarineTechIdToMaterialOffset[kTechId.Cancel] = 16
-    kMarineTechIdToMaterialOffset[kTechId.Construct] = 22
-    
-    //kMarineTechIdToMaterialOffset[kTechId.] = 17 // MAC build
-    
-    kMarineTechIdToMaterialOffset[kTechId.Attack] = 18
-    kMarineTechIdToMaterialOffset[kTechId.SetRally] = 19
-    kMarineTechIdToMaterialOffset[kTechId.SetTarget] = 28
-    kMarineTechIdToMaterialOffset[kTechId.Weld] = 21
+
     kMarineTechIdToMaterialOffset[kTechId.BuildMenu] = 22
     kMarineTechIdToMaterialOffset[kTechId.AdvancedMenu] = 23    
-    
-    kMarineTechIdToMaterialOffset[kTechId.MarineAlertOrderComplete] = 60
-
-    kMarineTechIdToMaterialOffset[kTechId.Defend] = 27
 
     kMarineTechIdToMaterialOffset[kTechId.AssistMenu] = 33
     kMarineTechIdToMaterialOffset[kTechId.WeaponsMenu] = 55
@@ -189,17 +172,7 @@ function InitTechTreeMaterialOffsets()
     kMarineTechIdToMaterialOffset[kTechId.RoboticsFactoryARCUpgradesMenu] = 91
     kMarineTechIdToMaterialOffset[kTechId.RoboticsFactoryMACUpgradesMenu] = 93
     kMarineTechIdToMaterialOffset[kTechId.PrototypeLab] = 94
-    
-    // Generic orders 
-    kAlienTechIdToMaterialOffset[kTechId.Default] = 0
-    kAlienTechIdToMaterialOffset[kTechId.Move] = 1
-    kAlienTechIdToMaterialOffset[kTechId.Attack] = 2
-    kAlienTechIdToMaterialOffset[kTechId.Build] = 3
-    kAlienTechIdToMaterialOffset[kTechId.Construct] = 8
-    kAlienTechIdToMaterialOffset[kTechId.Stop] = 5
-    kAlienTechIdToMaterialOffset[kTechId.SetRally] = 6
-    kAlienTechIdToMaterialOffset[kTechId.SetTarget] = 7
-    
+       
     // Menus
     kAlienTechIdToMaterialOffset[kTechId.RootMenu] = 21
     kAlienTechIdToMaterialOffset[kTechId.BuildMenu] = 8
@@ -208,10 +181,6 @@ function InitTechTreeMaterialOffsets()
     kAlienTechIdToMaterialOffset[kTechId.MarkersMenu] = 14
     kAlienTechIdToMaterialOffset[kTechId.UpgradesMenu] = 12
     kAlienTechIdToMaterialOffset[kTechId.Cyst] = 23
-    kAlienTechIdToMaterialOffset[kTechId.Infestation] = 73
-    kAlienTechIdToMaterialOffset[kTechId.InfestationSpike] = 74
-    kAlienTechIdToMaterialOffset[kTechId.NutrientMist] = 15
-    kAlienTechIdToMaterialOffset[kTechId.Cancel] = 5
     kAlienTechIdToMaterialOffset[kTechId.LifeFormMenu] = 94
 
     // Cyst abilities
@@ -225,23 +194,11 @@ function InitTechTreeMaterialOffsets()
     kAlienTechIdToMaterialOffset[kTechId.Fade] = 19
     kAlienTechIdToMaterialOffset[kTechId.Onos] = 20
     
-    // Structures
-    kAlienTechIdToMaterialOffset[kTechId.Hive] = 24
-    kAlienTechIdToMaterialOffset[kTechId.HiveHeal] = 43
-    kAlienTechIdToMaterialOffset[kTechId.CragHive] = 40
-    kAlienTechIdToMaterialOffset[kTechId.ShadeHive] = 64
-    kAlienTechIdToMaterialOffset[kTechId.ShiftHive] = 56
-    
-    kAlienTechIdToMaterialOffset[kTechId.UpgradeToCragHive] = 40
-    kAlienTechIdToMaterialOffset[kTechId.UpgradeToShadeHive] = 64
-    kAlienTechIdToMaterialOffset[kTechId.UpgradeToShiftHive] = 56
-    
     kAlienTechIdToMaterialOffset[kTechId.HealingBed] = 40
     kAlienTechIdToMaterialOffset[kTechId.BacterialReceptors] = 64
     kAlienTechIdToMaterialOffset[kTechId.MucousMembrane] = 56
     
     // Change offset in CommanderUI_GetIdleWorkerOffset when changing harvester
-    kAlienTechIdToMaterialOffset[kTechId.Harvester] = 27
     kAlienTechIdToMaterialOffset[kTechId.Drifter] = 28
     kAlienTechIdToMaterialOffset[kTechId.DrifterCamouflage] = 29
     kAlienTechIdToMaterialOffset[kTechId.Egg] = 30
@@ -316,7 +273,6 @@ function InitTechTreeMaterialOffsets()
     kAlienTechIdToMaterialOffset[kTechId.TeleportVeil] = 97
     kAlienTechIdToMaterialOffset[kTechId.TeleportSpur] = 98
     kAlienTechIdToMaterialOffset[kTechId.TeleportShell] = 96
-    kAlienTechIdToMaterialOffset[kTechId.TeleportHive] = 24
     kAlienTechIdToMaterialOffset[kTechId.TeleportEgg] = 30
     
     kAlienTechIdToMaterialOffset[kTechId.UpgradeHyperMutationSpur] = 80
@@ -348,13 +304,11 @@ function InitTechTreeMaterialOffsets()
     kAlienTechIdToMaterialOffset[kTechId.HallucinateFade] = 19
     kAlienTechIdToMaterialOffset[kTechId.HallucinateOnos] = 20
     kAlienTechIdToMaterialOffset[kTechId.Hallucination] = 69
-    
-    kAlienTechIdToMaterialOffset[kTechId.HallucinateHive] = 24
+
     kAlienTechIdToMaterialOffset[kTechId.HallucinateWhip] = 48
     kAlienTechIdToMaterialOffset[kTechId.HallucinateShade] = 64
     kAlienTechIdToMaterialOffset[kTechId.HallucinateCrag] = 40
     kAlienTechIdToMaterialOffset[kTechId.HallucinateShift] = 56
-    kAlienTechIdToMaterialOffset[kTechId.HallucinateHarvester] = 27
     kAlienTechIdToMaterialOffset[kTechId.HallucinateHydra] = 88
     
     kAlienTechIdToMaterialOffset[kTechId.UpgradeCamouflageVeil] = 86

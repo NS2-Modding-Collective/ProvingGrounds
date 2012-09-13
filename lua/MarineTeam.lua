@@ -14,8 +14,6 @@ Script.Load("lua/PlayingTeam.lua")
 
 class 'MarineTeam' (PlayingTeam)
 
-local kCannotSpawnSound = PrecacheAsset("sound/NS2.fev/marine/voiceovers/commander/need_ip")
-
 function MarineTeam:ResetTeam()
 
     PlayingTeam.ResetTeam(self)
@@ -58,7 +56,7 @@ end
 
 function MarineTeam:InitTechTree()
    
-   PlayingTeam.InitTechTree(self)
+    PlayingTeam.InitTechTree(self)
     
     self.techTree:AddBuyNode(kTechId.Axe,                 kTechId.None,                kTechId.None)
     self.techTree:AddBuyNode(kTechId.Pistol,              kTechId.None,                kTechId.None)
@@ -79,4 +77,8 @@ function MarineTeam:InitTechTree()
     
     self.techTree:SetComplete()
 
+end
+
+function MarineTeam:GetSpectatorMapName()
+    return MarineSpectator.kMapName
 end

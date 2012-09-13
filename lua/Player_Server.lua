@@ -108,11 +108,6 @@ function Player:MakeSpecialEdition()
     self:SetModel(Player.kSpecialModelName, Marine.kMarineAnimationGraph)
 end
 
-// Not authoritative, only visual and information. TeamResources is stored in the team.
-function Player:SetTeamResources(teamResources)
-    self.teamResources = math.max(math.min(teamResources, kMaxResources), 0)
-end
-
 function Player:GetSendTechTreeBase()
     return self.sendTechTreeBase
 end
@@ -206,6 +201,8 @@ function Player:OnKill(killer, doer, point, direction)
     
     // Set next think to 0 to disable
     self:SetNextThink(0)
+    
+    self:GetTeam():ReplaceRespawnPlayer(self,nil,nil)
         
 end
 
@@ -225,30 +222,12 @@ function Player:UpdateClientRelevancyMask()
     local mask = 0xFFFFFFFF
     
     if self:GetTeamNumber() == 1 then
-    
-        if self:GetIsCommander() then
-            mask = kRelevantToTeam1Commander
-        else
-            mask = kRelevantToTeam1Unit
-        end
-        
+        mask = kRelevantToTeam1Unit
     elseif self:GetTeamNumber() == 2 then
-    
-        if self:GetIsCommander() then
-            mask = kRelevantToTeam2Commander
-        else
-            mask = kRelevantToTeam2Unit
-        end
-        
+        mask = kRelevantToTeam2Unit
     // Spectators should see all map blips.
     elseif self:GetTeamNumber() == kSpectatorIndex then
-    
-        if self:GetIsOverhead() then
-            mask = bit.bor(kRelevantToTeam1Commander, kRelevantToTeam2Commander)
-        else
-            mask = bit.bor(kRelevantToTeam1Unit, kRelevantToTeam2Unit, kRelevantToReadyRoom)
-        end
-        
+        mask = bit.bor(kRelevantToTeam1Unit, kRelevantToTeam2Unit, kRelevantToReadyRoom)
     // ReadyRoomPlayers should not see any blips.
     elseif self:GetTeamNumber() == kTeamReadyRoom then
         mask = kRelevantToReadyRoom
@@ -264,23 +243,7 @@ end
 
 function Player:OnTeamChange()
 
-    self:UpdateIncludeRelevancyMask()
     self:SetScoreboardChanged(true)
-    
-end
-
-function Player:UpdateIncludeRelevancyMask()
-
-    // Players are always relevant to their commanders.
-    local includeMask = 0
-    
-    if self:GetTeamNumber() == 1 then
-        includeMask = kRelevantToTeam1Commander
-    elseif self:GetTeamNumber() == 2 then
-        includeMask = kRelevantToTeam2Commander
-    end
-    
-    self:SetIncludeRelevancyMask(includeMask)
     
 end
 
@@ -302,7 +265,7 @@ function Player:GetDeathMapName()
     return Spectator.kMapName
 end
 
-local function UpdateChangeToSpectator(self)
+/*local function UpdateChangeToSpectator(self)
 
     if not self:GetIsAlive() and not self:isa("Spectator") then
     
@@ -323,11 +286,11 @@ local function UpdateChangeToSpectator(self)
         
     end
     
-end
+end*/
 
 function Player:OnUpdatePlayer(deltaTime)
 
-    UpdateChangeToSpectator(self)
+    //UpdateChangeToSpectator(self)
     
     local gamerules = GetGamerules()
     self.gameStarted = gamerules:GetGameStarted()
@@ -399,7 +362,6 @@ function Player:CopyPlayerDataFrom(player)
     
     // Copy network data over because it won't be necessarily be resent
     self.resources = player.resources
-    self.teamResources = player.teamResources
     self.gameStarted = player.gameStarted
     self.countingDown = player.countingDown
     self.frozen = player.frozen

@@ -11,7 +11,6 @@ Script.Load("lua/Player.lua")
 Script.Load("lua/Mixins/BaseMoveMixin.lua")
 Script.Load("lua/Mixins/GroundMoveMixin.lua")
 Script.Load("lua/Mixins/CameraHolderMixin.lua")
-Script.Load("lua/OrderSelfMixin.lua")
 Script.Load("lua/MarineActionFinderMixin.lua")
 Script.Load("lua/StunMixin.lua")
 Script.Load("lua/NanoShieldMixin.lua")
@@ -77,7 +76,7 @@ Marine.kMaxSprintFov = 95
 // Player phase delay - players can only teleport this often
 Marine.kPlayerPhaseDelay = 2
 
-Marine.kWalkMaxSpeed = 5                // Four miles an hour = 6,437 meters/hour = 1.8 meters/second (increase for FPS tastes)
+Marine.kWalkMaxSpeed = 7                // Four miles an hour = 6,437 meters/hour = 1.8 meters/second (increase for FPS tastes)
 Marine.kRunMaxSpeed = 6.0               // 10 miles an hour = 16,093 meters/hour = 4.4 meters/second (increase for FPS tastes)
 Marine.kRunInfestationMaxSpeed = 5.2    // 10 miles an hour = 16,093 meters/hour = 4.4 meters/second (increase for FPS tastes)
 
@@ -147,7 +146,6 @@ AddMixinNetworkVars(StunMixin, networkVars)
 AddMixinNetworkVars(NanoShieldMixin, networkVars)
 AddMixinNetworkVars(SprintMixin, networkVars)
 AddMixinNetworkVars(DisruptMixin, networkVars)
-AddMixinNetworkVars(OrderSelfMixin, networkVars)
 AddMixinNetworkVars(DissolveMixin, networkVars)
 AddMixinNetworkVars(VortexAbleMixin, networkVars)
 AddMixinNetworkVars(LOSMixin, networkVars)
@@ -216,7 +214,6 @@ function Marine:OnInitialized()
     // These mixins must be called before SetModel because SetModel eventually
     // calls into OnUpdatePoseParameters() which calls into these mixins.
     // Yay for convoluted class hierarchies!!!
-    InitMixin(self, OrderSelfMixin, { kPriorityAttackTargets = { "Harvester" } })
     InitMixin(self, StunMixin)
     InitMixin(self, NanoShieldMixin)
     InitMixin(self, SprintMixin)
@@ -422,11 +419,6 @@ function Marine:OnDestroy()
             
         end
         
-        if self.waypoints then
-            GetGUIManager():DestroyGUIScript(self.waypoints)
-            self.waypoints = nil
-        end
-        
         if self.pickups then
         
             GetGUIManager():DestroyGUIScript(self.pickups)
@@ -602,7 +594,7 @@ function Marine:OnClampSpeed(input, velocity)
 end
 
 function Marine:GetFootstepSpeedScalar()
-    return Clamp(self:GetVelocityLength() / (Marine.kRunMaxSpeed * self:GetCatalystMoveSpeedModifier() * self:GetSlowSpeedModifier()), 0, 1)
+    return Clamp(self:GetVelocityLength() / (Marine.kWalkMaxSpeed * self:GetCatalystMoveSpeedModifier() * self:GetSlowSpeedModifier()), 0, 1)
 end
 
 // Maximum speed a player can move backwards
@@ -707,7 +699,11 @@ function Marine:GetChatSound()
 end
 
 function Marine:GetDeathMapName()
-    return MarineSpectator.kMapName
+    if self:GetTeamNumber() == 1 then
+        return MarineSpectator.kMapName
+    elseif self:GetTeamNumber() == 2 then
+        return RedSpectator.kMapName
+    end
 end
 
 // Returns the name of the primary weapon
@@ -1055,7 +1051,7 @@ function Marine:TriggerShadowStep(direction)
 
     local canShadowStep = true
     
-    if canShadowStep and not self:GetRecentlyJumped() then
+    if canShadowStep and not self:GetRecentlyJumped() and not self:GetHasShadowStepCooldown() then
 
         local velocity = self:GetVelocity()
         
@@ -1141,10 +1137,8 @@ function Marine:OnJumpLand(landIntensity, slowDown)
     self.hasDoubleJumped = false    
 end
 function Marine:OnJump()
-
     if not self:GetIsOnGround() then
         self.hasDoubleJumped = true
-    end
-    
+    end    
 end
 Shared.LinkClassToMap("Marine", Marine.kMapName, networkVars)

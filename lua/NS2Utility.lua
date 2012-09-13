@@ -22,19 +22,6 @@ function GetIsParasited(target)
     return target ~= nil and HasMixin(target, "ParasiteAble") and target:GetIsParasited()
 end
 
-function GetTeamHasCommander(teamNumber)
-
-    if Client then
-
-        local commTable = ScoreboardUI_GetOrderedCommanderNames(teamNumber)
-        return #commTable > 0
-        
-    elseif Server then
-        return Shared.GetEntitiesWithClassname("Commander"):GetSize() ~= 0
-    end
-
-end
-
 function GetPlayerCanUseEntity(player, target)
 
     local useSuccessTable = { useSuccess = false }
@@ -120,7 +107,6 @@ function GetCircleSizeForEntity(entity)
     local size = ConditionalValue(entity:isa("Player"),2.0, 2)
     size = ConditionalValue(entity:isa("Drifter"), 2.5, size)
     size = ConditionalValue(entity:isa("PowerPoint"), 2.6, size)
-    size = ConditionalValue(entity:isa("Hive"), 6.5, size)
     size = ConditionalValue(entity:isa("CragBabblers"), 6, size)
     size = ConditionalValue(entity:isa("MAC"), 2.0, size)
     size = ConditionalValue(entity:isa("Door"), 4.0, size)
@@ -129,7 +115,6 @@ function GetCircleSizeForEntity(entity)
     size = ConditionalValue(entity:isa("CommandStation"), 6.5, size)
     size = ConditionalValue(entity:isa("Egg"), 2.5, size)
     size = ConditionalValue(entity:isa("Armory"), 4.0, size)
-    size = ConditionalValue(entity:isa("Harvester"), 3.7, size)
     size = ConditionalValue(entity:isa("Crag"), 3, size)
     size = ConditionalValue(entity:isa("RoboticsFactory"), 6, size)
     size = ConditionalValue(entity:isa("ARC"), 3.5, size)
@@ -1751,13 +1736,10 @@ function BuildClassToGrid()
 
     local ClassToGrid = { }
 
-    ClassToGrid["TechPoint"] = { 1, 1 }
-    ClassToGrid["ResourcePoint"] = { 2, 1 }
     ClassToGrid["Door"] = { 3, 1 }
     ClassToGrid["DoorLocked"] = { 4, 1 }
     ClassToGrid["DoorWelded"] = { 5, 1 }
     ClassToGrid["Grenade"] = { 6, 1 }
-    ClassToGrid["PowerPoint"] = { 7, 1 }
     
     ClassToGrid["Scan"] = { 6, 8 }
 
@@ -1778,7 +1760,6 @@ function BuildClassToGrid()
     ClassToGrid["Fade"] = { 4, 3 }
     ClassToGrid["Onos"] = { 5, 3 }
     ClassToGrid["Drifter"] = { 6, 3 }
-    ClassToGrid["HiveOccupied"] = { 7, 3 }
     ClassToGrid["Kill"] = { 8, 3 }
 
     ClassToGrid["CommandStation"] = { 1, 4 }
@@ -1800,10 +1781,6 @@ function BuildClassToGrid()
     ClassToGrid["ArmsLab"] = { 8, 5 }
     ClassToGrid["PrototypeLab"] = { 4, 4 }
 
-    ClassToGrid["HiveBuilding"] = { 1, 6 }
-    ClassToGrid["Hive"] = { 2, 6 }
-    ClassToGrid["Infestation"] = { 4, 6 }
-    ClassToGrid["Harvester"] = { 5, 6 }
     ClassToGrid["Hydra"] = { 6, 6 }
     ClassToGrid["Egg"] = { 7, 6 }
 
