@@ -21,10 +21,14 @@ Script.Load("lua/TeamJoin.lua")
 Script.Load("lua/Bot.lua")
 Script.Load("lua/VoteManager.lua")
 
+Script.Load("lua/ServerConfig.lua")
+
 Script.Load("lua/ServerAdmin.lua")
 Script.Load("lua/ServerAdminCommands.lua")
 
 Script.Load("lua/ServerWebInterface.lua")
+
+Script.Load("lua/MapCycle.lua")
 
 Script.Load("lua/ConsoleCommands_Server.lua")
 Script.Load("lua/NetworkMessages_Server.lua")
@@ -94,8 +98,8 @@ local function LoadServerMapEntity(mapName, groupName, values)
 
     if not GetLoadEntity(mapName, groupName, values) then
         return
-    end    
-
+    end
+    
     // Skip the classes that are not true entities and are handled separately
     // on the client.
     if mapName ~= "prop_static"
@@ -134,13 +138,13 @@ local function LoadServerMapEntity(mapName, groupName, values)
             if HasMixin(entity, "Model") and (renderModelCommAlpha < 1 or blocksPlacement) then
                 entity:SetPhysicsGroup(PhysicsGroup.CommanderPropsGroup)
             end
-
+            
         end
         
     end   
     
     if mapName == ReadyRoomSpawn.kMapName then
-
+    
         local entity = ReadyRoomSpawn()
         entity:OnCreate()
         LoadEntityFromValues(entity, values)
@@ -171,9 +175,9 @@ local function LoadServerMapEntity(mapName, groupName, values)
     
         // Allow the MapEntityLoader to load it if all else fails.
         LoadMapEntity(mapName, groupName, values)
-
+        
     end
-
+    
 end
 
 /**

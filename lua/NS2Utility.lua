@@ -1064,14 +1064,14 @@ end
 function SetPlayerPoseParameters(player, viewModel)
 
     if not player or not player:isa("Player") then
-        Log("SetPlayerPoseParameters: player %s is not a player", player);
+        Log("SetPlayerPoseParameters: player %s is not a player", player)
     end
     ASSERT(player and player:isa("Player"))
     
     if viewmodel and not viewmodel:isa("Viewmodel") then
-        Log("SetPlayerPoseParameters: player %s s viewmodel is a %s", player, viewmodel);
+        Log("SetPlayerPoseParameters: player %s s viewmodel is a %s", player, viewmodel)
     end
-    ASSERT(not viewmodel or viewmodel:isa("Viewmodel"))    
+    ASSERT(not viewmodel or viewmodel:isa("Viewmodel"))
     
     local viewAngles = player:GetViewAngles()
     
@@ -1084,9 +1084,9 @@ function SetPlayerPoseParameters(player, viewModel)
         bodyYaw = Math.Wrap(Math.Degrees(player.bodyYaw), -180, 180)
     end
     
-    local viewAngles = player:GetViewAngles()    
+    local viewAngles = player:GetViewAngles()
     local viewCoords = viewAngles:GetCoords()
-
+    
     local horizontalVelocity = player:GetVelocityFromPolar()
     // Not all players will contrain their movement to the X/Z plane only.
     if player.GetMoveSpeedIs2D and player:GetMoveSpeedIs2D() then
@@ -1095,25 +1095,29 @@ function SetPlayerPoseParameters(player, viewModel)
     
     local x = Math.DotProduct(viewCoords.xAxis, horizontalVelocity)
     local z = Math.DotProduct(viewCoords.zAxis, horizontalVelocity)
-
-    local moveYaw = Math.Wrap(Math.Degrees( math.atan2(z,x) ), -180, 180) 
+    
+    local moveYaw = Math.Wrap(Math.Degrees( math.atan2(z,x) ), -180, 180)
     local speedScalar = player:GetVelocityLength() / player:GetMaxSpeed(true)
     
     player:SetPoseParam("move_yaw", moveYaw)
     player:SetPoseParam("move_speed", speedScalar)
     player:SetPoseParam("body_pitch", pitch)
     player:SetPoseParam("body_yaw", bodyYaw)
+    player:SetPoseParam("body_yaw_run", bodyYaw)
+    
     player:SetPoseParam("crouch", player:GetCrouchAmount())
     player:SetPoseParam("land_intensity", landIntensity)
-
     
     if viewModel then
+    
         viewModel:SetPoseParam("body_pitch", pitch)
         viewModel:SetPoseParam("move_yaw", moveYaw)
         viewModel:SetPoseParam("move_speed", speedScalar)
         viewModel:SetPoseParam("crouch", player:GetCrouchAmount())
         viewModel:SetPoseParam("body_yaw", bodyYaw)
+        viewModel:SetPoseParam("body_yaw_run", bodyYaw)
         viewModel:SetPoseParam("land_intensity", landIntensity)
+        
     end
     
 end
@@ -1990,4 +1994,19 @@ function TraceBullet(player, weapon, startPoint, direction, throughHallucination
 
     return hitInfo
 
+end
+
+-- add comma to separate thousands
+function comma_value(amount)
+    local formatted = ""
+    if amount ~= nil then
+        formatted = amount
+        while true do  
+            formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", '%1,%2')
+            if (k==0) then
+                break
+            end
+        end
+    end
+    return formatted
 end

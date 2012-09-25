@@ -289,7 +289,7 @@ function GUIUnitStatus:UpdateUnitStatusList(activeBlips, deltaTime)
         updateBlip.ProgressingIcon:SetRotation(Vector(0, 0, -2 * math.pi * baseResearchRot))
         updateBlip.BorderMask:SetRotation(Vector(0, 0, -2 * math.pi * baseResearchRot))
         updateBlip.BorderMask:SetIsVisible(teamType == kMarineTeamType and blipData.IsCrossHairTarget)
-        updateBlip.smokeyBackground:SetIsVisible(teamType == kRedTeamType and blipData.HealthFraction ~= 0)
+        updateBlip.smokeyBackground:SetIsVisible(teamType == kAlienTeamType and blipData.HealthFraction ~= 0)
 
         updateBlip.Badge:SetTexture(blipData.BadgeTexture)
         updateBlip.Badge:SetIsVisible(string.len(blipData.BadgeTexture) > 0)

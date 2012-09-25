@@ -278,7 +278,7 @@ end
             
                 // Queue up the spectator for respawn.
                 local spectator = self:Replace(self:GetDeathMapName())
-                spectator:GetTeam():PutPlayerInRespawnQueue(spectator, Shared.GetTime())
+                spectator:GetTeam():PutPlayerInRespawnQueue(spectator)
                 
             end
             
@@ -392,6 +392,7 @@ function Player:CopyPlayerDataFrom(player)
     self.modeTime = player.modeTime
     
     self.requestsScores = player.requestsScores
+    self.communicationStatus = player.communicationStatus
     
     // Don't lose purchased upgrades when becoming commander
     
@@ -652,6 +653,20 @@ function Player:UpdateMisc(input)
     if bit.band(input.commands, Move.ReadyRoom) ~= 0 and not self:isa("ReadyRoomPlayer") then
         self:SetCameraDistance(0)
         GetGamerules():JoinTeam(self, kTeamReadyRoom)
+    end
+    
+    if self:GetTeamType() == kMarineTeamType then
+    
+        self.weaponUpgradeLevel = 0
+            
+        if GetHasTech(self, kTechId.Weapons3, true) then    
+            self.weaponUpgradeLevel = 3
+        elseif GetHasTech(self, kTechId.Weapons2, true) then    
+            self.weaponUpgradeLevel = 2
+        elseif GetHasTech(self, kTechId.Weapons1, true) then    
+            self.weaponUpgradeLevel = 1
+        end
+        
     end
     
 end

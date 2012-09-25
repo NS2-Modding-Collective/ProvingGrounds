@@ -408,7 +408,7 @@ function PlayingTeam:ReplaceRespawnPlayer(player, origin, angles, mapName)
     if not self:RespawnPlayer(newPlayer, origin, angles) then
     
         newPlayer = newPlayer:Replace(newPlayer:GetDeathMapName())
-        self:PutPlayerInRespawnQueue(newPlayer, Shared.GetTime())
+        self:PutPlayerInRespawnQueue(newPlayer)
         
     end
     
@@ -497,34 +497,6 @@ function PlayingTeam:RespawnPlayer(player, origin, angles)
     end
     
     return false
-    /*local initialTechPoint = Shared.GetEntity(self.initialTechPointId)
-    
-    if origin ~= nil and angles ~= nil then
-        success = Team.RespawnPlayer(self, player, origin, angles)
-    elseif initialTechPoint ~= nil then
-    
-        // Compute random spawn location
-        local capsuleHeight, capsuleRadius = player:GetTraceCapsule()
-        local spawnOrigin = GetRandomSpawnForCapsule(capsuleHeight, capsuleRadius, initialTechPoint:GetOrigin(), 2, 15, EntityFilterAll())
-        if spawnOrigin ~= nil then
-        
-            // Orient player towards tech point
-            local lookAtPoint = initialTechPoint:GetOrigin() + Vector(0, 5, 0)
-            local toTechPoint = GetNormalizedVector(lookAtPoint - spawnOrigin)
-            success = Team.RespawnPlayer(self, player, spawnOrigin, Angles(GetPitchFromVector(toTechPoint), GetYawFromVector(toTechPoint), 0))
-            
-        else
-        
-            Print("PlayingTeam:RespawnPlayer: Couldn't compute random spawn for player.\n")
-            Print(Script.CallStack())
-            
-        end
-        
-    else
-        Print("PlayingTeam:RespawnPlayer(): No initial tech point.")
-    end
-    
-    return success*/
     
 end
 
@@ -591,22 +563,6 @@ end
 function PlayingTeam:Update(timePassed)
 
     PROFILE("PlayingTeam:Update")
-    
-    // Give new players starting resources. Mark players as "having played" the game (so they don't get starting res if 
-    // they join a team again, etc.)    
-    local gamerules = GetGamerules()
-    for index, player in ipairs(self:GetPlayers()) do
-    
-        local success, played = gamerules:GetUserPlayedInGame(player)
-        if success and not played then
-            player:SetResources( kPlayerInitialIndivRes )
-        end
-        
-        if gamerules:GetGameStarted() then
-            gamerules:SetUserPlayedInGame(player)
-        end
-        
-    end
     
     self:UpdateTechTree()
     

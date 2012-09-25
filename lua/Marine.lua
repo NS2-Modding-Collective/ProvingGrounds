@@ -344,7 +344,8 @@ function Marine:MakeSpecialEdition()
 
     if not blockBlackArmor then
         self:SetModel(Marine.kSpecialModelName, Marine.kMarineAnimationGraph)
-    end    
+    end
+    
 end
 
 // Currently there are some issues with a jumping Marine getting disrupted (weapons becoming locked).

@@ -134,7 +134,7 @@ end
 
 Shared.RegisterNetworkMessage( "Ping", kPingMessage )
 
-kWorldTextMessageType = enum({ 'Resources', 'Resource' })
+kWorldTextMessageType = enum({ 'Resources', 'Resource', 'Damage' })
 local kWorldTextMessage =
 {
     messageType = "enum kWorldTextMessageType",
@@ -772,3 +772,77 @@ Shared.RegisterNetworkMessage("DebugCapsule", kDebugCapsuleMessage)
 
 Shared.RegisterNetworkMessage( "TechNodeBase", kTechNodeBaseMessage )
 Shared.RegisterNetworkMessage( "ClearTechTree", {} )
+
+local kCommunicationStatusMessage = 
+{
+    communicationStatus = "enum kPlayerCommunicationStatus"
+}
+
+function BuildCommunicationStatus(communicationStatus)
+
+    local t = {}
+
+    t.communicationStatus = communicationStatus
+    
+    return t
+    
+end
+
+function ParseCommunicationStatus(t)
+    return t.communicationStatus
+end
+
+Shared.RegisterNetworkMessage( "SetCommunicationStatus", kCommunicationStatusMessage )
+
+local kBuyMessage =
+{
+    techId1 = "enum kTechId",
+    techId2 = "enum kTechId",
+    techId3 = "enum kTechId",
+    techId4 = "enum kTechId",
+    techId5 = "enum kTechId",
+    techId6 = "enum kTechId",
+    techId7 = "enum kTechId",
+    techId8 = "enum kTechId"
+}
+
+function BuildBuyMessage(techIds)
+
+    assert(#techIds <= table.countkeys(kBuyMessage))
+    
+    local buyMessage = { techId1 = kTechId.None, techId2 = kTechId.None, techId3 = kTechId.None,
+                         techId4 = kTechId.None, techId5 = kTechId.None, techId6 = kTechId.None,
+                         techId7 = kTechId.None, techId8 = kTechId.None }
+    
+    for t = 1, #techIds do
+        buyMessage["techId" .. t] = techIds[t]
+    end
+    
+    return buyMessage
+    
+end
+
+function ParseBuyMessage(buyMessage)
+
+    local maxNumTechs = table.countkeys(kBuyMessage)
+    
+    // We need to iterate over the buyMessage table and insert
+    // the tech Ids in the correct order into the techIds list.
+    local techIds = { }
+    for t = 1, maxNumTechs do
+    
+        for name, techId in pairs(buyMessage) do
+        
+            if ("techId" .. t) == name and techId ~= kTechId.None then
+                table.insert(techIds, techId)
+            end
+            
+        end
+        
+    end
+    
+    return techIds
+    
+end
+
+Shared.RegisterNetworkMessage("Buy", kBuyMessage)

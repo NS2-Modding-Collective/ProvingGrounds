@@ -201,31 +201,6 @@ function Marine:GetCurrentWeldPercentage()
     
 end
 
-function Marine:ShowMap(showMap, showBig, forceReset)
-
-    Player.ShowMap(self, showMap, showBig, forceReset)
-    
-    if showMap ~= self.mapState then
-    
-        self.mapState = showMap
-        
-        if not self.timeLastMapStateChange then
-            self.timeLastMapStateChange = 0
-        end
-    
-        if self.mapState and self.timeLastMapStateChange + 3 < Shared.GetTime() then
-            
-            self.timeLastMapStateChange = Shared.GetTime()
-        
-            local hudParams = self:GetHudParams()
-            hudParams.initProjectingCinematic = true    
-            self:SetHudParams(hudParams)
-        end
-    
-    end
-
-end
-
 function Marine:GetHudParams()
 
     if self.hudParams == nil then

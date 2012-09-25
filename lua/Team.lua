@@ -15,8 +15,8 @@ function Team:Initialize(teamName, teamNumber)
 
     self.teamName = teamName
     self.teamNumber = teamNumber
-    self.playerIds = { }
-    self.respawnQueue = { }
+    self.playerIds = table.array(16)
+    self.respawnQueue = table.array(16)
     self.kills = 0
     
 end
@@ -45,18 +45,18 @@ end
  * Called only by Gamerules.
  */
 function Team:AddPlayer(player)
-    
-    if(player ~= nil and player:isa("Player")) then
+
+    if player ~= nil and player:isa("Player") then
     
         local id = player:GetId()
         
-        if(id ~= Entity.invalidId) then
+        if id ~= Entity.invalidId then
             return table.insertunique( self.playerIds, id )
         else
             Print("Team:AddPlayer(player): Player is valid but id is -1, skipping.")
         end
         
-    else    
+    else
         Print("Team:AddPlayer(): Entity must be player (was %s)", SafeClassName(player))
     end
     
@@ -175,7 +175,7 @@ function Team:Reset()
 
     self.kills = 0
     
-    self.respawnQueue = { }
+    self:ClearRespawnQueue()
     
     // Clear players
     self.playerIds = { }
@@ -241,19 +241,13 @@ end
 /**
  * Queues a player to be spawned.
  */
-function Team:PutPlayerInRespawnQueue(player, time)
+function Team:PutPlayerInRespawnQueue(player)
 
     assert(player)
-    assert(type(time) == "number")
     
-    // Save time
-    player:SetRespawnQueueEntryTime(time)
+    player:SetRespawnQueueEntryTime(Shared.GetTime())
     table.insertunique(self.respawnQueue, player:GetId())
     
-end
-
-function Team:GetIsPlayerInRespawnQueue(player)
-    return (table.find(self.respawnQueue, player:GetId()) ~= nil)
 end
 
 function Team:GetPlayerPositionInRespawnQueue(player)

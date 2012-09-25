@@ -131,6 +131,8 @@ end
 
 local kCommandStationState = enum( { "Normal", "Locked", "Welcome" } )
 function CommandStation:OnUpdateRender()
+
+    PROFILE("CommandStation:OnUpdateRender")
     
     local model = self:GetRenderModel()
     if model then

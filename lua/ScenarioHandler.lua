@@ -27,7 +27,7 @@ class "ScenarioHandler"
 ScenarioHandler.kStartTag = "--- SCENARIO START ---"
 ScenarioHandler.kEndTag = "--- SCENARIO END ---"
 
-ScenarioHandler.kLoadPath = { "user://scenarios/${map}", "game://scenarios/${map}", "http://www.matsotech.se/ns2scenarios/${map}" }
+ScenarioHandler.kLoadPath = { "config://scenarios/${map}", "http://www.matsotech.se/ns2scenarios/${map}" }
 
 function ScenarioHandler:Init()
     
