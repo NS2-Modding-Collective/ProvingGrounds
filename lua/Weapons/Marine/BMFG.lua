@@ -1,0 +1,256 @@
+// ======= Copyright (c) 2003-2012, Unknown Worlds Entertainment, Inc. All rights reserved. =====
+//
+// lua\Weapons\Marine\BMFG.lua
+//
+//    Created by:   Andy 'Soul Rider' Wilson for Proving Grounds
+//
+// ========= For more information, visit us at http://www.unknownworlds.com =====================
+
+class 'BMFG' (Weapon)
+
+BMFG.kMapName = "bmfg"
+
+BMFG.kSlotNames = enum({ 'Left', 'Right' })
+
+local networkVars =
+{
+    leftWeaponId = "entityid",
+    rightWeaponId = "entityid"
+}
+
+local kViewModelName = PrecacheAsset("models/marine/exosuit/exosuit_mm_view.model")
+                        
+local kAnimationGraph = PrecacheAsset("models/marine/exosuit/exosuit_mm_view.animation_graph")
+
+local kDeploy2DSoundEffect = PrecacheAsset("sound/NS2.fev/marine/heavy/deploy_2D")
+local kDeploy3DSoundEffect = PrecacheAsset("sound/NS2.fev/marine/heavy/deploy_3D")
+
+local kScreenDissolveSpeed = 1
+local kCloseSpeed = 1.116
+
+function BMFG:OnCreate()
+
+    Weapon.OnCreate(self)
+    
+    self.leftWeaponId = Entity.invalidId
+    self.rightWeaponId = Entity.invalidId
+    
+    self.closeStart = Shared.GetTime()
+    
+end
+
+if Server then
+
+    function BMFG:SetWeapons(weaponMapNameLeft, weaponMapNameRight)
+    
+        assert(weaponMapNameLeft)
+        assert(weaponMapNameRight)
+        
+        if self.leftWeaponId ~= Entity.invalidId then
+            DestroyEntity(Shared.GetEntity(self.leftWeaponId))
+        end
+        local leftWeapon = CreateEntity(weaponMapNameLeft, Vector(), self:GetTeamNumber())
+        leftWeapon:SetParent(self:GetParent())
+        leftWeapon:SetBMFGWeaponSlot(BMFG.kSlotNames.Left)
+        self.leftWeaponId = leftWeapon:GetId()
+        
+        if self.rightWeaponId ~= Entity.invalidId then
+            DestroyEntity(Shared.GetEntity(self.rightWeaponId))
+        end
+        local rightWeapon = CreateEntity(weaponMapNameRight, Vector(), self:GetTeamNumber())
+        rightWeapon:SetParent(self:GetParent())
+        rightWeapon:SetBMFGWeaponSlot(BMFG.kSlotNames.Right)
+        self.rightWeaponId = rightWeapon:GetId()
+        
+        self.weaponSetupName = weaponMapNameLeft .. "+" .. weaponMapNameRight
+        
+        if self:GetIsActive() then
+            local player = self:GetParent()
+            player:SetViewModel(self:GetViewModelName(), self)
+        end
+        
+    end
+    
+    function BMFG:GetViewModelName()
+        return kViewModelName
+    end
+    
+    function BMFG:GetAnimationGraphName()
+        return kAnimationGraph
+    end
+    
+    function BMFG:OnParentKilled(attacker, doer, point, direction)
+    
+        local leftWeapon = Shared.GetEntity(self.leftWeaponId)
+        if leftWeapon and leftWeapon.OnParentKilled then
+            leftWeapon:OnParentKilled(attacker, doer, point, direction)
+        end
+        
+        local rightWeapon = Shared.GetEntity(self.rightWeaponId)
+        if rightWeapon and rightWeapon.OnParentKilled then
+            rightWeapon:OnParentKilled(attacker, doer, point, direction)
+        end
+        
+    end
+    
+end
+
+function BMFG:GetHUDSlot()
+    return kPrimaryWeaponSlot
+end
+
+function BMFG:GetHasSecondary(player)
+    return true
+end
+
+function BMFG:ConstrainMoveVelocity(moveVelocity)
+
+    // Pass along to weapons
+    
+end
+
+function BMFG:OnPrimaryAttack(player)
+
+    Weapon.OnPrimaryAttack(self, player)
+    
+    Shared.GetEntity(self.leftWeaponId):OnPrimaryAttack(player)
+    
+end
+
+function BMFG:OnPrimaryAttackEnd(player)
+
+    Weapon.OnPrimaryAttackEnd(self, player)
+    
+    Shared.GetEntity(self.leftWeaponId):OnPrimaryAttackEnd(player)
+    
+end
+
+function BMFG:OnSecondaryAttack(player)
+
+    Weapon.OnSecondaryAttack(self, player)
+    
+    // Calling OnPrimaryAttack here is intentional.
+    Shared.GetEntity(self.rightWeaponId):OnPrimaryAttack(player)
+    
+end
+
+function BMFG:OnSecondaryAttackEnd(player)
+
+    Weapon.OnSecondaryAttackEnd(self, player)
+    
+    // Calling OnPrimaryAttackEnd here is intentional.
+    Shared.GetEntity(self.rightWeaponId):OnPrimaryAttackEnd(player)
+    
+end
+
+function BMFG:ProcessMoveOnWeapon(player, input)
+
+    Weapon.ProcessMoveOnWeapon(self, player, input)
+    
+    Shared.GetEntity(self.leftWeaponId):ProcessMoveOnWeapon(player, input)
+    Shared.GetEntity(self.rightWeaponId):ProcessMoveOnWeapon(player, input)
+    
+end
+
+local function SetViewModelParameter(self, paramName, paramValue)
+
+    local parent = self:GetParent()
+    if parent and parent == Client.GetLocalPlayer() then
+    
+        local viewModel = parent:GetViewModelEntity()
+        if viewModel then
+        
+            viewModel:InstanceMaterials()
+            
+            local model = viewModel:GetRenderModel()
+            model:SetMaterialParameter(paramName, paramValue)
+            
+        end
+        
+    end
+    
+end
+
+function BMFG:OnUpdateRender()
+
+    PROFILE("BMFG:OnUpdateRender")
+    
+    if self.screenDissolveStart then
+    
+        local dissolveAmount = math.min(1, (Shared.GetTime() - self.screenDissolveStart) / kScreenDissolveSpeed)
+        SetViewModelParameter(self, "dissolveAmount", dissolveAmount)
+        
+        if dissolveAmount == 1 then
+            self.screenDissolveStart = false
+        end
+        
+    end
+    
+    if self.closeStart then
+    
+        local closeAmount = math.min(1, (Shared.GetTime() - self.closeStart) / kCloseSpeed)
+        SetViewModelParameter(self, "closeAmount", closeAmount)
+        
+        if closeAmount >= 1 then
+            self.closeStart = nil
+        end
+        
+    end
+    
+end
+
+local function TriggerScreenDissolveEffect(self)
+
+    if Client and not Shared.GetIsRunningPrediction() then
+        self.screenDissolveStart = Shared.GetTime()
+    end
+    
+end
+
+function BMFG:OnTag(tagName)
+
+    PROFILE("BMFG:OnTag")
+
+    if tagName == "deploy_start" then
+    
+        if Client and not Shared.GetIsRunningPrediction() then
+            StartSoundEffectForPlayer(kDeploy2DSoundEffect, self:GetParent())
+        elseif Server then
+        
+            // Do not send this sound to this Exo player as they play it Client side above.
+            local function Relevant(soundEffect, player) return player ~= self:GetParent() end
+            StartSoundEffectAtOrigin(kDeploy3DSoundEffect, self:GetOrigin(), Relevant)
+            
+        end
+        
+    elseif tagName == "deploy_end" then
+        TriggerScreenDissolveEffect(self)
+    elseif Client and tagName == "view_step" then
+    
+        // This is the local player.
+        local player = self:GetParent()
+        if player then
+        
+            local velocity = GetNormalizedVector(player:GetVelocity())
+            local viewVec = player:GetViewAngles():GetCoords().zAxis
+            local forward = velocity:DotProduct(viewVec) > -0.1
+            local crouch = player:GetCrouching()
+            player:TriggerEffects("footstep", {surface = player:GetMaterialBelowPlayer(), left = false, sprinting = false, forward = forward, crouch = crouch, enemy = false})
+            
+        end
+        
+    end
+    
+    Shared.GetEntity(self.leftWeaponId):OnTag(tagName)
+    Shared.GetEntity(self.rightWeaponId):OnTag(tagName)
+    
+end
+
+function BMFG:OnUpdateAnimationInput(modelMixin)
+
+    Shared.GetEntity(self.leftWeaponId):OnUpdateAnimationInput(modelMixin)
+    Shared.GetEntity(self.rightWeaponId):OnUpdateAnimationInput(modelMixin)
+    
+end
+
+Shared.LinkClassToMap("BMFG", BMFG.kMapName, networkVars)

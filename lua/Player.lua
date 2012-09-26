@@ -764,14 +764,6 @@ function Player:GetMapXY(worldX, worldZ)
 
 end
 
-// Return modifier to our max speed (1 is none, 0 is full)
-function Player:GetSlowSpeedModifier()
-
-    // Never drop to 0 speed
-    return 1 
-    
-end
-
 function Player:GetController()
 
     return self.controller
@@ -1181,17 +1173,8 @@ function Player:ComputeForwardVelocity(input)
     local accel = ConditionalValue(self:GetIsOnLadder(), kLadderAcceleration, self:GetAcceleration())
     
     local moveVelocity = viewCoords:TransformVector(move) * accel
-    if input.move.z < 0 and self:GetVelocity():GetLength() > self:GetMaxSpeed() * 0.4 then
-        moveVelocity = moveVelocity * self:GetMaxBackwardSpeedScalar()
-    end
 
     self:ConstrainMoveVelocity(moveVelocity)
-    
-    // The active weapon can also constain the move velocity.
-    local activeWeapon = self:GetActiveWeapon()
-    if activeWeapon ~= nil then
-        activeWeapon:ConstrainMoveVelocity(moveVelocity)
-    end
     
     // Make sure that moving forward while looking down doesn't slow 
     // us down (get forward velocity, not view velocity)
@@ -1367,9 +1350,9 @@ function Player:OnClampSpeed(input, velocity)
     PROFILE("Player:OnClampSpeed")
     
     // Don't clamp speed when stunned, so we can go flying
-    if HasMixin(self, "Stun") and self:GetIsStunned() then
+    /*if HasMixin(self, "Stun") and self:GetIsStunned() then
         return velocity
-    end
+    end*/
     
     if self:PerformsVerticalMove() then
         moveSpeed = velocity:GetLength()   
@@ -1378,11 +1361,6 @@ function Player:OnClampSpeed(input, velocity)
     end
     
     local maxSpeed = self:GetMaxSpeed()
-    
-    // Players moving backwards can't go full speed.
-    if input.move.z < 0 then
-        maxSpeed = maxSpeed * self:GetMaxBackwardSpeedScalar()
-    end
     
     if moveSpeed > maxSpeed then
     
@@ -2111,14 +2089,10 @@ function Player:GetIsOnGround()
         self.onGround = false
         
         // We're not on ground for a short time after we jump
-        if not HasMixin(self, "Stun") or not self:GetIsStunned() then
-        
-            self.onGround = self:GetIsCloseToGround(Player.kOnGroundDistance)
+        self.onGround = self:GetIsCloseToGround(Player.kOnGroundDistance)
             
-            if self.onGround then
-                self.timeLastOnGround = Shared.GetTime()
-            end
-            
+        if self.onGround then
+            self.timeLastOnGround = Shared.GetTime()
         end
         
         self.onGroundNeedsUpdate = false        
@@ -2287,12 +2261,7 @@ function Player:GetMaxSpeed(possible)
 end
 
 function Player:GetAcceleration()
-    return Player.kAcceleration * self:GetSlowSpeedModifier()
-end
-
-// Maximum speed a player can move backwards
-function Player:GetMaxBackwardSpeedScalar()
-    return Player.kWalkBackwardSpeedScalar
+    return Player.kAcceleration
 end
 
 function Player:GetAirMoveScalar()
@@ -2554,21 +2523,17 @@ function Player:ModifyVelocity(input, velocity)
 
     PROFILE("Player:ModifyVelocity")
     
-    if not HasMixin(self, "Stun") or not self:GetIsStunned() then
-    
-        // Must press jump multiple times to get multiple jumps 
-        if bit.band(input.commands, Move.Jump) ~= 0 and not self.jumpHandled then
+    // Must press jump multiple times to get multiple jumps 
+    if bit.band(input.commands, Move.Jump) ~= 0 and not self.jumpHandled then
         
-            if self:HandleJump(input, velocity) and self.OnJump then
-                self:OnJump()
-            end
-            
-            self.jumpHandled = true
-        
-        elseif self:GetIsOnGround() then
-            self:HandleOnGround(input, velocity)
+        if self:HandleJump(input, velocity) and self.OnJump then
+            self:OnJump()
         end
+          
+        self.jumpHandled = true
         
+    elseif self:GetIsOnGround() then
+        self:HandleOnGround(input, velocity)
     end
     
 end
@@ -3059,7 +3024,7 @@ function Player:RetrieveMove()
 end
 
 function Player:GetCanControl()
-    return (not self.isMoveBlocked) and self:GetIsAlive() and ( not HasMixin(self, "Stun") or not self:GetIsStunned() ) and not self.countingDown
+    return (not self.isMoveBlocked) and self:GetIsAlive() and not self.countingDown
 end
 
 function Player:GetCanAttack()

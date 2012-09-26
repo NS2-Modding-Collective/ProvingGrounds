@@ -368,7 +368,7 @@ function GUIMarineHUD:Update(deltaTime)
     end
 
     local useColor = Color(1, 1, 1, 1)        
-    if not MarineUI_GetHasArmsLab() then
+    if not AvatarUI_GetHasArmsLab() then
         useColor = Color(1, 0, 0, 1)
     end
     self.weaponLevel:SetColor(useColor)

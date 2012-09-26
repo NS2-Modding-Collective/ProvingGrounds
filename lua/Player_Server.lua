@@ -105,7 +105,7 @@ AddFunctionContract(Player.GetClientMuted, { Arguments = { "Player", "number" },
 
 // Changes the visual appearance of the player to the special edition version.
 function Player:MakeSpecialEdition()
-    self:SetModel(Player.kSpecialModelName, Marine.kMarineAnimationGraph)
+    self:SetModel(Player.kSpecialModelName, Avatar.kMarineAnimationGraph)
 end
 
 function Player:GetSendTechTreeBase()

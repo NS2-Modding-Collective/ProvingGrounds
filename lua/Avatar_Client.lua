@@ -1,32 +1,30 @@
 // ======= Copyright (c) 2003-2012, Unknown Worlds Entertainment, Inc. All rights reserved. =======
 //
-// lua\Marine_Client.lua
+// lua\Avatar_Client.lua
 //
 //    Created by:   Charlie Cleveland (charlie@unknownworlds.com) and
 //                  Max McGuire (max@unknownworlds.com)
 //
 // ========= For more information, visit us at http://www.unknownworlds.com =====================
 
-Marine.k2DHUDFlash = "ui/marine_hud_2d.swf"
-Marine.kBuyMenuTexture = "ui/marine_buymenu.dds"
-Marine.kBuyMenuUpgradesTexture = "ui/marine_buymenu_upgrades.dds"
-Marine.kBuyMenuiconsTexture = "ui/marine_buy_icons.dds"
+Avatar.k2DHUDFlash = "ui/marine_hud_2d.swf"
+Avatar.kBuyMenuTexture = "ui/marine_buymenu.dds"
+Avatar.kBuyMenuUpgradesTexture = "ui/marine_buymenu_upgrades.dds"
+Avatar.kBuyMenuiconsTexture = "ui/marine_buy_icons.dds"
 
-Marine.kInfestationFootstepCinematic = PrecacheAsset("cinematics/marine/infestation_footstep.cinematic")
-Marine.kSpitHitCinematic = PrecacheAsset("cinematics/marine/spit_hit_1p.cinematic")
+Avatar.kInfestationFootstepCinematic = PrecacheAsset("cinematics/marine/infestation_footstep.cinematic")
+Avatar.kSpitHitCinematic = PrecacheAsset("cinematics/marine/spit_hit_1p.cinematic")
 
-Shared.PrecacheSurfaceShader("cinematics/vfx_materials/rupture.surface_shader")
-
-Marine.kSpitHitEffectDuration = 1
+Avatar.kSpitHitEffectDuration = 1
 
 local kSensorBlipSize = 25
 
 local kMarineHealthbarOffset = Vector(0, 1.2, 0)
-function Marine:GetHealthbarOffset()
+function Avatar:GetHealthbarOffset()
     return kMarineHealthbarOffset
 end
 
-function MarineUI_GetHasArmsLab()
+function AvatarUI_GetHasArmsLab()
 
     local player = Client.GetLocalPlayer()
     
@@ -124,7 +122,7 @@ local function GetIsCloseToMenuStructure(self)
 
 end
 
-function Marine:OnInitLocalClient()
+function Avatar:OnInitLocalClient()
 
     Player.OnInitLocalClient(self)
     
@@ -172,14 +170,14 @@ function Marine:OnInitLocalClient()
     
 end
 
-function Marine:TriggerHudInitEffects()
+function Avatar:TriggerHudInitEffects()
 
     self.marineHUD:TriggerInitAnimations()
 
 end
 
 // check if player aims at a Weldable unit and return it's percentage
-function Marine:GetCurrentWeldPercentage()
+function Avatar:GetCurrentWeldPercentage()
 
     local activeWeapon = self:GetActiveWeapon()
     
@@ -201,7 +199,7 @@ function Marine:GetCurrentWeldPercentage()
     
 end
 
-function Marine:GetHudParams()
+function Avatar:GetHudParams()
 
     if self.hudParams == nil then
     
@@ -218,20 +216,20 @@ function Marine:GetHudParams()
 
 end
 
-function Marine:SetHudParams(hudParams)
+function Avatar:SetHudParams(hudParams)
     self.hudParams = hudParams
 end
 
 local function TriggerSpitHitEffect(coords)
 
     local spitCinematic = Client.CreateCinematic(RenderScene.Zone_ViewModel)
-    spitCinematic:SetCinematic(Marine.kSpitHitCinematic)
+    spitCinematic:SetCinematic(Avatar.kSpitHitCinematic)
     spitCinematic:SetRepeatStyle(Cinematic.Repeat_None)
     spitCinematic:SetCoords(coords)
     
 end
 
-function Marine:UpdatePoisonedEffect()
+function Avatar:UpdatePoisonedEffect()
 
     if self.poisoned and self:GetIsAlive() and not self.poisonedGUI:GetIsAnimating() then    
         self.poisonedGUI:TriggerPoisonEffect()        
@@ -239,13 +237,11 @@ function Marine:UpdatePoisonedEffect()
     
 end
 
-function Marine:UpdateClientEffects(deltaTime, isLocal)
+function Avatar:UpdateClientEffects(deltaTime, isLocal)
     
     Player.UpdateClientEffects(self, deltaTime, isLocal)
     
     if isLocal then
-    
-        Client.SetMouseSensitivityScalar(ConditionalValue(self:GetIsStunned(), 0, 1))
         
         self:UpdateGhostModel()
         
@@ -264,9 +260,8 @@ function Marine:UpdateClientEffects(deltaTime, isLocal)
         if self.screenEffects.disorient then
             self.screenEffects.disorient:SetParameter("time", Client.GetTime())
         end
-        
-        local stunned = HasMixin(self, "Stun") and self:GetIsStunned()
-        local blurEnabled = self.buyMenu ~= nil or stunned or self.minimapVisible
+
+        local blurEnabled = false
         self:SetBlurEnabled(blurEnabled)
         
         // update spit hit effect
@@ -291,50 +286,21 @@ function Marine:UpdateClientEffects(deltaTime, isLocal)
         
         local spitHitDuration = Shared.GetTime() - self.timeLastSpitHitEffect
         
-        if self.screenEffects.disorient and self.timeLastSpitHitEffect ~= 0 and spitHitDuration <= Marine.kSpitHitEffectDuration then
+        if self.screenEffects.disorient and self.timeLastSpitHitEffect ~= 0 and spitHitDuration <= Avatar.kSpitHitEffectDuration then
         
             self.screenEffects.disorient:SetActive(true)
-            local amount = (1 - ( spitHitDuration/Marine.kSpitHitEffectDuration) ) * 3.5 * self.spitEffectIntensity
+            local amount = (1 - ( spitHitDuration/Avatar.kSpitHitEffectDuration) ) * 3.5 * self.spitEffectIntensity
             self.screenEffects.disorient:SetParameter("amount", amount)
             
         end
         
     end
     
-    if self._renderModel then
-    
-        if self.ruptured and not self.ruptureMaterial then
-
-            local material = Client.CreateRenderMaterial()
-            material:SetMaterial("cinematics/vfx_materials/rupture.material")
-
-            local viewMaterial = Client.CreateRenderMaterial()
-            viewMaterial:SetMaterial("cinematics/vfx_materials/rupture.material")
-            
-            self.ruptureEntities = {}
-            self.ruptureMaterial = material
-            self.ruptureMaterialViewMaterial = viewMaterial
-            AddMaterialEffect(self, material, viewMaterial, self.ruptureEntities)
-        
-        elseif not self.ruptured and self.ruptureMaterial then
-
-            RemoveMaterialEffect(self.ruptureEntities, self.ruptureMaterial, self.ruptureMaterialViewMaterial)
-            Client.DestroyRenderMaterial(self.ruptureMaterial)
-            Client.DestroyRenderMaterial(self.ruptureMaterialViewMaterial)
-            self.ruptureMaterial = nil
-            self.ruptureMaterialViewMaterial = nil
-            self.ruptureEntities = nil
-            
-        end
-        
-    end
-    
-    
 end
 
-function Marine:OnUpdateRender()
+function Avatar:OnUpdateRender()
 
-    PROFILE("Marine:OnUpdateRender")
+    PROFILE("Avatar:OnUpdateRender")
     
     Player.OnUpdateRender(self)
     
@@ -361,7 +327,7 @@ function Marine:OnUpdateRender()
     
 end
 
-function Marine:CloseMenu()
+function Avatar:CloseMenu()
 
     if self.buyMenu then
     
@@ -376,7 +342,7 @@ function Marine:CloseMenu()
     
 end
 
-function Marine:AddNotification(locationId, techId)
+function Avatar:AddNotification(locationId, techId)
 
     local locationName = ""
 
@@ -389,7 +355,7 @@ function Marine:AddNotification(locationId, techId)
 end
 
 // this function returns the oldest notification and clears it from the list
-function Marine:GetAndClearNotification()
+function Avatar:GetAndClearNotification()
 
     local notification = nil
 
@@ -404,7 +370,7 @@ function Marine:GetAndClearNotification()
 
 end
 
-function Marine:UpdateClientHelp()
+function Avatar:UpdateClientHelp()
 
     local kDefaultScanRange = 10
     local teamNumber = self:GetTeamNumber()
@@ -472,7 +438,7 @@ function Marine:UpdateClientHelp()
        
 end
 
-function Marine:TriggerFootstep()
+function Avatar:TriggerFootstep()
 
     Player.TriggerFootstep(self)
     
@@ -480,7 +446,7 @@ function Marine:TriggerFootstep()
     
         local cinematic = Client.CreateCinematic(RenderScene.Zone_ViewModel)
         cinematic:SetRepeatStyle(Cinematic.Repeat_None)
-        cinematic:SetCinematic(Marine.kInfestationFootstepCinematic)
+        cinematic:SetCinematic(Avatar.kInfestationFootstepCinematic)
     
     end
 
@@ -488,7 +454,7 @@ end
 
 gCurrentHostStructureId = Entity.invalidId
 
-function MarineUI_SetHostStructure(structure)
+function AvatarUI_SetHostStructure(structure)
 
     if structure then
         gCurrentHostStructureId = structure:GetId()
@@ -496,7 +462,7 @@ function MarineUI_SetHostStructure(structure)
 
 end
 
-function MarineUI_GetCurrentHostStructure()
+function AvatarUI_GetCurrentHostStructure()
 
     if gCurrentHostStructureId and gCurrentHostStructureId ~= Entity.invalidId then
         return Shared.GetEntity(gCurrentHostStructureId)
@@ -507,7 +473,7 @@ function MarineUI_GetCurrentHostStructure()
 end
 
 // Bring up buy menu
-function Marine:BuyMenu(structure)
+function Avatar:BuyMenu(structure)
     
     // Don't allow display in the ready room
     if self:GetTeamNumber() ~= 0 and Client.GetLocalPlayer() == self then
@@ -515,7 +481,7 @@ function Marine:BuyMenu(structure)
         if not self.buyMenu then
             self.buyMenu = GetGUIManager():CreateGUIScript("GUIMarineBuyMenu")
             
-            MarineUI_SetHostStructure(structure)
+            AvatarUI_SetHostStructure(structure)
             
             if structure then
                 self.buyMenu:SetHostStructure(structure)
@@ -526,7 +492,7 @@ function Marine:BuyMenu(structure)
     
 end
 
-function Marine:UpdateMisc(input)
+function Avatar:UpdateMisc(input)
 
     Player.UpdateMisc(self, input)
     
@@ -542,26 +508,7 @@ function Marine:UpdateMisc(input)
     
 end
 
-// Give dynamic camera motion to the player
-/*
-function Marine:PlayerCameraCoordsAdjustment(cameraCoords) 
-
-    if self:GetIsFirstPerson() then
-        
-        if self:GetIsStunned() then
-            local attachPointOffset = self:GetAttachPointOrigin("Head") - cameraCoords.origin
-            attachPointOffset.x = attachPointOffset.x * .5
-            attachPointOffset.z = attachPointOffset.z * .5
-            cameraCoords.origin = cameraCoords.origin + attachPointOffset
-        end
-    
-    end
-    
-    return cameraCoords
-
-end*/
-
-function Marine:OnCountDown()
+function Avatar:OnCountDown()
 
     Player.OnCountDown(self)
     
@@ -571,7 +518,7 @@ function Marine:OnCountDown()
 
 end
 
-function Marine:OnCountDownEnd()
+function Avatar:OnCountDownEnd()
 
     Player.OnCountDownEnd(self)
     
@@ -582,17 +529,17 @@ function Marine:OnCountDownEnd()
 
 end
 
-function Marine:OnOrderSelfComplete(orderType)
+function Avatar:OnOrderSelfComplete(orderType)
 
     self:TriggerEffects("complete_order")
 
 end
 
-function Marine:GetSpeedDebugSpecial()
+function Avatar:GetSpeedDebugSpecial()
     return self:GetSprintTime() / SprintMixin.kMaxSprintTime
 end
 
-function Marine:OnUpdateSprint()
+function Avatar:OnUpdateSprint()
 
     /*if self.loopingSprintSoundEntId ~= Entity.invalidId then
     
@@ -610,7 +557,7 @@ function Marine:OnUpdateSprint()
     
 end
 
-function Marine:UpdateGhostModel()
+function Avatar:UpdateGhostModel()
 
     self.currentTechId = nil
     self.ghostStructureCoords = nil
@@ -630,18 +577,18 @@ function Marine:UpdateGhostModel()
 
 end
 
-function Marine:GetShowGhostModel()
+function Avatar:GetShowGhostModel()
     return self.showGhostModel
 end    
 
-function Marine:GetGhostModelTechId()
+function Avatar:GetGhostModelTechId()
     return self.currentTechId
 end
 
-function Marine:GetGhostModelCoords()
+function Avatar:GetGhostModelCoords()
     return self.ghostStructureCoords
 end
 
-function Marine:GetIsPlacementValid()
+function Avatar:GetIsPlacementValid()
     return self.ghostStructureValid
 end

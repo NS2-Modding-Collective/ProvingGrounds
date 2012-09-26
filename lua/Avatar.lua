@@ -1,9 +1,8 @@
 // ======= Copyright (c) 2003-2012, Unknown Worlds Entertainment, Inc. All rights reserved. =======
 //
-// lua\Marine.lua
+// lua\Avatar.lua
 //
-//    Created by:   Charlie Cleveland (charlie@unknownworlds.com) and
-//                  Max McGuire (max@unknownworlds.com)
+//    Created by:   Andy 'Soul Rider' Wilson for Proving Grounds
 //
 // ========= For more information, visit us at http://www.unknownworlds.com =====================
 
@@ -12,106 +11,79 @@ Script.Load("lua/Mixins/BaseMoveMixin.lua")
 Script.Load("lua/Mixins/GroundMoveMixin.lua")
 Script.Load("lua/Mixins/CameraHolderMixin.lua")
 Script.Load("lua/MarineActionFinderMixin.lua")
-Script.Load("lua/StunMixin.lua")
-Script.Load("lua/NanoShieldMixin.lua")
-Script.Load("lua/SprintMixin.lua")
-Script.Load("lua/InfestationTrackerMixin.lua")
-Script.Load("lua/WeldableMixin.lua")
 Script.Load("lua/ScoringMixin.lua")
-Script.Load("lua/DisruptMixin.lua")
-Script.Load("lua/Weapons/Marine/Builder.lua")
 Script.Load("lua/UnitStatusMixin.lua")
 Script.Load("lua/DissolveMixin.lua")
-Script.Load("lua/MapBlipMixin.lua")
-Script.Load("lua/VortexAbleMixin.lua")
 Script.Load("lua/HiveVisionMixin.lua")
 Script.Load("lua/DisorientableMixin.lua")
 Script.Load("lua/LOSMixin.lua")
 Script.Load("lua/CombatMixin.lua")
 Script.Load("lua/SelectableMixin.lua")
 Script.Load("lua/ParasiteMixin.lua")
-Script.Load("lua/Weapons/Marine/ExoWeaponHolder.lua")
+Script.Load("lua/Weapons/Marine/BMFG.lua")
 
 if Client then
     Script.Load("lua/TeamMessageMixin.lua")
 end
 
-class 'Marine' (Player)
+class 'Avatar' (Player)
 
-Marine.kMapName = "marine"
+Avatar.kMapName = "avatar"
 
 if Server then
-    Script.Load("lua/Marine_Server.lua")
+    Script.Load("lua/Avatar_Server.lua")
 else
-    Script.Load("lua/Marine_Client.lua")
+    Script.Load("lua/Avatar_Client.lua")
 end
 
 Shared.PrecacheSurfaceShader("models/marine/marine.surface_shader")
 Shared.PrecacheSurfaceShader("models/marine/marine_noemissive.surface_shader")
 
-Marine.kModelName = PrecacheAsset("models/marine/male/male.model")
-Marine.kSpecialModelName = PrecacheAsset("models/marine/male/male_special.model")
-Marine.kMarineAnimationGraph = PrecacheAsset("models/marine/male/male.animation_graph")
+Avatar.kModelName = PrecacheAsset("models/marine/male/male.model")
+Avatar.kSpecialModelName = PrecacheAsset("models/marine/male/male_special.model")
+Avatar.kAvatarAnimationGraph = PrecacheAsset("models/marine/male/male.animation_graph")
 
-Marine.kDieSoundName = PrecacheAsset("sound/NS2.fev/marine/common/death")
-Marine.kFlashlightSoundName = PrecacheAsset("sound/NS2.fev/common/light")
-Marine.kGunPickupSound = PrecacheAsset("sound/NS2.fev/marine/common/pickup_gun")
-Marine.kSpendResourcesSoundName = PrecacheAsset("sound/NS2.fev/marine/common/player_spend_nanites")
-Marine.kChatSound = PrecacheAsset("sound/NS2.fev/marine/common/chat")
-Marine.kSoldierLostAlertSound = PrecacheAsset("sound/NS2.fev/marine/voiceovers/soldier_lost")
+Avatar.kDieSoundName = PrecacheAsset("sound/NS2.fev/marine/common/death")
+Avatar.kGunPickupSound = PrecacheAsset("sound/NS2.fev/marine/common/pickup_gun")
+Avatar.kSpendResourcesSoundName = PrecacheAsset("sound/NS2.fev/marine/common/player_spend_nanites")
+Avatar.kChatSound = PrecacheAsset("sound/NS2.fev/marine/common/chat")
+Avatar.kSoldierLostAlertSound = PrecacheAsset("sound/NS2.fev/marine/voiceovers/soldier_lost")
 
-Marine.kFlinchEffect = PrecacheAsset("cinematics/marine/hit.cinematic")
-Marine.kFlinchBigEffect = PrecacheAsset("cinematics/marine/hit_big.cinematic")
+Avatar.kFlinchEffect = PrecacheAsset("cinematics/marine/hit.cinematic")
+Avatar.kFlinchBigEffect = PrecacheAsset("cinematics/marine/hit_big.cinematic")
 
-Marine.kHitGroundStunnedSound = PrecacheAsset("sound/NS2.fev/marine/common/jump")
-Marine.kSprintStart = PrecacheAsset("sound/NS2.fev/marine/common/sprint_start")
-Marine.kSprintTiredEnd = PrecacheAsset("sound/NS2.fev/marine/common/sprint_tired")
-Marine.kLoopingSprintSound = PrecacheAsset("sound/NS2.fev/marine/common/sprint_loop")
-
-Marine.kEffectNode = "fxnode_playereffect"
-Marine.kHealth = kMarineHealth
-Marine.kBaseArmor = kMarineArmor
-Marine.kArmorPerUpgradeLevel = kArmorPerUpgradeLevel
-Marine.kMaxSprintFov = 95
+Avatar.kEffectNode = "fxnode_playereffect"
+Avatar.kHealth = kMarineHealth
+Avatar.kBaseArmor = kMarineArmor
+Avatar.kArmorPerUpgradeLevel = kArmorPerUpgradeLevel
+Avatar.kMaxSprintFov = 95
 // Player phase delay - players can only teleport this often
-Marine.kPlayerPhaseDelay = 2
+Avatar.kPlayerPhaseDelay = 2
 
-Marine.kWalkMaxSpeed = 7                // Four miles an hour = 6,437 meters/hour = 1.8 meters/second (increase for FPS tastes)
-Marine.kRunMaxSpeed = 6.0               // 10 miles an hour = 16,093 meters/hour = 4.4 meters/second (increase for FPS tastes)
-Marine.kRunInfestationMaxSpeed = 5.2    // 10 miles an hour = 16,093 meters/hour = 4.4 meters/second (increase for FPS tastes)
+Avatar.kWalkMaxSpeed = 7                // Four miles an hour = 6,437 meters/hour = 1.8 meters/second (increase for FPS tastes)
+Avatar.kClampMaxSpeed = 12.0               // 10 miles an hour = 16,093 meters/hour = 4.4 meters/second (increase for FPS tastes)
 
-// How fast does our armor get repaired by welders
-Marine.kArmorWeldRate = 25
-Marine.kWeldedEffectsInterval = .5
-
-Marine.kSpitSlowDuration = 3
-
-Marine.kWalkBackwardSpeedScalar = 1
-
-// start the get up animation after stun before giving back control
-Marine.kGetUpAnimationLength = 0.5
+Avatar.kWalkBackwardSpeedScalar = 1
 
 // tracked per techId
-Marine.kMarineAlertTimeout = 4
+Avatar.kAvatarAlertTimeout = 4
 
 local kDropWeaponTimeLimit = 1
 local kPickupWeaponTimeLimit = 1
 
-Marine.kAcceleration = 50
-Marine.kSprintAcceleration = 60 // 70
-Marine.kSprintInfestationAcceleration = 60
+Avatar.kAcceleration = 50
 
-Marine.kAirStrafeWeight = 2
+Avatar.kAirStrafeWeight = 2
 
 //Added for Proving Grounds
-Marine.kShadowStepCooldown = 1.5
-Marine.kShadowStepJumpDelay = 0.25
-Marine.kShadowStepForce = 30
-Marine.kShadowStepAirForce = 15
-Marine.kShadowStepDuration = 0.15
+Avatar.kShadowStepCooldown = 1.5
+Avatar.kShadowStepJumpDelay = 0.25
+Avatar.kShadowStepForce = 30
+Avatar.kShadowStepAirForce = 15
+Avatar.kShadowStepDuration = 0.15
 
 // when using shadow step before 1.4 seconds passed it decreases in effectiveness
-Marine.kShadowStepSoftCooldDown = 1.4
+Avatar.kShadowStepSoftCooldDown = 1.4
 
 local networkVars =
 {      
@@ -125,9 +97,7 @@ local networkVars =
     
     timeLastSpitHit = "private time",
     lastSpitDirection = "private vector",
-    
-    ruptured = "boolean",
-    interruptAim = "private boolean",
+
     poisoned = "boolean",
     catpackboost = "private boolean",
     //Added for Proving Grounds
@@ -142,25 +112,18 @@ AddMixinNetworkVars(BaseMoveMixin, networkVars)
 AddMixinNetworkVars(GroundMoveMixin, networkVars)
 AddMixinNetworkVars(CameraHolderMixin, networkVars)
 AddMixinNetworkVars(SelectableMixin, networkVars)
-AddMixinNetworkVars(StunMixin, networkVars)
-AddMixinNetworkVars(NanoShieldMixin, networkVars)
-AddMixinNetworkVars(SprintMixin, networkVars)
-AddMixinNetworkVars(DisruptMixin, networkVars)
 AddMixinNetworkVars(DissolveMixin, networkVars)
-AddMixinNetworkVars(VortexAbleMixin, networkVars)
 AddMixinNetworkVars(LOSMixin, networkVars)
 AddMixinNetworkVars(CombatMixin, networkVars)
 AddMixinNetworkVars(ParasiteMixin, networkVars)
 
-function Marine:OnCreate()
+function Avatar:OnCreate()
 
     InitMixin(self, BaseMoveMixin, { kGravity = Player.kGravity })
     InitMixin(self, GroundMoveMixin)
     InitMixin(self, CameraHolderMixin, { kFov = kDefaultFov })
     InitMixin(self, MarineActionFinderMixin)
     InitMixin(self, ScoringMixin, { kMaxScore = kMaxScore })
-    InitMixin(self, DisruptMixin)
-    InitMixin(self, VortexAbleMixin)
     InitMixin(self, CombatMixin)
     InitMixin(self, SelectableMixin)
     
@@ -176,7 +139,7 @@ function Marine:OnCreate()
     if Server then
     
         /*self.loopingSprintSound = Server.CreateEntity(SoundEffect.kMapName)
-        self.loopingSprintSound:SetAsset(Marine.kLoopingSprintSound)
+        self.loopingSprintSound:SetAsset(Avatar.kLoopingSprintSound)
         self.loopingSprintSound:SetParent(self)
         self.loopingSprintSoundEntId = self.loopingSprintSound:GetId()*/
         
@@ -209,19 +172,11 @@ function Marine:OnCreate()
     
 end
 
-function Marine:OnInitialized()
-
-    // These mixins must be called before SetModel because SetModel eventually
-    // calls into OnUpdatePoseParameters() which calls into these mixins.
-    // Yay for convoluted class hierarchies!!!
-    InitMixin(self, StunMixin)
-    InitMixin(self, NanoShieldMixin)
-    InitMixin(self, SprintMixin)
-    InitMixin(self, WeldableMixin)
+function Avatar:OnInitialized()
     
     // SetModel must be called before Player.OnInitialized is called so the attach points in
     // the Marine are valid to attach weapons to. This is far too subtle...
-    self:SetModel(Marine.kModelName, Marine.kMarineAnimationGraph)
+    self:SetModel(Avatar.kModelName, Avatar.kAvatarAnimationGraph)
     
     Player.OnInitialized(self)
     
@@ -232,11 +187,6 @@ function Marine:OnInitialized()
     
         self.armor = self:GetArmorAmount()
         self.maxArmor = self.armor
-        
-        // This Mixin must be inited inside this OnInitialized() function.
-        if not HasMixin(self, "MapBlip") then
-            InitMixin(self, MapBlipMixin)
-        end
        
     elseif Client then
     
@@ -265,18 +215,13 @@ function Marine:OnInitialized()
     self.lastSpitDirection = Vector(0,0,0)
     self.timeOfLastDrop = 0
     self.timeOfLastPickUpWeapon = 0
-    self.ruptured = false
-    self.interruptAim = false
     self.catpackboost = false
     self.timeCatpackboost = 0
     
     self.flashlightLastFrame = false
     
     if Server then
-    
-        InitMixin(self, InfestationTrackerMixin)
-        self.timeRuptured = 0
-        self.interruptStartTime = 0
+
         self.timeLastPoisonDamage = 0
         
         self.lastPoisonAttackerId = Entity.invalidId
@@ -290,7 +235,7 @@ if Server then
     Event.Hook("Console_blockblackarmor", function() if Shared.GetCheatsEnabled() then blockBlackArmor = not blockBlackArmor end end)
 end
 
-function Marine:GetArmorLevel()
+function Avatar:GetArmorLevel()
 
     local armorLevel = 0
     local techTree = self:GetTechTree()
@@ -315,7 +260,7 @@ function Marine:GetArmorLevel()
 
 end
 
-function Marine:GetWeaponLevel()
+function Avatar:GetWeaponLevel()
 
     local weaponLevel = 0
     local techTree = self:GetTechTree()
@@ -340,30 +285,30 @@ function Marine:GetWeaponLevel()
 
 end
 
-function Marine:MakeSpecialEdition()
+function Avatar:MakeSpecialEdition()
 
     if not blockBlackArmor then
-        self:SetModel(Marine.kSpecialModelName, Marine.kMarineAnimationGraph)
+        self:SetModel(Avatar.kSpecialModelName, Avatar.kAvatarAnimationGraph)
     end
     
 end
 
 // Currently there are some issues with a jumping Marine getting disrupted (weapons becoming locked).
 // not using now toss, only stun. maybe that already fixed it
-function Marine:GetCanBeDisrupted()
+function Avatar:GetCanBeDisrupted()
     return true
     //return not self:GetIsJumping()
 end
 
-function Marine:GetCanRepairOverride(target)
-    return self:GetWeapon(Welder.kMapName) and HasMixin(target, "Weldable") and ( (target:isa("Marine") and target:GetArmor() < target:GetMaxArmor()) or (not target:isa("Marine") and target:GetHealthScalar() < 0.9) )
+function Avatar:GetCanRepairOverride(target)
+    return self:GetWeapon(Welder.kMapName) and HasMixin(target, "Weldable") and ( (target:isa("Avatar") and target:GetArmor() < target:GetMaxArmor()) or (not target:isa("Avatar") and target:GetHealthScalar() < 0.9) )
 end
 
-function Marine:GetSlowOnLand()
+function Avatar:GetSlowOnLand()
     return false
 end
 
-function Marine:GetArmorAmount()
+function Avatar:GetArmorAmount()
 
     local armorLevels = 0
     
@@ -375,15 +320,15 @@ function Marine:GetArmorAmount()
         armorLevels = 1
     end
     
-    return Marine.kBaseArmor + armorLevels*Marine.kArmorPerUpgradeLevel
+    return Avatar.kBaseArmor + armorLevels*Avatar.kArmorPerUpgradeLevel
     
 end
 
-function Marine:GetNanoShieldOffset()
+function Avatar:GetNanoShieldOffset()
     return Vector(0, -0.1, 0)
 end
 
-function Marine:OnDestroy()
+function Avatar:OnDestroy()
 
     Player.OnDestroy(self)
     
@@ -393,13 +338,6 @@ function Marine:OnDestroy()
         //self.loopingSprintSound = nil
         
     elseif Client then
-        
-        if self.ruptureMaterial then
-        
-            Client.DestroyRenderMaterial(self.ruptureMaterial)
-            self.ruptureMaterial = nil
-            
-        end  
         
         if self.flashlight ~= nil then
             Client.DestroyRenderLight(self.flashlight)
@@ -471,13 +409,13 @@ function Marine:OnDestroy()
     
 end
 
-function Marine:GetGroundFrictionForce()
+function Avatar:GetGroundFrictionForce()
     return ConditionalValue(self:GetIsShadowStepping(), 0, 9)
 end
 
-function Marine:HandleButtons(input)
+function Avatar:HandleButtons(input)
 
-    PROFILE("Marine:HandleButtons")
+    PROFILE("Avatar:HandleButtons")
     
     Player.HandleButtons(self, input)
     
@@ -491,90 +429,40 @@ function Marine:HandleButtons(input)
     
         self.movementModiferState = newMovementState
         
-        local flashlightPressed = bit.band(input.commands, Move.ToggleFlashlight) ~= 0
-        if not self.flashlightLastFrame and flashlightPressed then
-        
-            self:SetFlashlightOn(not self:GetFlashlightOn())
-            Shared.PlaySound(self, Marine.kFlashlightSoundName)
-            
-        end
-        self.flashlightLastFrame = flashlightPressed
-        
-        if bit.band(input.commands, Move.Drop) ~= 0 and not self:GetIsVortexed() then
-        
-            if Server then
-            
-                // First check for a nearby weapon to pickup.
-                local nearbyDroppedWeapon = self:GetNearbyPickupableWeapon()
-                if nearbyDroppedWeapon then
-                
-                    if Shared.GetTime() > self.timeOfLastPickUpWeapon + kPickupWeaponTimeLimit then
-                    
-                        if nearbyDroppedWeapon.GetReplacementWeaponMapName then
-                        
-                            local replacement = nearbyDroppedWeapon:GetReplacementWeaponMapName()
-                            local toReplace = self:GetWeapon(replacement)
-                            if toReplace then
-                            
-                                self:RemoveWeapon(toReplace)
-                                DestroyEntity(toReplace)
-                                
-                            end
-                            
-                        end
-                        
-                        self:AddWeapon(nearbyDroppedWeapon, true)
-                        Shared.PlayWorldSound(nil, Marine.kGunPickupSound, nil, self:GetOrigin())
-                        
-                        self.timeOfLastPickUpWeapon = Shared.GetTime()
-                        
-                    end
-                    
-                else
-                
-                    // No nearby weapon, drop our current weapon.
-                    self:Drop()
-                    
-                end
-                
-            end
-            
-        end
-        
     end
     
 end
 
-function Marine:GetOnGroundRecently()
+function Avatar:GetOnGroundRecently()
     return (self.timeLastOnGround ~= nil and Shared.GetTime() < self.timeLastOnGround + 0.4) 
 end
 
-function Marine:SetFlashlightOn(state)
+function Avatar:SetFlashlightOn(state)
     self.flashlightOn = state
 end
 
-function Marine:GetFlashlightOn()
+function Avatar:GetFlashlightOn()
     return self.flashlightOn
 end
 
-function Marine:GetInventorySpeedScalar()
+function Avatar:GetInventorySpeedScalar()
     return 1
 end
 
-function Marine:GetCrouchSpeedScalar()
+function Avatar:GetCrouchSpeedScalar()
     return Player.kCrouchSpeedScalar
 end
 
-function Marine:GetMaxSpeed(possible)
+function Avatar:GetMaxSpeed(possible)
 
     if possible then
-        return Marine.kWalkMaxSpeed
+        return Avatar.kWalkMaxSpeed
     end
 
     local onInfestation = self:GetGameEffectMask(kGameEffect.OnInfestation)
     local sprintingScalar = self:GetSprintingScalar()
-    local maxSprintSpeed = ConditionalValue(onInfestation, Marine.kWalkMaxSpeed + (Marine.kRunInfestationMaxSpeed - Marine.kWalkMaxSpeed)*sprintingScalar, Marine.kWalkMaxSpeed + (Marine.kRunMaxSpeed - Marine.kWalkMaxSpeed)*sprintingScalar)
-    local maxSpeed = ConditionalValue(self:GetIsSprinting(), maxSprintSpeed, Marine.kWalkMaxSpeed)
+    local maxSprintSpeed = ConditionalValue(onInfestation, Avatar.kWalkMaxSpeed + (Avatar.kRunInfestationMaxSpeed - Avatar.kWalkMaxSpeed)*sprintingScalar, Avatar.kWalkMaxSpeed + (Avatar.kRunMaxSpeed - Avatar.kWalkMaxSpeed)*sprintingScalar)
+    local maxSpeed = ConditionalValue(self:GetIsSprinting(), maxSprintSpeed, Avatar.kWalkMaxSpeed)
     
     // Take into account our weapon inventory and current weapon. Assumes a vanilla marine has a scalar of around .8.
     local inventorySpeedScalar = self:GetInventorySpeedScalar() + .17
@@ -584,53 +472,47 @@ function Marine:GetMaxSpeed(possible)
         maxSpeed = ( 1 - self:GetCrouchAmount() * self:GetCrouchSpeedScalar() ) * maxSpeed
     end
 
-    local adjustedMaxSpeed = maxSpeed * self:GetCatalystMoveSpeedModifier() * self:GetSlowSpeedModifier() * inventorySpeedScalar 
+    local adjustedMaxSpeed = maxSpeed * self:GetCatalystMoveSpeedModifier()
     //Print("Adjusted max speed => %.2f (without inventory: %.2f)", adjustedMaxSpeed, adjustedMaxSpeed / inventorySpeedScalar )
     return adjustedMaxSpeed
     
 end
 
-function Marine:OnClampSpeed(input, velocity)
+function Avatar:OnClampSpeed(input, velocity)
 end
 
-function Marine:GetFootstepSpeedScalar()
-    return Clamp(self:GetVelocityLength() / (Marine.kWalkMaxSpeed * self:GetCatalystMoveSpeedModifier() * self:GetSlowSpeedModifier()), 0, 1)
+function Avatar:GetFootstepSpeedScalar()
+    return Clamp(self:GetVelocityLength() / (Avatar.kWalkMaxSpeed * self:GetCatalystMoveSpeedModifier()), 0, 1)
 end
 
-// Maximum speed a player can move backwards
-function Marine:GetMaxBackwardSpeedScalar()
-    return Marine.kWalkBackwardSpeedScalar
-end
-
-function Marine:GetAirMoveScalar()
+function Avatar:GetAirMoveScalar()
     return 0.5
 end
 
-function Marine:GetAirFrictionForce()
+function Avatar:GetAirFrictionForce()
     return 0
 end
 
-function Marine:GetJumpHeight()
+function Avatar:GetJumpHeight()
     return Player.kJumpHeight
 end
 
-function Marine:GetCanBeWeldedOverride()
+function Avatar:GetCanBeWeldedOverride()
     return not self:GetIsVortexed() and self:GetArmor() < self:GetMaxArmor(), false
 end
 
-function Marine:GetAcceleration()
+function Avatar:GetAcceleration()
 
     if self:GetIsShadowStepping() then
         return 0
     end
 
-    local acceleration = Marine.kAcceleration 
-    
-    acceleration = acceleration * self:GetSlowSpeedModifier()
+    local acceleration = Avatar.kAcceleration 
+
     acceleration = acceleration * self:GetInventorySpeedScalar()
 
     /*
-    if self.timeLastSpitHit + Marine.kSpitSlowDuration > Shared.GetTime() then
+    if self.timeLastSpitHit + Avatar.kSpitSlowDuration > Shared.GetTime() then
         acceleration = acceleration * 0.5
     end
     */
@@ -640,16 +522,16 @@ function Marine:GetAcceleration()
 end
 
 // Returns -1 to 1
-function Marine:GetWeaponSwing()
+function Avatar:GetWeaponSwing()
     return self.horizontalSwing
 end
 
-function Marine:GetWeaponDropTime()
+function Avatar:GetWeaponDropTime()
     return self.weaponDropTime
 end
 
 local marineTechButtons = { kTechId.Attack, kTechId.Move, kTechId.Defend  }
-function Marine:GetTechButtons(techId)
+function Avatar:GetTechButtons(techId)
 
     local techButtons = nil
     
@@ -661,20 +543,20 @@ function Marine:GetTechButtons(techId)
  
 end
 
-function Marine:GetCatalystFireModifier()
+function Avatar:GetCatalystFireModifier()
     return ConditionalValue(self:GetHasCatpackBoost(), CatPack.kAttackSpeedModifier, 1)
 end
 
-function Marine:GetCatalystMoveSpeedModifier()
+function Avatar:GetCatalystMoveSpeedModifier()
     return ConditionalValue(self:GetHasCatpackBoost(), CatPack.kMoveSpeedScalar, 1)
 end
 
-function Marine:GetHasSayings()
+function Avatar:GetHasSayings()
     return true
 end
 
 // Other
-function Marine:GetSayings()
+function Avatar:GetSayings()
 
     if(self.showSayings) then
     
@@ -694,16 +576,16 @@ function Marine:GetSayings()
     
 end
 
-function Marine:GetChatSound()
-    return Marine.kChatSound
+function Avatar:GetChatSound()
+    return Avatar.kChatSound
 end
 
-function Marine:GetDeathMapName()
+function Avatar:GetDeathMapName()
     return MarineSpectator.kMapName
 end
 
 // Returns the name of the primary weapon
-function Marine:GetPlayerStatusDesc()
+function Avatar:GetPlayerStatusDesc()
 
     local status = kPlayerStatus.Void
     
@@ -727,7 +609,7 @@ function Marine:GetPlayerStatusDesc()
     return status
 end
 
-function Marine:GetCanDropWeapon(weapon, ignoreDropTimeLimit)
+function Avatar:GetCanDropWeapon(weapon, ignoreDropTimeLimit)
 
     if not weapon then
         weapon = self:GetActiveWeapon()
@@ -748,7 +630,7 @@ end
 
 // Do basic prediction of the weapon drop on the client so that any client
 // effects for the weapon can be dealt with
-function Marine:Drop(weapon, ignoreDropTimeLimit, ignoreReplacementWeapon)
+function Avatar:Drop(weapon, ignoreDropTimeLimit, ignoreReplacementWeapon)
 
     local activeWeapon = self:GetActiveWeapon()
     
@@ -800,50 +682,22 @@ function Marine:Drop(weapon, ignoreDropTimeLimit, ignoreReplacementWeapon)
 
 end
 
-function Marine:OnStun()
-
-    local activeWeapon = self:GetActiveWeapon()
-    
-    if activeWeapon then
-        activeWeapon:OnHolster(self)
-    end
-    
-end
-
-function Marine:OnStunEnd()
-
-    local activeWeapon = self:GetActiveWeapon()
-    
-    if activeWeapon then
-        activeWeapon:OnDraw(self)
-    end
-    
-end
-
-function Marine:OnHitGroundStunned()
-
-    if Server then
-        StartSoundEffectOnEntity(Marine.kHitGroundStunnedSound, self)
-    end
-    
-end
-
-function Marine:GetWeldPercentageOverride()
+function Avatar:GetWeldPercentageOverride()
     return self:GetArmor() / self:GetMaxArmor()
 end
 
-function Marine:OnWeldOverride(doer, elapsedTime)
+function Avatar:OnWeldOverride(doer, elapsedTime)
 
     if self:GetArmor() < self:GetMaxArmor() then
     
-        local addArmor = Marine.kArmorWeldRate * elapsedTime
+        local addArmor = Avatar.kArmorWeldRate * elapsedTime
         self:SetArmor(self:GetArmor() + addArmor)
         
     end
     
 end
 
-function Marine:OnSpitHit(direction)
+function Avatar:OnSpitHit(direction)
 
     if Server then
         self.timeLastSpitHit = Shared.GetTime()
@@ -852,25 +706,17 @@ function Marine:OnSpitHit(direction)
 
 end
 
-function Marine:GetCanChangeViewAngles()
-    return not self:GetIsStunned()
+function Avatar:GetCanChangeViewAngles()
+    return true
 end    
 
-function Marine:GetPlayFootsteps()
+function Avatar:GetPlayFootsteps()
 
     return self:GetVelocityLength() > .75 and self:GetIsOnGround()
     
 end
 
-function Marine:OnDisrupt()
-
-    if not self:GetIsStunned() and not self:GetIsVortexed() then
-        self:SetKnockback(kDisruptMarineTime, nil, Vector(0,1,0), 2, 6)
-    end
-
-end
-
-function Marine:OnUseTarget(target)
+function Avatar:OnUseTarget(target)
 
     local activeWeapon = self:GetActiveWeapon()
 
@@ -889,7 +735,7 @@ function Marine:OnUseTarget(target)
 
 end
 
-function Marine:OnUseEnd() 
+function Avatar:OnUseEnd() 
 
     local activeWeapon = self:GetActiveWeapon()
 
@@ -899,39 +745,20 @@ function Marine:OnUseEnd()
 
 end
 
-function Marine:GetOverrideMaxDisruptDuration()
+function Avatar:GetOverrideMaxDisruptDuration()
     return 0
 end
 
-function Marine:OnUpdateAnimationInput(modelMixin)
+function Avatar:OnUpdateAnimationInput(modelMixin)
 
-    PROFILE("Marine:OnUpdateAnimationInput")
+    PROFILE("Avatar:OnUpdateAnimationInput")
     
-    Player.OnUpdateAnimationInput(self, modelMixin)
-    
-    if not self:GetIsJumping() and self:GetIsSprinting() then
-        modelMixin:SetAnimationInput("move", "sprint")
-    end
-    
-    if self:GetIsStunned() then
-    
-        local forceToss = self:GetRemainingStunTime() > kGoreMarineFallTime
-        local move = "stun"
-        
-        // trigger get up animation before the stun is over
-        if self:GetRemainingStunTime() < Marine.kGetUpAnimationLength and self:GetIsOnGround() then
-            move = "idle"
-        end
-        
-        modelMixin:SetAnimationInput("move", move)
-        
-    end
-    
+    Player.OnUpdateAnimationInput(self, modelMixin)    
     modelMixin:SetAnimationInput("attack_speed", self:GetCatalystFireModifier())
     
 end
 
-function Marine:ModifyVelocity(input, velocity)
+function Avatar:ModifyVelocity(input, velocity)
 
     Player.ModifyVelocity(self, input, velocity)
     
@@ -945,7 +772,7 @@ function Marine:ModifyVelocity(input, velocity)
         if input.move.x ~= 0  then
         
             local redirectedVelocityX = GetNormalizedVectorXZ(self:GetViewCoords().xAxis) * input.move.x
-            redirectedVelocityX = redirectedVelocityX * input.time * Marine.kAirStrafeWeight + GetNormalizedVectorXZ(velocity)
+            redirectedVelocityX = redirectedVelocityX * input.time * Avatar.kAirStrafeWeight + GetNormalizedVectorXZ(velocity)
             
             redirectedVelocityX:Normalize()            
             redirectedVelocityX:Scale(moveLengthXZ)
@@ -958,12 +785,10 @@ function Marine:ModifyVelocity(input, velocity)
     
 end
 
-function Marine:OnProcessMove(input)
+function Avatar:OnProcessMove(input)
 
     if Server then
     
-        self.ruptured = Shared.GetTime() - self.timeRuptured < Rupture.kDuration
-        self.interruptAim  = Shared.GetTime() - self.interruptStartTime < Gore.kAimInterruptDuration
         self.catpackboost = Shared.GetTime() - self.timeCatpackboost < CatPack.kDuration
         
         if self.poisoned then
@@ -1000,34 +825,20 @@ function Marine:OnProcessMove(input)
     
 end
 
-function Marine:GetIsInterrupted()
-    return self.interruptAim
-end
-
-function Marine:OnUpdateCamera(deltaTime)
-
-    if self:GetIsStunned() then
-        self:SetDesiredCameraYOffset(-1.3)
-    else
-        Player.OnUpdateCamera(self, deltaTime)
-    end
-
-end
-
-function Marine:GetHasCatpackBoost()
+function Avatar:GetHasCatpackBoost()
     return self.catpackboost
 end
 
 //Proving Grounds New Functions
-function Marine:SelectNextWeapon()
+function Avatar:SelectNextWeapon()
     //todo - create function to select from list of ammo types
 end
 
-function Marine:SelectPrevWeapon()
+function Avatar:SelectPrevWeapon()
     //todo - create function to select from list of ammo types
 end
 
-function Marine:MovementModifierChanged(newMovementModifierState, input)
+function Avatar:MovementModifierChanged(newMovementModifierState, input)
 
     if newMovementModifierState then
         self:TriggerShadowStep(input.move)
@@ -1035,7 +846,7 @@ function Marine:MovementModifierChanged(newMovementModifierState, input)
 
 end
 
-function Marine:TriggerShadowStep(direction)
+function Avatar:TriggerShadowStep(direction)
 
     if direction:GetLength() == 0 then
         return
@@ -1051,8 +862,8 @@ function Marine:TriggerShadowStep(direction)
 
         local velocity = self:GetVelocity()
         
-        local shadowStepStrength = ConditionalValue(self:GetIsOnGround(), Marine.kShadowStepForce, Marine.kShadowStepAirForce)
-        self:SetVelocity(velocity * 0.5 + movementDirection * shadowStepStrength * self:GetSlowSpeedModifier())
+        local shadowStepStrength = ConditionalValue(self:GetIsOnGround(), Avatar.kShadowStepForce, Avatar.kShadowStepAirForce)
+        self:SetVelocity(velocity * 0.5 + movementDirection * shadowStepStrength)
         
         self.timeShadowStep = Shared.GetTime()
         self.shadowStepping = true
@@ -1070,19 +881,19 @@ function Marine:TriggerShadowStep(direction)
 
 end
 
-function Marine:GetHasShadowStepCooldown()
-    return self.timeShadowStep + Marine.kShadowStepCooldown > Shared.GetTime()
+function Avatar:GetHasShadowStepCooldown()
+    return self.timeShadowStep + Avatar.kShadowStepCooldown > Shared.GetTime()
 end
 
-function Marine:GetCanJump()
-    return not self.hasDoubleJumped and self.timeShadowStep + Marine.kShadowStepJumpDelay < Shared.GetTime()
+function Avatar:GetCanJump()
+    return not self.hasDoubleJumped and self.timeShadowStep + Avatar.kShadowStepJumpDelay < Shared.GetTime()
 end
 
-function Marine:GetIsShadowStepping()
+function Avatar:GetIsShadowStepping()
     return self.shadowStepping
 end
 
-function Marine:GetMoveDirection(moveVelocity)
+function Avatar:GetMoveDirection(moveVelocity)
 
     if self:GetIsShadowStepping() then
         
@@ -1108,7 +919,7 @@ function Marine:GetMoveDirection(moveVelocity)
 end
 
 
-function Marine:OverrideInput(input)
+function Avatar:OverrideInput(input)
 
     Player.OverrideInput(self, input)
     
@@ -1120,21 +931,21 @@ function Marine:OverrideInput(input)
     
 end
 
-function Marine:PreUpdateMove(input, runningPrediction)
-    self.shadowStepping = self.timeShadowStep + Marine.kShadowStepDuration > Shared.GetTime()
+function Avatar:PreUpdateMove(input, runningPrediction)
+    self.shadowStepping = self.timeShadowStep + Avatar.kShadowStepDuration > Shared.GetTime()
 end
 
-function Marine:GetRecentlyJumped()
+function Avatar:GetRecentlyJumped()
     return self.timeOfLastJump ~= nil and self.timeOfLastJump + 0.15 > Shared.GetTime()
 end
 
-function Marine:OnJumpLand(landIntensity, slowDown)
+function Avatar:OnJumpLand(landIntensity, slowDown)
     Player.OnJumpLand(self, landIntensity, slowDown)
     self.hasDoubleJumped = false    
 end
-function Marine:OnJump()
+function Avatar:OnJump()
     if not self:GetIsOnGround() then
         self.hasDoubleJumped = true
     end    
 end
-Shared.LinkClassToMap("Marine", Marine.kMapName, networkVars)
+Shared.LinkClassToMap("Avatar", Avatar.kMapName, networkVars)
