@@ -29,23 +29,6 @@ function ReadyRoomTeam:GetRespawnMapName(player)
         mapName = ReadyRoomPlayer.kMapName
     end
     
-    // Use previous life form if dead or in commander chair
-    if (mapName == Spectator.kMapName) 
-       or (mapName == RedSpectator.kMapName) 
-       or (mapName ==  MarineSpectator.kMapName) then 
-    
-        mapName = player:GetPreviousMapName()
-        
-    end
-    
-    // Default to the basic ReadyRoomPlayer type for certain player types.
-    // We cannot currently allow the JetpackMarine in the Ready Room because
-    // his Jetpack is destroyed when the game is reset and JetpackMarine
-    // expects that the Jetpack always exists.
-    if mapName == Embryo.kMapName or
-       mapName == JetpackMarine.kMapName then
-        mapName = ReadyRoomPlayer.kMapName
-    end
     return mapName
     
 end
@@ -56,14 +39,8 @@ end
 function ReadyRoomTeam:ReplaceRespawnPlayer(player, origin, angles)
 
     local mapName = self:GetRespawnMapName(player)
-    local isEmbryo = player:isa("Embryo") or (player:isa("Spectator") and player:GetPreviousMapName() == Embryo.kMapName)
     local newPlayer = player:Replace(mapName, self:GetTeamNumber(), false, origin)
-    
-    // Spawn embryos as ready room players with embryo model, so they can still move
-    if isEmbryo then
-        newPlayer:SetModel(Embryo.kModelName)
-    end
-    
+       
     self:RespawnPlayer(newPlayer, origin, angles)
 
     newPlayer:ClearGameEffects()

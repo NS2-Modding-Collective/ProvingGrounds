@@ -6,7 +6,7 @@
 //
 // ========= For more information, visit us at http://www.modbeans.com =====================
 
-Script.Load("lua/Marine.lua")
+Script.Load("lua/Avatar.lua")
 Script.Load("lua/PlayingTeam.lua")
 
 class 'RedTeam' (PlayingTeam)
@@ -31,7 +31,7 @@ function RedTeam:Initialize(teamName, teamNumber)
 
     PlayingTeam.Initialize(self, teamName, teamNumber)
     
-    self.respawnEntity = Marine.kMapName
+    self.respawnEntity = Avatar.kMapName
     
     self.updateMarineArmor = false
     

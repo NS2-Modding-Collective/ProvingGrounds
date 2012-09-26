@@ -1,9 +1,8 @@
 // ======= Copyright (c) 2003-2012, Unknown Worlds Entertainment, Inc. All rights reserved. =======
 //
-// lua\Marine_Server.lua
+// lua\Avatar_Server.lua
 //
-//    Created by:   Charlie Cleveland (charlie@unknownworlds.com) and
-//                  Max McGuire (max@unknownworlds.com)
+//    Created by:   Andy 'Soul Rider' Wilson for Proving Grounds
 //
 // ========= For more information, visit us at http://www.unknownworlds.com =====================
 
@@ -17,10 +16,7 @@ local function GetCanTriggerAlert(self, techId, timeOut)
 
 end
 
-local kFindArmoryRange = 30
-local kAmmoAutoRequestTimeout = 12
-
-function Marine:OnPrimaryAttack()
+function Avatar:OnPrimaryAttack()
 
     local weapon = self:GetActiveWeapon()
     if weapon and weapon:isa("ClipWeapon") then
@@ -37,7 +33,7 @@ function Marine:OnPrimaryAttack()
 
 end
 
-function Marine:RequestHeal()
+function Avatar:RequestHeal()
 
     if GetCanTriggerAlert(self, kTechId.MarineAlertNeedMedpack, Marine.kMarineAlertTimeout) then
     
@@ -49,7 +45,7 @@ function Marine:RequestHeal()
 
 end
 
-function Marine:ExecuteSaying(index, menu)
+function Avatar:ExecuteSaying(index, menu)
 
     if not Player.ExecuteSaying(self, index, menu) then
 
@@ -72,7 +68,7 @@ function Marine:ExecuteSaying(index, menu)
                 if sayings[index] then
                 
                     local techId = sayingActions[index]
-                    if techId ~= kTechId.None and GetCanTriggerAlert(self, techId, Marine.kMarineAlertTimeout) then
+                    if techId ~= kTechId.None and GetCanTriggerAlert(self, techId, Avatar.kMarineAlertTimeout) then
                     
                         self:PlaySound(sayings[index])
                         self:GetTeam():TriggerAlert(techId, self)
@@ -90,29 +86,22 @@ function Marine:ExecuteSaying(index, menu)
     
 end
 
-function Marine:OnTakeDamage(damage, attacker, doer, point)
-
-    if doer and doer:isa("Gore") and not self:GetIsVortexed() then
-    
-        self.interruptAim = true
-        self.interruptStartTime = Shared.GetTime()
-        
-    end
+function Avatar:OnTakeDamage(damage, attacker, doer, point)
 
     if damage > 50 and (not self.timeLastDamageKnockback or self.timeLastDamageKnockback + 1 < Shared.GetTime()) then    
     
-        self:AddPushImpulse(GetNormalizedVectorXZ(self:GetOrigin() - point) * damage * 0.2 * self:GetSlowSpeedModifier())
+        self:AddPushImpulse(GetNormalizedVectorXZ(self:GetOrigin() - point) * damage * 0.2)
         self.timeLastDamageKnockback = Shared.GetTime()
         
     end
 
 end
 
-function Marine:GetDamagedAlertId()
+function Avatar:GetDamagedAlertId()
     return kTechId.MarineAlertSoldierUnderAttack
 end
 
-function Marine:SetPoisoned(attacker)
+function Avatar:SetPoisoned(attacker)
 
     self.poisoned = true
     self.timePoisoned = Shared.GetTime()
@@ -123,14 +112,14 @@ function Marine:SetPoisoned(attacker)
     
 end
 
-function Marine:ApplyCatPack()
+function Avatar:ApplyCatPack()
 
     self.catpackboost = true
     self.timeCatpackboost = Shared.GetTime()
     
 end
 
-function Marine:OnEntityChange(oldId, newId)
+function Avatar:OnEntityChange(oldId, newId)
 
     Player.OnEntityChange(self, oldId, newId)
 
@@ -146,54 +135,16 @@ function Marine:OnEntityChange(oldId, newId)
  
 end
 
-function Marine:SetRuptured()
-
-    self.timeRuptured = Shared.GetTime()
-    self.ruptured = true
-    
-end
-
-function Marine:OnSprintStart()
-
-    if self:GetIsAlive() then
-        /*StartSoundEffectOnEntity(Marine.kSprintStart, self)
-        if self.loopingSprintSound then
-            self.loopingSprintSound:Start()
-        end*/
-    end
-
-end
-
-function Marine:OnSprintEnd()
-
-    /*if self:GetTiredScalar() >= 0.7 then
-        StartSoundEffectOnEntity(Marine.kSprintTiredEnd, self)
-    end
-    
-    if self.loopingSprintSound then
-        self.loopingSprintSound:Stop()
-    end*/
-
-end
-
-function Marine:OnUpdateSprint(sprinting)
-
-    /*if self.loopingSprintSound and self.loopingSprintSound:GetIsPlaying() and self:GetTiredScalar() == 0 and not sprinting then
-        self.loopingSprintSound:Stop()
-    end*/
-    
-end
-
-function Marine:InitWeapons()
+function Avatar:InitWeapons()
 
     Player.InitWeapons(self)
     //Amended for Proving Grounds
-    self:GiveItem(ExoWeaponHolder.kMapName)
+    self:GiveItem(BMFG.kMapName)
     
-    local weaponHolder = self:GetWeapon(ExoWeaponHolder.kMapName, false)
+    local weaponHolder = self:GetWeapon(BMFG.kMapName, false)
     weaponHolder:SetWeapons(Minigun.kMapName, Minigun.kMapName)
     
-    self:SetActiveWeapon(ExoWeaponHolder.kMapName)
+    self:SetActiveWeapon(BMFG.kMapName)
 
 end
 
@@ -251,7 +202,7 @@ function GetHostStructureFor(entity, techId)
 
 end
 
-function Marine:OnOverrideOrder(order)
+function Avatar:OnOverrideOrder(order)
     
     local orderTarget = nil
     
@@ -314,7 +265,7 @@ local function BuyExo(self, techId)
     
 end
 
-function Marine:AttemptToBuy(techIds)
+function Avatar:AttemptToBuy(techIds)
 
     local techId = techIds[1]
     
@@ -359,7 +310,7 @@ function Marine:AttemptToBuy(techIds)
 end
 
 // special threatment for mines and welders
-function Marine:GiveItem(itemMapName)
+function Avatar:GiveItem(itemMapName)
 
     local newItem = nil
 
@@ -403,7 +354,7 @@ function Marine:GiveItem(itemMapName)
     
 end
 
-function Marine:DropAllWeapons()
+function Avatar:DropAllWeapons()
 
     local weaponSpawnCoords = self:GetAttachPointCoords(Weapon.kHumanAttachPoint)
     local weaponList = self:GetHUDOrderedWeaponList()
@@ -418,7 +369,7 @@ function Marine:DropAllWeapons()
     
 end
 
-function Marine:OnKill(attacker, doer, point, direction)
+function Avatar:OnKill(attacker, doer, point, direction)
 
     // drop all weapons which cost resources
     self:DropAllWeapons()
@@ -435,19 +386,19 @@ function Marine:OnKill(attacker, doer, point, direction)
     
 end
 
-function Marine:GetCanPhase()
+function Avatar:GetCanPhase()
     return not GetIsVortexed(self) and self:GetIsAlive() and (not self.timeOfLastPhase or (Shared.GetTime() > (self.timeOfLastPhase + Marine.kPlayerPhaseDelay)))
 end
 
-function Marine:SetTimeOfLastPhase(time)
+function Avatar:SetTimeOfLastPhase(time)
     self.timeOfLastPhase = time
 end
 
-function Marine:GetOriginOnDeath()
+function Avatar:GetOriginOnDeath()
     return self.originOnDeath
 end
 
-function Marine:GiveJetpack()
+function Avatar:GiveJetpack()
 
     local activeWeapon = self:GetActiveWeapon()
     local activeWeaponMapName = nil
@@ -464,14 +415,14 @@ function Marine:GiveJetpack()
     
 end
 
-function Marine:GiveExo(spawnPoint)
+function Avatar:GiveExo(spawnPoint)
 
     self:DropAllWeapons()
     self:Replace(Exo.kMapName, self:GetTeamNumber(), false, spawnPoint)
     
 end
 
-function Marine:GiveDualExo(spawnPoint)
+function Avatar:GiveDualExo(spawnPoint)
 
     self:DropAllWeapons()
     local exo = self:Replace(Exo.kMapName, self:GetTeamNumber(), false, spawnPoint)

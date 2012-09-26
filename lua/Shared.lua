@@ -76,8 +76,8 @@ Script.Load("lua/Observatory.lua")
 Script.Load("lua/PhaseGate.lua")
 Script.Load("lua/RoboticsFactory.lua")
 Script.Load("lua/PrototypeLab.lua")
-Script.Load("lua/CommandStructure.lua")
-Script.Load("lua/CommandStation.lua")
+/*Script.Load("lua/CommandStructure.lua")
+Script.Load("lua/CommandStation.lua")*/
 Script.Load("lua/Sentry.lua")
 Script.Load("lua/ARC.lua")
 Script.Load("lua/InfantryPortal.lua")
@@ -121,7 +121,9 @@ Script.Load("lua/MarineSpectator.lua")
 Script.Load("lua/Ragdoll.lua")
 
 // Character class behaviors
-Script.Load("lua/JetpackMarine.lua")
+Script.Load("lua/Weapons/Weapon.lua")
+Script.Load("lua/Avatar.lua")
+//Script.Load("lua/JetpackMarine.lua")
 Script.Load("lua/Exosuit.lua") // pickupable version
 Script.Load("lua/Exo.lua")
 Script.Load("lua/Skulk.lua")
@@ -132,6 +134,7 @@ Script.Load("lua/Onos.lua")
 
 // Weapons
 Script.Load("lua/Weapons/Marine/ClipWeapon.lua")
+
 Script.Load("lua/Weapons/Marine/Rifle.lua")
 Script.Load("lua/Weapons/Marine/Pistol.lua")
 Script.Load("lua/Weapons/Marine/Shotgun.lua")
