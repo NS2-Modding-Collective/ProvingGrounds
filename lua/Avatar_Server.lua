@@ -101,17 +101,6 @@ function Avatar:GetDamagedAlertId()
     return kTechId.MarineAlertSoldierUnderAttack
 end
 
-function Avatar:SetPoisoned(attacker)
-
-    self.poisoned = true
-    self.timePoisoned = Shared.GetTime()
-    
-    if attacker then
-        self.lastPoisonAttackerId = attacker:GetId()
-    end
-    
-end
-
 function Avatar:ApplyCatPack()
 
     self.catpackboost = true
@@ -119,32 +108,13 @@ function Avatar:ApplyCatPack()
     
 end
 
-function Avatar:OnEntityChange(oldId, newId)
-
-    Player.OnEntityChange(self, oldId, newId)
-
-    if oldId == self.lastPoisonAttackerId then
-    
-        if newId then
-            self.lastPoisonAttackerId = newId
-        else
-            self.lastPoisonAttackerId = Entity.invalidId
-        end
-        
-    end
- 
-end
-
 function Avatar:InitWeapons()
 
     Player.InitWeapons(self)
     //Amended for Proving Grounds
-    self:GiveItem(BMFG.kMapName)
+    self:GiveItem(Shotgun.kMapName)
     
-    local weaponHolder = self:GetWeapon(BMFG.kMapName, false)
-    weaponHolder:SetWeapons(Minigun.kMapName, Minigun.kMapName)
-    
-    self:SetActiveWeapon(BMFG.kMapName)
+    self:SetActiveWeapon(Shotgun.kMapName)
 
 end
 
@@ -202,158 +172,6 @@ function GetHostStructureFor(entity, techId)
 
 end
 
-function Avatar:OnOverrideOrder(order)
-    
-    local orderTarget = nil
-    
-    if (order:GetParam() ~= nil) then
-        orderTarget = Shared.GetEntity(order:GetParam())
-    end
-    
-    // Default orders to unbuilt friendly structures should be construct orders
-    if(order:GetType() == kTechId.Default and GetOrderTargetIsConstructTarget(order, self:GetTeamNumber())) then
-    
-        order:SetType(kTechId.Construct)
-        
-    elseif(order:GetType() == kTechId.Default and GetOrderTargetIsWeldTarget(order, self:GetTeamNumber())) and self:GetWeapon(Welder.kMapName) then
-    
-        order:SetType(kTechId.Weld)
-        
-    elseif order:GetType() == kTechId.Default and GetOrderTargetIsDefendTarget(order, self:GetTeamNumber()) then
-    
-        order:SetType(kTechId.Defend)
-
-    // If target is enemy, attack it
-    elseif (order:GetType() == kTechId.Default) and orderTarget ~= nil and HasMixin(orderTarget, "Live") and GetEnemyTeamNumber(self:GetTeamNumber()) == orderTarget:GetTeamNumber() and orderTarget:GetIsAlive() and (not HasMixin(orderTarget, "LOS") or orderTarget:GetIsSighted()) then
-    
-        order:SetType(kTechId.Attack)
-
-    elseif order:GetType() == kTechId.Default then
-        
-        // Convert default order (right-click) to move order
-        order:SetType(kTechId.Move)
-        
-    end
-    
-end
-
-local function BuyExo(self, techId)
-
-    local maxAttempts = 100
-    for index = 1, maxAttempts do
-    
-        // Find open area nearby to place the big guy.
-        local capsuleHeight, capsuleRadius = self:GetTraceCapsule()
-        local spawnPoint = GetRandomSpawnForCapsule(capsuleHeight, capsuleRadius, self:GetModelOrigin(), 0.5, 5, EntityFilterOne(self))
-
-        if spawnPoint then
-        
-            self:AddResources(-GetCostForTech(techId))
-            if techId == kTechId.Exosuit then
-                self:GiveExo(spawnPoint)
-            elseif techId == kTechId.DualMinigunExosuit then
-                self:GiveDualExo(spawnPoint)
-            end
-            
-            return
-            
-        end
-        
-    end
-    
-    Print("Error: Could not find a spawn point to place the Exo")
-    
-end
-
-function Avatar:AttemptToBuy(techIds)
-
-    local techId = techIds[1]
-    
-    local hostStructure = GetHostStructureFor(self, techId)
-    
-    if hostStructure then
-    
-        local mapName = LookupTechData(techId, kTechDataMapName)
-        
-        if mapName then
-                        
-            Shared.PlayPrivateSound(self, Marine.kSpendResourcesSoundName, nil, 1.0, self:GetOrigin())
-            
-            if techId == kTechId.Jetpack then
-            
-                // need to apply this here since we change the class
-                self:AddResources(-GetCostForTech(techId))
-                self:GiveJetpack()
-                
-            elseif techId == kTechId.Exosuit or techId == kTechId.DualMinigunExosuit then
-                BuyExo(self, techId)              
-            else
-            
-                // Make sure we're ready to deploy new weapon so we switch to it properly
-                if self:GiveItem(mapName) then
-                
-                    Shared.PlayWorldSound(nil, Marine.kGunPickupSound, nil, self:GetOrigin())
-                    return true
-                    
-                end
-                
-            end
-            
-            return false
-            
-        end
-        
-    end
-    
-    return false
-    
-end
-
-// special threatment for mines and welders
-function Avatar:GiveItem(itemMapName)
-
-    local newItem = nil
-
-    if itemMapName then
-        
-        local continue = true
-        local setActive = true
-        
-        if itemMapName == LayMines.kMapName then
-        
-            local mineWeapon = self:GetWeapon(LayMines.kMapName)
-            
-            if mineWeapon then
-                mineWeapon:Refill(kNumMines)
-                continue = false
-                setActive = false
-            end
-            
-        elseif itemMapName == Welder.kMapName then
-        
-            // since axe cannot be dropped we need to delete it before adding the welder (shared hud slot)
-            local switchAxe = self:GetWeapon(Axe.kMapName)
-            
-            if switchAxe then
-                self:RemoveWeapon(switchAxe)
-                DestroyEntity(switchAxe)
-                continue = true
-            else
-                continue = false // don't give a second welder
-            end
-        
-        end
-        
-        if continue == true then
-            return Player.GiveItem(self, itemMapName, setActive)
-        end
-        
-    end
-    
-    return newItem
-    
-end
-
 function Avatar:DropAllWeapons()
 
     local weaponSpawnCoords = self:GetAttachPointCoords(Weapon.kHumanAttachPoint)
@@ -379,9 +197,7 @@ function Avatar:OnKill(attacker, doer, point, direction)
     
     Player.OnKill(self, attacker, doer, point, direction)
     self:PlaySound(Marine.kDieSoundName)
-        
-    // Note: Flashlight is powered by Marine's beating heart. Eco friendly.
-    self:SetFlashlightOn(false)
+
     self.originOnDeath = self:GetOrigin()
     
 end

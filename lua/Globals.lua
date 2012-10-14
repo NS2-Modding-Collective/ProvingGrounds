@@ -29,13 +29,10 @@ kNeutralFontColor = Color(0.7, 0.7, 0.7, 1)
 // Move hit effect slightly off surface we hit so particles don't penetrate. In meters.
 kHitEffectOffset = 0.13
 
-kCommanderPingDuration = 12
-
-kCommanderColor = 0xFFFF00
-kCommanderColorFloat = Color(1,1,0,1)
 kMarineTeamColor = 0x4DB1FF
 kMarineTeamColorFloat = Color(0.302, 0.859, 1)
 kAlienTeamColor = 0xFFCA3A
+kRedColor = Color(1, .61, 0, 1)
 kAlienTeamColorFloat = Color(1, 0.792, 0.227)
 kNeutralTeamColor = 0xEEEEEE
 kChatPrefixTextColor = 0xFFFFFF
@@ -68,10 +65,7 @@ kTeam2Type = kRedTeamType //Changed From: kAlienTeamType
 kTeam1Name = "Blue Team"
 kTeam2Name = "Red Team"
 kSpectatorTeamName = "Ready room"
-kDefaultPlayerName = "NanoBot"
-
-kDefaultWaypointGroup = "GroundWaypoints"
-kAirWaypointsGroup = "AirWaypoints"
+kDefaultPlayerName = "Avatar"
 
 kMaxResources = 999
 
@@ -131,46 +125,17 @@ kSpecialEditionProductId = 4930
 // Death message indices 
 kDeathMessageIcon = enum( {'None', 'Rifle', 'RifleButt',
                            'Pistol', 'Axe', 'Shotgun',
-                           'Flamethrower', 'ARC', 'Grenade',
-                           'Sentry', 'Welder', 'Bite',
-                           'HydraSpike', 'Spray', 'Spikes',
-                           'PoisonDart', 'SporeCloud', 'SwipeBlink',
-                           'Consumed', 'Whip', 'BileBomb', 'Mine',
-                           'Gore', 'Spit', 'Jetpack', 'Claw', 'Minigun' } )
-
-kMinimapBlipType = enum( { 'Undefined', 'TechPoint', 'ResourcePoint', 'Scan',
-                           'Sentry', 'CommandStation', 'CommandStationL2', 'CommandStationL3',
-                           'Extractor', 'InfantryPortal', 'Armory', 'PhaseGate', 'Observatory',
-                           'RoboticsFactory', 'ArmsLab', 'PrototypeLab', 'PowerPack',
-                           'Hydra', 'Egg', 'Crag', 'Whip', 'Shade', 'Shift',
-                           'Marine', 'JetpackMarine', 'Exo', 'Jetpack', 'Skulk', 'Lerk', 'Onos', 'Fade', 'Gorge',
-                           'Door', 'PowerPoint', 'DestroyedPowerPoint',
-                           'ARC', 'Drifter', 'MAC', 'InfestationDying', 'MoveOrder', 'AttackOrder', 'BuildOrder', 'SensorBlip' } )
-
-// Friendly IDs
-// 0 = friendly
-// 1 = enemy
-// 2 = neutral
-// for spectators is used Marine and Alien
-kMinimapBlipTeam = enum( {'Friendly', 'Enemy', 'Neutral', 'Alien', 'Marine' } )
-
-// How long commander alerts should last (from NS1)
-kAlertExpireTime = 20
-
+                           'Flamethrower', 'Grenade'} )
 // Bit mask table for non-stackable game effects. OnInfestation is set if we're on ANY infestation (regardless of team).
 // Always keep "Max" as last element.
-kGameEffect = CreateBitMask( {"InUmbra", "Fury", "Cloaked", "Parasite", "NearDeath", "OnFire", "OnInfestation", "Beacon", "Energize", "Max"} )
+kGameEffect = CreateBitMask( {"NearDeath", "OnFire", "Max"} )
 kGameEffectMax = bit.lshift( 1, GetBitMaskNumBits(kGameEffect) )
-
-// Stackable game effects (more than one can be active, server-side only)
-kFuryGameEffect = "fury"
-kMaxStackLevel = 10
 
 kMaxEntityStringLength = 32
 kMaxAnimationStringLength = 32
 
 // Player modes. When outside the default player mode, input isn't processed from the player
-kPlayerMode = enum( {'Default', 'Taunt', 'Knockback', 'StandUp'} )
+kPlayerMode = enum( {'Default', 'Taunt'} )
 
 // Team alert types
 kAlertType = enum( {'Attack', 'Info', 'Request'} )
@@ -180,9 +145,6 @@ kLightMode = enum( {'Normal', 'NoPower', 'LowPower', 'Damaged'} )
 
 // Game state
 kGameState = enum( {'NotStarted', 'PreGame', 'Countdown', 'Started', 'Team1Won', 'Team2Won', 'Draw'} )
-
-// Don't allow commander to build structures this close to attach points or other structures
-kBlockAttachStructuresRadius = 3
 
 // Marquee while active, to ensure we get mouse release event even if on top of other component
 kHighestPriorityZ = 3
@@ -196,24 +158,12 @@ kUpdatePingsIndividual = 3
 // How often to send ping updates to all players.
 kUpdatePingsAll = 10
 
-kStructureSnapRadius = 4
-
-// Only send friendly blips down within this range 
-kHiveSightMaxRange = 50
-kHiveSightMinRange = 3
-kHiveSightDamageTime = 8
-
 // Bit masks for relevancy checking
 kRelevantToTeam1Unit        = 1
 kRelevantToTeam2Unit        = 2
-kRelevantToTeam1Commander   = 4
-kRelevantToTeam2Commander   = 8
-kRelevantToTeam1            = bit.bor(kRelevantToTeam1Unit, kRelevantToTeam1Commander)
-kRelevantToTeam2            = bit.bor(kRelevantToTeam2Unit, kRelevantToTeam2Commander)
+kRelevantToTeam1            = 4
+kRelevantToTeam2            = 8
 kRelevantToReadyRoom        = 16
-
-// Hive sight constants
-kBlipType = enum( {'Undefined', 'Friendly', 'FriendlyUnderAttack', 'Sighted', 'TechPointStructure', 'NeedHealing', 'FollowMe', 'Chuckle', 'Pheromone', 'Parasited' } )
 
 kFeedbackURL = "http://getsatisfaction.com/unknownworlds/feedback/topics/new?product=unknownworlds_natural_selection_2&display=layer&style=idea&custom_css=http://www.unknownworlds.com/game_scripts/ns2/styles.css"
 
@@ -225,12 +175,6 @@ kFadeToBlackTime = 3
 
 // Constant to prevent z-fighting 
 kZFightingConstant = 0.1
-
-// Any geometry or props with this name won't be drawn or affect commanders
-kCommanderInvisibleGroupName    = "CommanderInvisible"
-// Any geometry or props with this name will not support being built on top of
-kCommanderNoBuildGroupName      = "CommanderNoBuild"
-kCommanderBuildGroupName        = "CommanderBuild"
 
 kCollisionGeometryGroupName     = "CollisionGeometry"
 kNonCollisionGeometryGroupName  = "NonCollisionGeometry"
@@ -246,9 +190,9 @@ kMaxRelevancyDistance = 40
 
 kEpsilon = 0.0001
 
-// Weapon spawn height (for Commander dropping weapons)
-kCommanderDropSpawnHeight = 0.08
-kCommanderEquipmentDropSpawnHeight = 0.5
+kInventoryIconsTexture = "ui/inventory_icons.dds"
+kInventoryIconTextureWidth = 128
+kInventoryIconTextureHeight = 64
 
 // Options keys
 kNicknameOptionsKey = "nickname"
@@ -314,3 +258,5 @@ kPlayerLOSDistance = 20
 kStructureLOSDistance = 3.5
 
 kGestateCameraDistance = 1.75
+kMinFOVAdjustmentDegrees = 0
+kMaxFOVAdjustmentDegrees = 20

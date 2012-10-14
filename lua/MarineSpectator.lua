@@ -19,7 +19,8 @@ class 'MarineSpectator' (TeamSpectator)
 
 MarineSpectator.kMapName = "marinespectator"
 
-local networkVars = { }
+local networkVars = {
+}
 
 --@Override TeamSpectator
 function MarineSpectator:OnCreate()

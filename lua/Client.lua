@@ -9,10 +9,8 @@
 // Set the name of the VM for debugging
 decoda_name = "Client"
 
-// Load all specular maps at 1/2 resolution
-Client.AddTextureLoadRule("*_spec.dds", 1)
-
 Script.Load("lua/Shared.lua")
+Script.Load("lua/Render.lua")
 Script.Load("lua/MapEntityLoader.lua")
 Script.Load("lua/Button.lua")
 Script.Load("lua/Chat.lua")
@@ -36,8 +34,6 @@ Script.Load("lua/ServerAdmin.lua")
 Script.Load("lua/ConsoleCommands_Client.lua")
 Script.Load("lua/NetworkMessages_Client.lua")
 
-Script.Load("lua/HiveVision.lua")
-
 // Precache the common surface shaders.
 Shared.PrecacheSurfaceShader("shaders/Model.surface_shader")
 Shared.PrecacheSurfaceShader("shaders/Emissive.surface_shader")
@@ -59,8 +55,6 @@ Client.destroyTrailCinematics = { }
 Client.worldMessages = { }
 
 Client.timeOfLastPowerPoints = nil
-
-local gRenderCamera = Client.CreateRenderCamera()
 
 // For logging total time played for rookie mode, even with map switch
 local timePlayed = nil
@@ -387,8 +381,6 @@ function OnUpdateClient(deltaTime)
     
         UpdateAmbientSounds(deltaTime)
         
-        UpdateDSPEffects()
-        
         UpdateParticles(deltaTime)
         
         UpdateTracers(deltaTime)
@@ -396,8 +388,6 @@ function OnUpdateClient(deltaTime)
     end
     
     GetEffectManager():OnUpdate(deltaTime)
-    
-    UpdatePowerPointLights()
     
     ExpireDebugText()
     
@@ -413,13 +403,18 @@ function OnNotifyGUIItemDestroyed(destroyedItem)
 
 end
 
-function CreateTracer(startPoint, endPoint, velocity, doer)
+function CreateTracer(startPoint, endPoint, velocity, doer, effectName)
 
     if not Shared.GetIsRunningPrediction() then
-    
-        local effectName = kDefaultTracerEffectName
-        if doer.GetTracerEffectName then
-            effectName = doer:GetTracerEffectName()
+
+        if not effectName then
+        
+            if doer.GetTracerEffectName then
+                effectName = doer:GetTracerEffectName()
+            else
+                effectName = kDefaultTracerEffectName
+            end
+        
         end
 
         local tracer = BuildTracer(startPoint, endPoint, velocity, effectName)
@@ -474,14 +469,7 @@ function OnMapPreLoad()
     
     Shared.PreLoadSetGroupNeverVisible(kCollisionGeometryGroupName)   
     Shared.PreLoadSetGroupPhysicsId(kNonCollisionGeometryGroupName, 0)
-
-    Shared.PreLoadSetGroupNeverVisible(kCommanderBuildGroupName)   
-    Shared.PreLoadSetGroupPhysicsId(kCommanderBuildGroupName, PhysicsGroup.CommanderBuildGroup)      
-    
-    // Any geometry in kCommanderInvisibleGroupName or kCommanderNoBuildGroupName shouldn't interfere with selection or other commander actions
-    Shared.PreLoadSetGroupPhysicsId(kCommanderInvisibleGroupName, PhysicsGroup.CommanderPropsGroup)
-    Shared.PreLoadSetGroupPhysicsId(kCommanderNoBuildGroupName, PhysicsGroup.CommanderPropsGroup)
-    
+   
     // Don't have bullets collide with collision geometry
     Shared.PreLoadSetGroupPhysicsId(kCollisionGeometryGroupName, PhysicsGroup.CollisionGeometryGroup)   
     
@@ -514,9 +502,7 @@ local function OnMapPostLoad()
     Client.SetMinMaxSoundDistance(7, 100)
     
     InitializePathing()
-    
-    CreateDSPs()
-    
+
     Scoreboard_Clear()
     
     CheckRules()
@@ -616,7 +602,12 @@ function OnUpdateRender()
         UpdateFogAreaModifiers(coords.origin)
         
         camera:SetCoords(coords)
-        camera:SetFov(player:GetRenderFov())
+		
+        local adjustValue   = Clamp( Client.GetOptionFloat("graphics/display/fov-adjustment",0), 0, 1 )
+		local adjustRadians = math.rad(
+			(1-adjustValue)*kMinFOVAdjustmentDegrees + adjustValue*kMaxFOVAdjustmentDegrees)
+		
+        camera:SetFov(player:GetRenderFov()+adjustRadians)
         
         // In commander mode use frustum culling since the occlusion geometry
         // isn't generally setup for viewing the level from the outside (and
@@ -629,22 +620,14 @@ function OnUpdateRender()
         
         gRenderCamera:SetCoords(camera:GetCoords())
         gRenderCamera:SetFov(horizontalFov)
-        gRenderCamera:SetNearPlane(0.01)
-        gRenderCamera:SetFarPlane(1000.0)
+        gRenderCamera:SetNearPlane(0.03)
+        gRenderCamera:SetFarPlane(400.0)
         gRenderCamera:SetCullingMode(cullingMode)
         Client.SetRenderCamera(gRenderCamera)
-        
-        HiveVision_SetEnabled( GetIsAlienUnit(player) )
-        HiveVision_SyncCamera( gRenderCamera )
-        
-        EquipmentOutline_SetEnabled( GetIsMarineUnit(player) )
-        EquipmentOutline_SyncCamera( gRenderCamera )
-        
+
     else
     
         Client.SetRenderCamera(nil)
-        HiveVision_SetEnabled( false )
-        EquipmentOutline_SetEnabled( false )
         
     end
     
@@ -766,10 +749,10 @@ function OnClientDisconnected(reason)
     GetGUIManager():DestroyGUIScriptSingle("GUIDeathMessages")
     GetGUIManager():DestroyGUIScriptSingle("GUIChat")
     GetGUIManager():DestroyGUIScriptSingle("GUIVoiceChat")
-    GetGUIManager():DestroyGUIScriptSingle("GUIMinimapFrame")
     GetGUIManager():DestroyGUIScriptSingle("GUIMapAnnotations")
     GetGUIManager():DestroyGUIScriptSingle("GUIGameEnd")
     GetGUIManager():DestroyGUIScriptSingle("GUIWorldText")
+	GetGUIManager():DestroyGUIScriptSingle("GUICommunicationStatusIcons")
     
     // Destroy graphical debug text items
     for index, item in ipairs(gDebugTextList) do
@@ -779,12 +762,36 @@ function OnClientDisconnected(reason)
 end
 
 /**
+ * UI scripts that need to precache assets are loaded here.
+ * Not all GUI scripts need to be listed here.
+ * They must be loaded after OnLoadComplete() below because they need functions
+ * that are only available after the Client is fully loaded.
+ */
+local function LoadGUIScripts()
+
+    Script.Load("lua/Hud/Marine/GUIAvatarHud.lua")
+    Script.Load("lua/GUIActionIcon.lua")
+    Script.Load("lua/GUIMarineTeamMessage.lua")
+    Script.Load("lua/GUINotifications.lua")
+    Script.Load("lua/Hud/GUINotificationItem.lua")
+    Script.Load("lua/Hud/Marine/GUIMarineStatus.lua")
+    Script.Load("lua/Hud/Marine/GUIMarineHUDStyle.lua")
+   
+end
+
+/**
  * Fade to black and show messages, global so transistion between classes is smooth.
  */
 local function OnLoadComplete()
+
+    gRenderCamera = Client.CreateRenderCamera()
+    gRenderCamera:SetRenderSetup("renderer/Deferred.render_setup")
+    
+    Render_SyncRenderOptions()
+    
     GetGUIManager():CreateGUIScript("GUIDeathScreen")
-    HiveVision_Initialize()
-    EquipmentOutline_Initialize()
+    LoadGUIScripts()
+    
 end
 
 Event.Hook("ClientDisconnected", OnClientDisconnected)

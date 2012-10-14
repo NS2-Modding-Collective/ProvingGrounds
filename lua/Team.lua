@@ -97,7 +97,7 @@ function Team:RemovePlayer(player)
     assert(player)
     
     if not table.removevalue(self.playerIds, player:GetId()) then
-        Print("Player %s with Id %d not in playerId list.", player:GetClassName(), player:GetName(), player:GetId())
+        Print("Player %s with Id %d not in playerId list.", player:GetClassName(), player:GetId())
     end
     
     self:RemovePlayerFromRespawnQueue(player)
@@ -112,10 +112,9 @@ function Team:GetNumPlayers()
     for index, playerId in ipairs(self.playerIds) do
 
         local player = Shared.GetEntity(playerId)
-        if player ~= nil and player:GetId() ~= Entity.invalidId then
-        
+        // Verify the player has a Client attached to it (we don't want to count ragdolls as team players for example.
+        if player ~= nil and player:GetId() ~= Entity.invalidId and Server.GetOwner(player) ~= nil then
             numPlayers = numPlayers + 1
-            
         end
         
     end

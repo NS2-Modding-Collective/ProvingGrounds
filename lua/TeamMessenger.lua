@@ -6,8 +6,7 @@
 //    
 // ========= For more information, visit us at http://www.unknownworlds.com =====================
 
-kTeamMessageTypes = enum({ 'GameStarted', 'SpawningWait', 'Spawning', 'ResearchComplete', 'ResearchLost',
-                            'Beacon'})
+kTeamMessageTypes = enum({ 'GameStarted', 'Spawning'})
 
 local kTeamMessages = { }
 
@@ -19,15 +18,8 @@ local locationStringGen = function(locationId, messageString) return string.form
 // Thos function will generate the string to display based on a research Id.
 local researchStringGen = function(researchId, messageString) return string.format(Locale.ResolveString(messageString), GetDisplayNameForTechId(researchId)) end
 
-kTeamMessages[kTeamMessageTypes.SpawningWait] = { text = { [kRedTeamType] = "WAITING_TO_SPAWN" } }
-
 kTeamMessages[kTeamMessageTypes.Spawning] = { text = { [kMarineTeamType] = "SPAWNING", [kRedTeamType] = "SPAWNING" } }
 
-kTeamMessages[kTeamMessageTypes.ResearchComplete] = { text = { [kRedTeamType] = function(data) return researchStringGen(data, "EVOLUTION_AVAILABLE") end } }
-
-kTeamMessages[kTeamMessageTypes.ResearchLost] = { text = { [kRedTeamType] = function(data) return researchStringGen(data, "EVOLUTION_LOST") end } }
-
-kTeamMessages[kTeamMessageTypes.Beacon] = { text = { [kMarineTeamType] = function(data) return locationStringGen(data, "BEACON_TO") end } }
 
 // Silly name but it fits the convention.
 local kTeamMessageMessage =

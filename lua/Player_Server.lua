@@ -265,32 +265,7 @@ function Player:GetDeathMapName()
     return Spectator.kMapName
 end
 
-/*local function UpdateChangeToSpectator(self)
-
-    if not self:GetIsAlive() and not self:isa("Spectator") then
-    
-        local time = Shared.GetTime()
-        if self.timeOfDeath ~= nil and (time - self.timeOfDeath > kFadeToBlackTime) then
-        
-            // Destroy the existing player and create a spectator in their place (but only if it has an owner, ie not a body left behind by Phantom use)
-            local owner  = Server.GetOwner(self)
-            if owner then
-            
-                // Queue up the spectator for respawn.
-                local spectator = self:Replace(self:GetDeathMapName())
-                spectator:GetTeam():PutPlayerInRespawnQueue(spectator)
-                
-            end
-            
-        end
-        
-    end
-    
-end*/
-
 function Player:OnUpdatePlayer(deltaTime)
-
-    //UpdateChangeToSpectator(self)
     
     local gamerules = GetGamerules()
     self.gameStarted = gamerules:GetGameStarted()
@@ -361,7 +336,6 @@ function Player:CopyPlayerDataFrom(player)
     end
     
     // Copy network data over because it won't be necessarily be resent
-    self.resources = player.resources
     self.gameStarted = player.gameStarted
     self.countingDown = player.countingDown
     self.frozen = player.frozen
@@ -428,7 +402,7 @@ end
  * the new player. If preserveWeapons is true, then InitWeapons() isn't called
  * and old ones are kept (including view model).
  */
-function Player:Replace(mapName, newTeamNumber, preserveWeapons, atOrigin)
+function Player:Replace(mapName, newTeamNumber, preserveWeapons, atOrigin, extraValues)
 
     local team = self:GetTeam()
     if team == nil then
@@ -445,7 +419,7 @@ function Player:Replace(mapName, newTeamNumber, preserveWeapons, atOrigin)
         teamNumber = newTeamNumber
     end
     
-    local player = CreateEntity(mapName, atOrigin or Vector(self:GetOrigin()), teamNumber)
+    local player = CreateEntity(mapName, atOrigin or Vector(self:GetOrigin()), teamNumber, extraValues)
     
     // Save last player map name so we can show player of appropriate form in the ready room if the game ends while spectating
     player.previousMapName = self:GetMapName()
@@ -466,12 +440,6 @@ function Player:Replace(mapName, newTeamNumber, preserveWeapons, atOrigin)
     
     if not player:GetTeam():GetSupportsOrders() then
         player:ClearOrders()
-    end
-    
-    // Keep existing resources if on the same team, clear them out if we leave
-    // so resources can't be transferred
-    if teamChanged then
-        player:SetResources(0)
     end
     
     // Remove newly spawned weapons and reparent originals

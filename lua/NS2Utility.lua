@@ -9,11 +9,20 @@
 // ========= For more information, visit us at http://www.unknownworlds.com =====================
 Script.Load("lua/Table.lua")
 Script.Load("lua/Utility.lua")
+Script.Load("lua/FunctionContracts.lua")
 
 if Server then
     Script.Load("lua/NS2Utility_Server.lua")
 end
 
+function GetGameInfoEntity()
+
+    local entityList = Shared.GetEntitiesWithClassname("GameInfo")
+    if entityList:GetSize() > 0 then    
+        return entityList:GetEntityAtIndex(0)
+    end    
+
+end
 function GetIsTargetDetected(target)
     return HasMixin(target, "Detectable") and target:GetIsDetected()
 end
@@ -52,39 +61,17 @@ end
 
 function GetIsUnitActive(unit, debug)
 
-    local powered = not HasMixin(unit, "PowerConsumer") or not unit:GetRequiresPower() or unit:GetIsPowered()
+
     local alive = not HasMixin(unit, "Live") or unit:GetIsAlive()
-    local isBuilt = not HasMixin(unit, "Construct") or unit:GetIsBuilt()
-    local isRecycled = HasMixin(unit, "Recycle") and unit:GetIsRecycled()
     
     if debug then
         Print("------------ GetIsUnitActive(%s) -----------------", ToString(unit))
-        Print("powered: %s", ToString(powered))
         Print("alive: %s", ToString(alive))
-        Print("isBuilt: %s", ToString(isBuilt))
-        Print("isRecycled: %s", ToString(isRecycled))
         Print("-----------------------------")
     end
     
-    return not GetIsVortexed(unit) and powered and alive and isBuilt and not isRecycled
+    return alive
     
-end
-
-function GetIsUnderResourceTowerLimit(self)
-
-    local techPoints = 0
-    local harvesters = 0
-    
-    local teamInfo = GetEntitiesForTeam("TeamInfo", self:GetTeamNumber())        
-    if table.count(teamInfo) > 0 then
-        techPoints = teamInfo[1]:GetNumCapturedTechPoints()
-        harvesters = teamInfo[1]:GetNumCapturedResPoints()
-    end
-    
-    local towerLimit = kMinSupportedRTs + techPoints * kRTsPerTechpoint
-    
-    return harvesters < towerLimit
-
 end
 
 function GetAnyNearbyUnitsInCombat(origin, radius, teamNumber)
@@ -105,20 +92,7 @@ end
 function GetCircleSizeForEntity(entity)
 
     local size = ConditionalValue(entity:isa("Player"),2.0, 2)
-    size = ConditionalValue(entity:isa("Drifter"), 2.5, size)
-    size = ConditionalValue(entity:isa("PowerPoint"), 2.6, size)
-    size = ConditionalValue(entity:isa("CragBabblers"), 6, size)
-    size = ConditionalValue(entity:isa("MAC"), 2.0, size)
-    size = ConditionalValue(entity:isa("Door"), 4.0, size)
-    size = ConditionalValue(entity:isa("InfantryPortal"), 3.5, size)
-    size = ConditionalValue(entity:isa("Extractor"), 3.0, size)
-    size = ConditionalValue(entity:isa("CommandStation"), 6.5, size)
-    size = ConditionalValue(entity:isa("Egg"), 2.5, size)
-    size = ConditionalValue(entity:isa("Armory"), 4.0, size)
-    size = ConditionalValue(entity:isa("Crag"), 3, size)
-    size = ConditionalValue(entity:isa("RoboticsFactory"), 6, size)
-    size = ConditionalValue(entity:isa("ARC"), 3.5, size)
-    size = ConditionalValue(entity:isa("ArmsLab"), 4.3, size)
+
     return size
     
 end
@@ -144,21 +118,6 @@ function GetAttachEntity(techId, position, snapRadius)
     end
     
     return nil
-    
-end
-
-local function FindPoweredAttachEntities(className, teamNumber, origin, range)
-
-    ASSERT(type(className) == "string")
-    ASSERT(type(teamNumber) == "number")
-    ASSERT(origin ~= nil)
-    ASSERT(type(range) == "number")
-    
-    local function teamAndPoweredFilterFunction(entity)
-        return entity:GetTeamNumber() == teamNumber and entity:GetIsBuilt() and entity:GetIsPowered()
-    end
-    
-    return Shared.GetEntitiesWithTagInRange("class:" .. className, origin, range, teamAndPoweredFilterFunction)
     
 end
 
@@ -272,30 +231,6 @@ function GetRandomSpawnForCapsule(capsuleHeight, capsuleRadius, origin, minRange
     
 end
 
-function GetInfestationRequirementsMet(techId, position)
-
-    local requirementsMet = true
-    
-    // Check infestation requirements
-    if LookupTechData(techId, kTechDataRequiresInfestation) then
-    
-        if not GetIsPointOnInfestation(position) then
-            requirementsMet = false
-        end
-        
-    // Don't allow marine structures on infestation
-    elseif LookupTechData(techId, kTechDataNotOnInfestation) then
-    
-        if GetIsPointOnInfestation(position) then
-            requirementsMet = false
-        end
-        
-    end
-    
-    return requirementsMet
-    
-end
-
 function GetExtents(techId)
 
     local extents = LookupTechData(techId, kTechDataMaxExtents)
@@ -317,25 +252,6 @@ function CreateFilter(entity1, entity2)
         filter = EntityFilterOne(entity2)
     end
     return filter
-    
-end
-
-// Make sure point isn't blocking attachment entities
-function GetPointBlocksAttachEntities(origin)
-
-    local nozzles = GetEntitiesWithinRange("ResourcePoint", origin, 1.5)
-    if table.count(nozzles) == 0 then
-    
-        local techPoints = GetEntitiesWithinRange("TechPoint", origin, 3.2)
-        if table.count(techPoints) == 0 then
-        
-            return false
-            
-        end
-        
-    end
-    
-    return true
     
 end
 
@@ -433,10 +349,6 @@ function GetHoverAt(entity, position, filter)
 
 end
 
-function GetWaypointGroupName(entity)
-    return ConditionalValue(entity:GetIsFlying(), kAirWaypointsGroup, kDefaultWaypointGroup)
-end
-
 function GetTriggerEntity(position, teamNumber)
 
     local triggerEntity = nil
@@ -460,31 +372,9 @@ function GetTriggerEntity(position, teamNumber)
     
 end
 
-function GetBlockedByUmbra(entity)
-
-    if entity ~= nil and HasMixin(entity, "Umbra") then
-    
-        if entity:GetHasUmbra() then
-            return entity:UpdateUmbraBulletCount()
-        end
-        
-    end
-    
-    return false
-    
-end
-
 // TODO: use what is defined in the material file
 function GetSurfaceFromEntity(entity)
-
-    if GetIsAlienUnit(entity) then
-        return "organic"
-    elseif GetIsMarineUnit(entity) then
-        return "thin_metal"
-    end
-
-    return "thin_metal"
-    
+    return "thin_metal"   
 end
 
 function GetSurfaceAndNormalUnderEntity(entity, axis)
@@ -664,75 +554,6 @@ function GetNearestFreeAttachEntity(techId, origin, range)
     
 end
 
-// Returns if it's legal for player to build structure or drop item, along with the position
-// Assumes you're passing in build or buy tech.
-function GetIsBuildPickVecLegal(techId, player, pickVec, snapRadius)
-
-    local trace = GetCommanderPickTarget(player, pickVec, false, true)
-    return GetIsBuildLegal(techId, trace.endPoint, snapRadius, player)
-    
-end
-
-// Trace until we hit the "inside" of the level or hit nothing. Returns nil if we hit nothing,
-// returns the world point of the surface we hit otherwise. Only hit surfaces that are facing 
-// towards us.
-// Input pickVec is either a normalized direction away from the commander that represents where
-// the mouse was clicked, or if worldCoordsSpecified is true, it's the XZ position of the order
-// given to the minimap. In that case, trace from above it straight down to find the target.
-// The last parameter is false if target is for selection, true if it's for building
-function GetCommanderPickTarget(player, pickVec, worldCoordsSpecified, forBuild, ignoreEntities)
-
-    local done = false
-    local startPoint = player:GetOrigin() 
-
-    if worldCoordsSpecified and pickVec then
-        startPoint = Vector(pickVec.x, startPoint.y + 20, pickVec.z)
-        pickVec = Vector(0, -1, 0)
-    end
-    
-    local trace = nil
-    local mask = ConditionalValue(forBuild, PhysicsMask.CommanderBuild, PhysicsMask.CommanderSelect) 
-    
-    while not done do
-
-        // Use either select or build mask depending what it's for       
-        local endPoint = startPoint + pickVec * 1000
-        
-        if ignoreEntities == true then
-            trace = Shared.TraceRay(startPoint, endPoint, CollisionRep.Select, mask, EntityFilterAll())
-        else
-            trace = Shared.TraceRay(startPoint, endPoint, CollisionRep.Select, mask, EntityFilterOne(player))
-        end
-        
-        local hitDistance = (startPoint - trace.endPoint):GetLength()
-        
-        // Try again if we're inside the surface
-        if(trace.fraction == 0 or hitDistance < .1) then
-        
-            startPoint = startPoint + pickVec
-        
-        elseif(trace.fraction == 1) then
-        
-            done = true
-
-        // Only hit a target that's facing us (skip surfaces facing away from us)            
-        elseif trace.normal.y < 0 then
-        
-            // Trace again from what we hit
-            startPoint = trace.endPoint + pickVec * 0.01
-            
-        else
-                    
-            done = true
-                
-        end
-        
-    end
-    
-    return trace
-    
-end
-
 function GetAreEnemies(entityOne, entityTwo)
     return entityOne and entityTwo and HasMixin(entityOne, "Team") and HasMixin(entityTwo, "Team") and (
             (entityOne:GetTeamNumber() == kMarineTeamType and entityTwo:GetTeamNumber() == kRedTeamType) or
@@ -888,11 +709,7 @@ function GetCanSeeEntity(seeingEntity, targetEntity)
             local seeingEntityAngles = GetEntityViewAngles(seeingEntity)
             local normViewVec = seeingEntityAngles:GetCoords().zAxis        
             local dotProduct = Math.DotProduct(toEntity, normViewVec)
-            local fov = 90
-            
-            if seeingEntity.GetFov then
-                fov = seeingEntity:GetFov()
-            end
+            local fov = seeingEntity:GetFov()
             
             // players have separate fov for marking enemies as sighted
             if seeingEntity.GetMinimapFov then
@@ -912,10 +729,6 @@ function GetCanSeeEntity(seeingEntity, targetEntity)
             
             if trace.entity == targetEntity then
                 seen = true
-            end
-            
-            if Server and Server.dbgTracer.seeEntityTraceEnabled then
-                Server.dbgTracer:TraceTargeting(seeingEntity, targetEntity, eyePos, trace)
             end
             
         end
@@ -969,32 +782,6 @@ function GetLocationEntitiesNamed(name)
     end
 
     return locationEntities
-    
-end
-
-function GetPowerPointForLocation(locationName)
-
-    if locationName == nil or locationName == "" then
-        return nil
-    end
-    
-    local locationId = Shared.GetStringIndex(locationName)
-    
-    local powerPoints = Shared.GetEntitiesWithClassname("PowerPoint")
-    for p = 1, powerPoints:GetSize() do
-    
-        local powerPoint = powerPoints:GetEntityAtIndex(p - 1)
-        if powerPoint then
-        
-            if powerPoint:GetLocationId() == locationId then
-                return powerPoint
-            end
-            
-        end
-        
-    end
-    
-    return nil
     
 end
 
@@ -1084,6 +871,11 @@ function SetPlayerPoseParameters(player, viewModel)
         bodyYaw = Math.Wrap(Math.Degrees(player.bodyYaw), -180, 180)
     end
     
+    local bodyYawRun = 0
+    if player.bodyYawRun then
+        bodyYawRun = Math.Wrap(Math.Degrees(player.bodyYawRun), -180, 180)
+    end
+    
     local viewAngles = player:GetViewAngles()
     local viewCoords = viewAngles:GetCoords()
     
@@ -1103,7 +895,7 @@ function SetPlayerPoseParameters(player, viewModel)
     player:SetPoseParam("move_speed", speedScalar)
     player:SetPoseParam("body_pitch", pitch)
     player:SetPoseParam("body_yaw", bodyYaw)
-    player:SetPoseParam("body_yaw_run", bodyYaw)
+    player:SetPoseParam("body_yaw_run", bodyYawRun)
     
     player:SetPoseParam("crouch", player:GetCrouchAmount())
     player:SetPoseParam("land_intensity", landIntensity)
@@ -1115,7 +907,7 @@ function SetPlayerPoseParameters(player, viewModel)
         viewModel:SetPoseParam("move_speed", speedScalar)
         viewModel:SetPoseParam("crouch", player:GetCrouchAmount())
         viewModel:SetPoseParam("body_yaw", bodyYaw)
-        viewModel:SetPoseParam("body_yaw_run", bodyYaw)
+        viewModel:SetPoseParam("body_yaw_run", bodyYawRun)
         viewModel:SetPoseParam("land_intensity", landIntensity)
         
     end
@@ -1175,52 +967,6 @@ function GetEngagementDistance(entIdOrTechId, trueTechId)
     
 end
 
-function MinimapToWorld(commander, x, y)
-
-    local heightmap = GetHeightmap()
-    
-    // Translate minimap coords to world position
-    return Vector(heightmap:GetWorldX(y), 0, heightmap:GetWorldZ(x))
-    
-end
-
-function GetMinimapPlayableWidth(map)
-    local mapX = map:GetMapX(map:GetOffset().z + map:GetExtents().z)
-    return (mapX - .5) * 2
-end
-
-function GetMinimapPlayableHeight(map)
-    local mapY = map:GetMapY(map:GetOffset().x - map:GetExtents().x)
-    return (mapY - .5) * 2
-end
-
-function GetMinimapHorizontalScale(map)
-
-    local width = GetMinimapPlayableWidth(map)
-    local height = GetMinimapPlayableHeight(map)
-    
-    return ConditionalValue(height > width, width/height, 1)
-    
-end
-
-function GetMinimapVerticalScale(map)
-
-    local width = GetMinimapPlayableWidth(map)
-    local height = GetMinimapPlayableHeight(map)
-    
-    return ConditionalValue(width > height, height/width, 1)
-    
-end
-
-function GetMinimapNormCoordsFromPlayable(map, playableX, playableY)
-
-    local playableWidth = GetMinimapPlayableWidth(map)
-    local playableHeight = GetMinimapPlayableHeight(map)
-    
-    return playableX * (1 / playableWidth), playableY * (1 / playableHeight)
-    
-end
-
 // If we hit something, create an effect (sparks, blood, etc)
 function TriggerHitEffects(doer, target, origin, surface, melee, extraEffectParams)
 
@@ -1229,7 +975,7 @@ function TriggerHitEffects(doer, target, origin, surface, melee, extraEffectPara
     if target and target.GetClassName and target.GetTeamType then
         tableParams[kEffectFilterClassName] = target:GetClassName()
         tableParams[kEffectFilterIsMarine] = target:GetTeamType() == kMarineTeamType
-        tableParams[kEffectFilterIsAlien] = target:GetTeamType() == kAlienTeamType
+        tableParams[kEffectFilterIsAlien] = target:GetTeamType() == kRedTeamType
     end
 
     if GetIsPointOnInfestation(origin) then
@@ -1267,6 +1013,7 @@ end
 
 function TriggerMomentumChangeEffects(entity, surface, direction, normal, extraEffectParams)
 
+    assert(math.abs(direction:GetLengthSquared() - 1) < 0.001)
     local tableParams = {}
     
     tableParams[kEffectFilterDoerName] = entity:GetClassName()
@@ -1313,51 +1060,6 @@ function GetIsPointOnInfestation(point)
     
     return onInfestation
 
-end
-
-function CreateStructureInfestation(parent, coords, teamNumber, infestationRadius, percent)
-
-    local infestation = CreateEntity(Infestation.kMapName, coords.origin, teamNumber)
-    
-    infestation:SetMaxRadius(infestationRadius)    
-    infestation:SetCoords(coords)    
-    infestation:InitMapBlipMixin()
-    infestation:SetInfestationParent(parent)
-    
-    if percent then
-        infestation:SetRadiusPercent(percent)
-    end
-    
-    return infestation
-    
-end
-
-// Get nearest valid target for commander ability activation, of specified team number nearest specified position.
-// Returns nil if none exists in range.
-function GetActivationTarget(teamNumber, position)
-
-    local nearestTarget = nil
-    local nearestDist = nil
-    
-    local targets = GetEntitiesWithMixinForTeamWithinRange("Live", teamNumber, position, 2)
-    for index, target in ipairs(targets) do
-    
-        if target:GetIsVisible() and not target:isa("Infestation") then
-        
-            local dist = (target:GetOrigin() - position):GetLength()
-            if nearestTarget == nil or dist < nearestDist then
-            
-                nearestTarget = target
-                nearestDist = dist
-                
-            end
-            
-        end
-        
-    end
-    
-    return nearestTarget
-    
 end
 
 function GetSelectionText(entity, teamNumber)
@@ -1479,19 +1181,11 @@ end
 
 // All damage is routed through here.
 function CanEntityDoDamageTo(attacker, target, cheats, devMode, friendlyFire, damageType)
-
-    if target:isa("Clog") then
-        return true
-    end    
-   
+ 
     if not HasMixin(target, "Live") then
         return false
     end
     
-    if target:isa("ARC") and damageType == kDamageType.Splash then
-        return true
-    end    
-
     if (not target:GetCanTakeDamage()) then
         return false
     end
@@ -1506,11 +1200,6 @@ function CanEntityDoDamageTo(attacker, target, cheats, devMode, friendlyFire, da
 
     // You can always do damage to yourself
     if (attacker == target) then
-        return true
-    end
-    
-    // Command stations can kill even friendlies trapped inside
-    if attacker ~= nil and attacker:isa("CommandStation") then
         return true
     end
     
@@ -1662,10 +1351,6 @@ function CheckMeleeCapsule(weapon, player, damage, range, optionalCoords, traceR
             
         end
         
-        if Server and traceRealAttack then
-            Server.dbgTracer:TraceMelee(player,  point, trace, extents, coords)
-        end
-        
         // Performance boost, doubt it makes much difference, but its an easy one...
         if target and target:isa("Player") then
             break
@@ -1680,7 +1365,7 @@ function CheckMeleeCapsule(weapon, player, damage, range, optionalCoords, traceR
     startPoint = startPoint or middleStart
     
     local direction = target and (endPoint - startPoint):GetUnit() or nil
-    return target ~= null or middleTrace.fraction < 1, target, endPoint, direction, surface
+    return target ~= nil or middleTrace.fraction < 1, target, endPoint, direction, surface
     
 end
 
@@ -1700,148 +1385,6 @@ function AttackMeleeCapsule(weapon, player, damage, range, optionalCoords, altMo
     
 end
 
-// Get the effective height that we trace down for this entity to see if it is "on" infestation
-// Should be tall enough for hives and drifters to be on infestation most of the time
-function GetInfestationVerticalSize(entity)
-
-    //ASSERT(entity ~= nil)
-
-    local infestationVerticalSize = 1
-    
-    if (entity == nil) then
-      return infestationVerticalSize
-    end
-    
-    if entity.GetTechId then
-    
-        local spawnHeight = LookupTechData(entity:GetTechId(), kTechDataSpawnHeightOffset, 0)
-        
-        if spawnHeight ~= nil and spawnHeight > infestationVerticalSize then
-            infestationVerticalSize = spawnHeight
-        end
-        
-    end
-    
-    if entity.GetHoverHeight then
-    
-        local hoverHeight = entity:GetHoverHeight()
-        
-        if hoverHeight ~= nil and hoverHeight > infestationVerticalSize then
-            infestationVerticalSize = hoverHeight
-        end
-        
-    end
-    
-    return infestationVerticalSize
-    
-end
-
-function BuildClassToGrid()
-
-    local ClassToGrid = { }
-
-    ClassToGrid["Door"] = { 3, 1 }
-    ClassToGrid["DoorLocked"] = { 4, 1 }
-    ClassToGrid["DoorWelded"] = { 5, 1 }
-    ClassToGrid["Grenade"] = { 6, 1 }
-    
-    ClassToGrid["Scan"] = { 6, 8 }
-
-    ClassToGrid["ReadyRoomPlayer"] = { 1, 2 }
-    ClassToGrid["Marine"] = { 1, 2 }
-    ClassToGrid["Exo"] = { 2, 2 }
-    ClassToGrid["JetpackMarine"] = { 3, 2 }
-    ClassToGrid["Exo"] = { 2, 2 }
-    ClassToGrid["MAC"] = { 4, 2 }
-    ClassToGrid["CommandStationOccupied"] = { 5, 2 }
-    ClassToGrid["CommandStationL2Occupied"] = { 6, 2 }
-    ClassToGrid["CommandStationL3Occupied"] = { 7, 2 }
-    ClassToGrid["Death"] = { 8, 2 }
-
-    ClassToGrid["Skulk"] = { 1, 3 }
-    ClassToGrid["Gorge"] = { 2, 3 }
-    ClassToGrid["Lerk"] = { 3, 3 }
-    ClassToGrid["Fade"] = { 4, 3 }
-    ClassToGrid["Onos"] = { 5, 3 }
-    ClassToGrid["Drifter"] = { 6, 3 }
-    ClassToGrid["Kill"] = { 8, 3 }
-
-    ClassToGrid["CommandStation"] = { 1, 4 }
-    ClassToGrid["CommandStationL2"] = { 2, 4 }
-    ClassToGrid["CommandStationL3"] = { 3, 4 }
-    ClassToGrid["Extractor"] = { 4, 4 }
-    ClassToGrid["Sentry"] = { 5, 4 }
-    ClassToGrid["ARC"] = { 6, 4 }
-    ClassToGrid["ARCDeployed"] = { 7, 4 }
-    ClassToGrid["SentryBattery"] = { 8, 4 }
-
-    ClassToGrid["InfantryPortal"] = { 1, 5 }
-    ClassToGrid["Armory"] = { 2, 5 }
-    ClassToGrid["AdvancedArmory"] = { 3, 5 }
-    ClassToGrid["AdvancedArmoryModule"] = { 4, 5 }
-    ClassToGrid["PhaseGate"] = { 5, 5 }
-    ClassToGrid["Observatory"] = { 6, 5 }
-    ClassToGrid["RoboticsFactory"] = { 7, 5 }
-    ClassToGrid["ArmsLab"] = { 8, 5 }
-    ClassToGrid["PrototypeLab"] = { 4, 4 }
-
-    ClassToGrid["Hydra"] = { 6, 6 }
-    ClassToGrid["Egg"] = { 7, 6 }
-
-    ClassToGrid["Crag"] = { 1, 7 }
-    ClassToGrid["Whip"] = { 3, 7 }
-    ClassToGrid["Shade"] = { 5, 7 }
-    ClassToGrid["Shift"] = { 7, 7 }
-
-    ClassToGrid["WaypointMove"] = { 1, 8 }
-    ClassToGrid["WaypointDefend"] = { 2, 8 }
-    ClassToGrid["PlayerFOV"] = { 4, 8 }
-    
-    ClassToGrid["MoveOrder"] = { 1, 8 }
-    ClassToGrid["BuildOrder"] = { 2, 8 }
-    ClassToGrid["AttackOrder"] = { 2, 8 }
-    
-    ClassToGrid["SensorBlip"] = { 5, 8 }
-    
-    ClassToGrid["Player"] = { 7, 8 }
-    
-    return ClassToGrid
-    
-end
-
-/**
- * Returns Column and Row to find the minimap icon for the passed in class.
- */
-function GetSpriteGridByClass(class, classToGrid)
-
-    // This really shouldn't happen but lets return something just in case.
-    if not classToGrid[class] then
-        return 8, 1
-    end  
-    
-    return unpack(classToGrid[class])
-    
-end
-AddFunctionContract(GetSpriteGridByClass, { Arguments = { "string", "array" }, Returns = { "number", "number" } })
-
-/*
- * Non-linear egg spawning. Eggs spawn slower the more of them you have, but speed up with more players. 
- * Pass in the number of players currently on your team, and the number of egg that this will be (ie, with
- * no eggs, pass in 1 to find out how long it will take for the first egg to spawn in).
- */
-function CalcEggSpawnTime(numPlayers, eggNumber, numDeadPlayers)
-
-    local clampedEggNumber = Clamp(eggNumber, 1, kAlienEggsPerHive)
-    local clampedNumPlayers = Clamp(numPlayers, 1, kMaxPlayers/2)
-    
-    local minSpawnTime = ConditionalValue(numDeadPlayers >= kEmergencySpawnThreshold, kEmergencyMinSpawnTime, kAlienEggMinSpawnTime  )
-    
-    local calcEggScalar = math.sin(((clampedEggNumber - 1)/kAlienEggsPerHive) * (math.pi / 2)) * kAlienEggSinScalar
-    local calcSpawnTime = minSpawnTime + (calcEggScalar / clampedNumPlayers) * kAlienEggPlayerScalar
-    
-    return Clamp(calcSpawnTime, minSpawnTime, kAlienEggMaxSpawnTime)
-
-end
 
 /**
  * Returns true if the passed in entity is under the control of a client (i.e. either the
@@ -1892,10 +1435,6 @@ end
 
 function GetIsVortexed(entity)
     return entity and HasMixin(entity, "VortexAble") and entity:GetIsVortexed()
-end
-
-function GetIsNanoShielded(entity)
-    return entity and HasMixin(entity, "NanoShieldAble") and entity:GetIsNanoShielded()
 end
 
 if Client then
@@ -1971,10 +1510,6 @@ function TraceBullet(player, weapon, startPoint, direction, throughHallucination
     
         local trace = Shared.TraceRay(startPoint, endPoint, CollisionRep.Damage, PhysicsMask.Bullets, EntityFilterTwo(lastHitEntity, weapon))
         
-        if Server then
-            Server.dbgTracer:TraceBullet(player, startPoint, trace)
-        end
-        
         if trace.fraction ~= 1 then
         
             table.insertunique(hitInfo, { EndPoint = trace.endPoint, Entity = trace.entity } )
@@ -1997,7 +1532,7 @@ function TraceBullet(player, weapon, startPoint, direction, throughHallucination
 end
 
 -- add comma to separate thousands
-function comma_value(amount)
+function CommaValue(amount)
     local formatted = ""
     if amount ~= nil then
         formatted = amount
@@ -2009,4 +1544,57 @@ function comma_value(amount)
         end
     end
     return formatted
+end
+
+// Look for "BIND_" in the string and substitute with key to press
+// ie, "Press the BIND_Buy key to evolve to a new lifeform or to gain new upgrades." => "Press the B key to evolve to a new lifeform or to gain new upgrades."
+function SubstituteBindStrings(tipString)
+
+    local substitutions = {}
+    for word in string.gmatch(tipString, "BIND_(%a+)") do
+    
+        local bind = GetPrettyInputName(word)
+        //local bind = BindingsUI_GetInputValue(word)
+        assert(type(bind) == "string", tipString)
+        tipString = string.gsub(tipString, "BIND_" .. word, bind)
+    end
+    
+    return tipString
+    
+end
+
+// Look up texture coordinates in kInventoryIconsTexture
+// Used for death messages, inventory icons, and abilities drawn in the alien "energy ball"
+gTechIdPosition = nil
+function GetTexCoordsForTechId(techId)
+
+    local x1 = 0
+    local y1 = 0
+    local x2 = kInventoryIconTextureWidth
+    local y2 = kInventoryIconTextureHeight
+    
+    if not gTechIdPosition then
+    
+        gTechIdPosition = {}
+        
+        // marine weapons
+        gTechIdPosition[kTechId.Rifle] = kDeathMessageIcon.Rifle
+        gTechIdPosition[kTechId.Pistol] = kDeathMessageIcon.Pistol
+        gTechIdPosition[kTechId.Axe] = kDeathMessageIcon.Axe
+        gTechIdPosition[kTechId.Shotgun] = kDeathMessageIcon.Shotgun
+        gTechIdPosition[kTechId.Flamethrower] = kDeathMessageIcon.Flamethrower
+        gTechIdPosition[kTechId.GrenadeLauncher] = kDeathMessageIcon.Grenade
+    end
+    
+    local position = gTechIdPosition[techId]
+    
+    if position then
+    
+        y1 = (position - 1) * kInventoryIconTextureHeight
+        y2 = y1 + kInventoryIconTextureHeight
+    
+    end
+    
+    return x1, y1, x2, y2
+
 end

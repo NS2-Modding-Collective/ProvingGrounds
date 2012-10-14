@@ -12,12 +12,12 @@ class 'GUIDeathMessages' (GUIScript)
 
 local kBackgroundHeight = 32
 local kBackgroundColor = Color(0, 0, 0, 0)
-local kFontNames = { marine = "fonts/AgencyFB_small.fnt", alien = "fonts/Kartika_medium.fnt" }
+local kFontNames = { marine = "fonts/AgencyFB_small.fnt", alien = "fonts/AgencyFB_small.fnt" }
 local kScreenOffset = 40
-local kAlienWeaponTextureName = "ui/marine_messages_icons.dds"
-local kMarineWeaponTextureName = "ui/marine_messages_icons.dds"
-local kTimeStartFade = 3
-local kTimeEndFade = 4
+
+local kSustainTime = 4
+local kPlayerSustainTime = 4
+local kFadeOutTime = 1
 
 function GUIDeathMessages:Initialize()
 
@@ -45,7 +45,7 @@ function GUIDeathMessages:Update(deltaTime)
     PROFILE("GUIDeathMessages:Update")
     
     local addDeathMessages = DeathMsgUI_GetMessages()
-    local numberElementsPerMessage = 5
+    local numberElementsPerMessage = 6 // FIXME - pretty error prone
     local numberMessages = table.count(addDeathMessages) / numberElementsPerMessage
     local currentIndex = 1
     while numberMessages > 0 do
@@ -55,7 +55,8 @@ function GUIDeathMessages:Update(deltaTime)
         local targetColor = addDeathMessages[currentIndex + 2]
         local targetName = addDeathMessages[currentIndex + 3]
         local iconIndex = addDeathMessages[currentIndex + 4]
-        self:AddMessage(killerColor, killerName, targetColor, targetName, iconIndex)
+        local targetIsPlayer = addDeathMessages[currentIndex + 5]
+        self:AddMessage(killerColor, killerName, targetColor, targetName, iconIndex, targetIsPlayer)
         currentIndex = currentIndex + numberElementsPerMessage
         numberMessages = numberMessages - 1
         
@@ -70,20 +71,21 @@ function GUIDeathMessages:Update(deltaTime)
         currentPosition.x = message["BackgroundXOffset"] 
         message["Background"]:SetPosition(currentPosition)
         message["Time"] = message["Time"] + deltaTime
-        if message["Time"] >= kTimeStartFade then
+        if message["Time"] >= message.sustainTime then
         
-            local fadeAmount = ((kTimeEndFade - message["Time"]) / (kTimeEndFade - kTimeStartFade))
+            local fadeFraction = (message["Time"]-message.sustainTime) / kFadeOutTime
+            local alpha = Clamp( 1-fadeFraction, 0, 1 )
             local currentColor = message["Killer"]:GetColor()
-            currentColor.a = fadeAmount
+            currentColor.a = alpha
             message["Killer"]:SetColor(currentColor)
             currentColor = message["Weapon"]:GetColor()
-            currentColor.a = fadeAmount
+            currentColor.a = alpha
             message["Weapon"]:SetColor(currentColor)
             currentColor = message["Target"]:GetColor()
-            currentColor.a = fadeAmount
+            currentColor.a = alpha
             message["Target"]:SetColor(currentColor)
             
-            if message["Time"] >= kTimeEndFade then
+            if fadeFraction > 1.0 then
                 table.insert(removeMessages, message)
             end
             
@@ -102,17 +104,7 @@ function GUIDeathMessages:Update(deltaTime)
     
 end
 
-local function GetTextureName()
-
-    if PlayerUI_IsOnMarineTeam() then
-        return kMarineWeaponTextureName
-    end
-    
-    return kAlienWeaponTextureName
-    
-end
-
-function GUIDeathMessages:AddMessage(killerColor, killerName, targetColor, targetName, iconIndex)
+function GUIDeathMessages:AddMessage(killerColor, killerName, targetColor, targetName, iconIndex, targetIsPlayer)
 
     local style = PlayerUI_IsOnMarineTeam() and "marine" or "alien"
     local xOffset = DeathMsgUI_GetTechOffsetX(0)
@@ -149,7 +141,7 @@ function GUIDeathMessages:AddMessage(killerColor, killerName, targetColor, targe
     
     insertMessage["Weapon"]:SetSize(Vector(GUIScale(iconWidth), GUIScale(iconHeight), 0))
     insertMessage["Weapon"]:SetAnchor(GUIItem.Left, GUIItem.Center)
-    insertMessage["Weapon"]:SetTexture(GetTextureName())
+    insertMessage["Weapon"]:SetTexture(kInventoryIconsTexture)
     insertMessage["Weapon"]:SetTexturePixelCoordinates(xOffset, yOffset, xOffset + iconWidth, yOffset + iconHeight)
     insertMessage["Weapon"]:SetColor(Color(1, 1, 1, 1))
     
@@ -185,6 +177,7 @@ function GUIDeathMessages:AddMessage(killerColor, killerName, targetColor, targe
     insertMessage["BackgroundXOffset"] = -textWidth - iconWidth - GUIScale(kScreenOffset)
     insertMessage["Background"]:SetPosition(Vector(insertMessage["BackgroundXOffset"], 0, 0))
     insertMessage["Background"]:SetColor(kBackgroundColor)
+    insertMessage.sustainTime = ConditionalValue( targetIsPlayer==1, kPlayerSustainTime, kSustainTime )
     
     table.insert(self.messages, insertMessage)
     

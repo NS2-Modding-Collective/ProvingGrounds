@@ -7,25 +7,7 @@
 // ========= For more information, visit us at http://www.unknownworlds.com =====================
 
 kGeneralEffectData = 
-{
-
-    upgrade_complete =
-    {
-        upgradeSoundEffects =
-        {
-            {sound = "sound/NS2.fev/alien/voiceovers/trait_available", classname = "Alien", done = true},
-            {sound = "sound/NS2.fev/marine/common/upgrade"},
-        },
-    },
-    
-    spawn_weapon =
-    {
-        spawnWeaponEffects =
-        {
-            {cinematic = "cinematics/marine/spawn_item.cinematic", done = true},    
-        }
-    },
-    
+{  
     spawn =
     {
         spawnEffects =
@@ -36,36 +18,6 @@ kGeneralEffectData =
             {cinematic = "cinematics/marine/spawn_item.cinematic", classname = "MedPack", done = true},
             {cinematic = "cinematics/marine/spawn_item.cinematic", classname = "Mine", done = true},
             
-            {cinematic = "cinematics/marine/structures/spawn_building_big.cinematic", classname = "CommandStation", done = true},
-            {cinematic = "cinematics/marine/structures/spawn_building_big.cinematic", classname = "RoboticsFactory", done = true},
-            {cinematic = "cinematics/marine/structures/spawn_building_big.cinematic", classname = "Extractor", done = true},
-            {cinematic = "cinematics/marine/structures/spawn_building.cinematic", classname = "Armory", done = true},
-            {cinematic = "cinematics/marine/structures/spawn_building.cinematic", classname = "ArmsLab", done = true},
-            {cinematic = "cinematics/marine/structures/spawn_building.cinematic", classname = "InfantryPortal", done = true},
-            {cinematic = "cinematics/marine/structures/spawn_building.cinematic", classname = "PrototypeLab", done = true},
-            {cinematic = "cinematics/marine/structures/spawn_building.cinematic", classname = "Sentry", done = true},
-            {cinematic = "cinematics/marine/structures/spawn_building.cinematic", classname = "PhaseGate", done = true},
-            {cinematic = "cinematics/marine/structures/spawn_building.cinematic", classname = "Observatory", done = true},
-            {cinematic = "cinematics/marine/structures/spawn_building.cinematic", classname = "SentryBattery", done = true},
-            
-            // alien
-            {cinematic = "cinematics/alien/shade/spawn_halluzination.cinematic", classname = "Hallucination", done = true},  
-            {cinematic = "cinematics/alien/gorge/clog_spawn.cinematic", classname = "Clog", done = true},
-            
-            {cinematic = "cinematics/alien/structures/spawn.cinematic", classname = "Egg", done = true},
-            {cinematic = "cinematics/alien/structures/spawn_small.cinematic", classname = "Embryo", done = true},
-            
-            {cinematic = "cinematics/alien/structures/spawn.cinematic", classname = "Crag", done = true},
-            {cinematic = "cinematics/alien/structures/spawn.cinematic", classname = "Shade", done = true},
-            {cinematic = "cinematics/alien/structures/spawn.cinematic", classname = "Shift", done = true},
-            {cinematic = "cinematics/alien/structures/spawn.cinematic", classname = "Whip", done = true},
-            
-            {cinematic = "cinematics/alien/structures/spawn.cinematic", classname = "Veil", done = true},
-            {cinematic = "cinematics/alien/structures/spawn.cinematic", classname = "Shell", done = true},
-            {cinematic = "cinematics/alien/structures/spawn.cinematic", classname = "Spur", done = true},
-            
-            {cinematic = "cinematics/alien/structures/spawn_small.cinematic", classname = "Cyst", done = true},
-        
         },
         
         spawnSoundEffects =
@@ -74,103 +26,11 @@ kGeneralEffectData =
             {sound = "", classname = "WeaponAmmoPack", done = true},
             {sound = "sound/NS2.fev/marine/structures/generic_spawn", classname = "AmmoPack", done = true},
             {sound = "sound/NS2.fev/marine/structures/generic_spawn", classname = "MedPack", done = true},
-            
-            {sound = "sound/NS2.fev/marine/structures/generic_spawn", classname = "CommandStation", done = true},
-            {sound = "sound/NS2.fev/marine/structures/generic_spawn", classname = "RoboticsFactory", done = true},
-            {sound = "sound/NS2.fev/marine/structures/generic_spawn", classname = "Extractor", done = true},
-            {sound = "sound/NS2.fev/marine/structures/mac/passby_mac", classname = "MAC", done = true},
-            {sound = "sound/NS2.fev/marine/structures/arc/deploy", classname = "ARC", done = true},
-            
-            {sound = "sound/NS2.fev/marine/structures/generic_spawn", classname = "Armory", done = true},
-            {sound = "sound/NS2.fev/marine/structures/generic_spawn", classname = "ArmsLab", done = true},
-            {sound = "sound/NS2.fev/marine/structures/generic_spawn", classname = "InfantryPortal", done = true},
-            {sound = "sound/NS2.fev/marine/structures/generic_spawn", classname = "PrototypeLab", done = true},
-            {sound = "sound/NS2.fev/marine/structures/generic_spawn", classname = "Sentry", done = true},
-            {sound = "sound/NS2.fev/marine/structures/generic_spawn", classname = "PhaseGate", done = true},
-            {sound = "sound/NS2.fev/marine/structures/generic_spawn", classname = "Observatory", done = true},
-            {sound = "sound/NS2.fev/marine/structures/generic_spawn", classname = "SentryBattery", done = true},
-        
-            // alien
-            {sound = "sound/NS2.fev/alien/structures/shade/cloak_triggered", classname = "Hallucination", done = true}, // TODO: replace
-            {sound = "sound/NS2.fev/alien/fade/vortex_start", classname = "EtherealGate", done = true},
-            {sound = "sound/NS2.fev/alien/common/hatch", classname = "Clog", done = true}, // TODO: replace
-            
-            {sound = "sound/NS2.fev/alien/structures/egg/spawn", classname = "Egg", done = true},
-            {sound = "sound/NS2.fev/alien/structures/egg/spawn", classname = "Embryo", done = true},
-            
-            {sound = "sound/NS2.fev/alien/skulk/spawn", classname = "Skulk", done = true},
-            {sound = "sound/NS2.fev/alien/gorge/spawn", classname = "Gorge", done = true},
-            {sound = "sound/NS2.fev/alien/lerk/spawn", classname = "Lerk", done = true},
-            {sound = "sound/NS2.fev/alien/fade/spawn", classname = "Fade", done = true},
-            {sound = "sound/NS2.fev/alien/onos/spawn", classname = "Onos", done = true},
-            
-            {sound = "sound/NS2.fev/alien/drifter/spawn", classname = "Drifter", done = true},
-            
-            {sound = "sound/NS2.fev/alien/structures/generic_spawn_large", classname = "Crag", done = true},
-            {sound = "sound/NS2.fev/alien/structures/generic_spawn_large", classname = "Shade", done = true},
-            {sound = "sound/NS2.fev/alien/structures/generic_spawn_large", classname = "Shift", done = true},
-            {sound = "sound/NS2.fev/alien/structures/generic_spawn_large", classname = "Whip", done = true},
-            
-            {sound = "sound/NS2.fev/alien/structures/spawn_small", classname = "Veil", done = true},
-            {sound = "sound/NS2.fev/alien/structures/spawn_small", classname = "Shell", done = true},
-            {sound = "sound/NS2.fev/alien/structures/spawn_small", classname = "Spur", done = true},
-            
-            {sound = "sound/NS2.fev/alien/structures/spawn_small", classname = "Cyst", done = true},
-            
+                       
             // common
             {sound = "sound/NS2.fev/common/connect", classname = "ReadyRoomPlayer", done = true},
         }
         
-    },
-
-    drifter_shoot_enzyme =
-    {
-        drifterShootEnzymeEffects =
-        {
-            {cinematic = "cinematics/alien/drifter/enzyme_muzzle.cinematic"},
-            {sound = "sound/NS2.fev/alien/drifter/parasite", done = true}            
-        }
-    },
-    
-    vortexed =
-    {
-        vortexedEffects =
-        {
-            {cinematic = "cinematics/marine/structures/disrupt.cinematic", classname = "ARC", done = true},
-            {cinematic = "cinematics/marine/structures/disrupt.cinematic", classname = "Structure", done = true}
-        }
-    },
-    
-    vortexed_end =
-    {
-        vortexEndEffects =
-        {
-            {cinematic = "cinematics/alien/fade/vortex_destroy.cinematic"},
-        }
-    },
-
-    energize =
-    {
-        energizeEffects =
-        {
-            //{sound = "sound/NS2.fev/alien/structures/shift/energize_player"},
-        
-            {parented_cinematic = "cinematics/alien/energize_big.cinematic", classname = "Onos", done = true},
-            {parented_cinematic = "cinematics/alien/energize_middle.cinematic", classname = "Structure", done = true},
-            {parented_cinematic = "cinematics/alien/energize_small.cinematic", classname = "Player", done = true},
-        }    
-    },
-    
-    // alien commander foresight effect
-    foresight =
-    {
-        foreSightEffects =
-        {
-            {parented_cinematic = "cinematics/alien/foresight_exosuit.cinematic", classname = "Exosuit", done = true},
-            {parented_cinematic = "cinematics/alien/foresight_player.cinematic", classname = "Player", done = true},
-            {parented_cinematic = "cinematics/alien/foresight_player.cinematic", classname = "MAC", done = true},
-            {parented_cinematic = "cinematics/alien/foresight_structure.cinematic", done = true},
-        }    
     },
 
     join_team =
@@ -182,71 +42,10 @@ kGeneralEffectData =
         },
     },
     
-    catalyst =
-    {
-        catalystEffects =
-        {
-            // TODO: adjust sound effects (those are triggered multiple times during catalyst effect)
-            {sound = "sound/NS2.fev/alien/common/frenzy", isalien = true},
-            {sound = "sound/NS2.fev/marine/common/catalyst", isalien = false},
-
-            {parented_cinematic = "cinematics/alien/nutrientmist_onos.cinematic", classname = "Onos", done = true},
-            {parented_cinematic = "cinematics/alien/nutrientmist_player.cinematic", classname = "Embryo", done = true},
-            {parented_cinematic = "cinematics/alien/nutrientmist_structure.cinematic", classname = "Structure", isalien = true, done = true},
-            
-            // Cinematic doesn't exist.
-            //{cinematic = "cinematics/marine/catalyst.cinematic", isalien = false},
-        },
-    },
-    
-    // Structure deploy animations handled in code ("deploy")
-    deploy =
-    {
-        deploySoundEffects =
-        {
-            {sound = "sound/NS2.fev/marine/structures/extractor_deploy", classname = "Extractor", done = true},
-            {sound = "sound/NS2.fev/marine/structures/infantry_portal_deploy", classname = "InfantryPortal", done = true},
-            {sound = "sound/NS2.fev/marine/structures/armory_deploy", classname = "Armory", done = true},
-            {sound = "sound/NS2.fev/marine/structures/armslab_deploy", classname = "ArmsLab", done = true},
-            {sound = "sound/NS2.fev/marine/structures/commandstation_deploy", classname = "CommandStation", done = true},
-            {sound = "sound/NS2.fev/marine/structures/observatory_deploy", classname = "Observatory", done = true},
-            {sound = "sound/NS2.fev/marine/structures/extractor_deploy", classname = "Extractor", done = true},
-            {sound = "sound/NS2.fev/marine/structures/phasegate_deploy", classname = "PhaseGate", done = true},
-            {sound = "sound/NS2.fev/marine/structures/roboticsfactory_deploy", classname = "RoboticsFactory", done = true},
-            {sound = "sound/NS2.fev/marine/structures/sentry_deploy", classname = "Sentry", done = true},                   
-            {sound = "sound/NS2.fev/alien/structures/deploy_small", classname = "Hydra", done = true},
-            {sound = "sound/NS2.fev/alien/structures/deploy_large", isalien = true, done = true},
-            {sound = "sound/NS2.fev/marine/structures/generic_deploy", isalien = false, done = true},           
-        },
-
-    },
-
     idle =
     {
         idleSounds =
-        {
-            {parented_sound = "sound/NS2.fev/marine/structures/armory_idle", classname = "Armory", done = true},
-            {parented_sound = "sound/NS2.fev/marine/structures/command_station_active", classname = "CommandStation", done = true},
-            {parented_sound = "sound/NS2.fev/marine/structures/extractor_active", classname = "Extractor", done = true},
-            {parented_sound = "sound/NS2.fev/marine/structures/infantry_portal_active", classname = "InfantryPortal", done = true},
-            {parented_sound = "sound/NS2.fev/marine/structures/phase_gate_active", classname = "PhaseGate", done = true},
-            {parented_sound = "sound/NS2.fev/marine/structures/arc/idle", classname = "ARC", done = true},
-            {parented_sound = "sound/NS2.fev/marine/structures/mac/hover", classname = "MAC", done = true},
-
-            {parented_sound = "sound/NS2.fev/alien/infestation/build", classname = "Cyst", done = true},
-            {parented_sound = "sound/NS2.fev/alien/structures/hydra/idle", classname = "Hydra", done = true},
-            {parented_sound = "sound/NS2.fev/alien/structures/crag/idle", classname = "Crag", done = true},
-            {parented_sound = "sound/NS2.fev/alien/structures/shade/idle", classname = "Shade", done = true},
-            {parented_sound = "sound/NS2.fev/alien/structures/shift/idle", classname = "Shift", done = true},
-            {parented_sound = "sound/NS2.fev/alien/structures/whip/idle", classname = "Whip", done = true},
-            
-            {parented_sound = "sound/NS2.fev/alien/skulk/idle", classname = "Skulk", done = true},
-            {parented_sound = "sound/NS2.fev/alien/gorge/idle", classname = "Gorge", done = true},
-            {parented_sound = "sound/NS2.fev/alien/lerk/idle", classname = "Lerk", done = true},
-            // No Fade idle sound in FMOD yet.
-            //{parented_sound = "sound/NS2.fev/alien/fade/idle", classname = "Fade", done = true},
-            {parented_sound = "sound/NS2.fev/alien/onos/idle", classname = "Onos", done = true},
-            
+        {            
             {sound = "sound/NS2.fev/marine/flamethrower/idle", classname = "Flamethrower", done = true},
         },
     },
@@ -254,45 +53,9 @@ kGeneralEffectData =
     idle_stop =
     {
         idleStopSounds =
-        {
-            
-            {stop_sound = "sound/NS2.fev/marine/structures/armory_idle", classname = "Armory", done = true},
-            {stop_sound = "sound/NS2.fev/marine/structures/command_station_active", classname = "CommandStation", done = true},
-            {stop_sound = "sound/NS2.fev/marine/structures/extractor_active", classname = "Extractor", done = true},
-            {stop_sound = "sound/NS2.fev/marine/structures/infantry_portal_active", classname = "InfantryPortal", done = true},
-            {stop_sound = "sound/NS2.fev/marine/structures/phase_gate_active", classname = "PhaseGate", done = true},
-            {stop_sound = "sound/NS2.fev/marine/structures/arc/idle", classname = "ARC", done = true},
-            {stop_sound = "sound/NS2.fev/marine/structures/mac/hover", classname = "MAC", done = true},
-
-            {stop_sound = "sound/NS2.fev/alien/infestation/build", classname = "Cyst", done = true},
-            {stop_sound = "sound/NS2.fev/alien/structures/hydra/idle", classname = "Hydra", done = true},
-            {stop_sound = "sound/NS2.fev/alien/structures/crag/idle", classname = "Crag", done = true},
-            {stop_sound = "sound/NS2.fev/alien/structures/shade/idle", classname = "Shade", done = true},
-            {stop_sound = "sound/NS2.fev/alien/structures/shift/idle", classname = "Shift", done = true},
-            {stop_sound = "sound/NS2.fev/alien/structures/whip/idle", classname = "Whip", done = true},
-            
-            {stop_sound = "sound/NS2.fev/alien/skulk/idle", classname = "Skulk", done = true},
-            {stop_sound = "sound/NS2.fev/alien/gorge/idle", classname = "Gorge", done = true},
-            {stop_sound = "sound/NS2.fev/alien/lerk/idle", classname = "Lerk", done = true},
-            //{stop_sound = "sound/NS2.fev/alien/fade/idle", classname = "Fade", done = true},
-            {stop_sound = "sound/NS2.fev/alien/onos/idle", classname = "Onos", done = true},
-            
+        {            
         }        
     },    
-    
-    construct =
-    {
-        constructEffects =
-        {
-            //{cinematic = "cinematics/alien/structures/build.cinematic", isalien = true},
-            
-            // Gorge
-            {sound = "sound/NS2.fev/alien/gorge/build", classname = "Gorge", done = true},
-            
-            // Drifter construction effects        
-            {sound = "sound/NS2.fev/alien/structures/generic_build", classname = "Drifter", done = true},
-        },
-    },
     
     // Called whenever the object is destroyed (this will happen after death, but also when an entity is deleted
     // due to a round reset. Called only on the server.
@@ -315,9 +78,6 @@ kGeneralEffectData =
             {cinematic = "cinematics/marine/exo/explosion.cinematic", classname = "Exo", done = true},
             // TODO: Substitute material properties?
             {cinematic = "cinematics/materials/%s/grenade_explosion.cinematic", classname = "Grenade", done = true},
-            {cinematic = "cinematics/marine/mac/death.cinematic", classname = "MAC", done = true},
-            {cinematic = "cinematics/marine/arc/destroyed.cinematic", classname = "ARC", done = true},
-            {cinematic = "cinematics/alien/structures/death_small.cinematic", classname = "Drifter", done = true},
         },
       
         // Play world sound instead of parented sound as entity is going away?
@@ -325,40 +85,11 @@ kGeneralEffectData =
         {
             {sound = "sound/NS2.fev/marine/structures/generic_death", classname = "Exo", done = true},
             
-            {sound = "sound/NS2.fev/alien/skulk/bite_kill", doer = "BiteLeap"},
-            
-            {stop_sound = "sound/NS2.fev/marine/structures/mac/thrusters", classname = "MAC"},
-            
-            {stop_sound = "sound/NS2.fev/marine/structures/arc/fire", classname = "ARC"},
-            
-            {sound = "sound/NS2.fev/marine/structures/mac/death", classname = "MAC", done = true},
-            {sound = "sound/NS2.fev/alien/drifter/death", classname = "Drifter", done = true},
-            {sound = "sound/NS2.fev/alien/skulk/death", classname = "Skulk", done = true},
-            {sound = "sound/NS2.fev/alien/gorge/death", classname = "Gorge", done = true},
-            {sound = "sound/NS2.fev/alien/lerk/death", classname = "Lerk", done = true},            
-            {stop_sound = "sound/NS2.fev/alien/fade/blink_loop", classname = "Fade"},
-            {sound = "sound/NS2.fev/alien/fade/death", classname = "Fade", done = true},
-            {sound = "sound/NS2.fev/alien/onos/death", classname = "Onos", done = true},
             {sound = "sound/NS2.fev/marine/common/death", classname = "Marine", done = true},
             {sound = "sound/NS2.fev/marine/structures/extractor_death", classname = "Extractor", done = true},
             {sound = "sound/NS2.fev/marine/structures/arc/death", classname = "ARC", done = true},
-            
-            // Note: PowerPoints are in game script
-            
-            {sound = "sound/NS2.fev/marine/power_node/destroyed_powerdown", classname = "SentryBattery"},
-            {sound = "sound/NS2.fev/marine/power_node/destroyed", classname = "SentryBattery", done = true},
         },
         
-    },
-    
-    // Play private sound for commander for good feedback
-    commander_create_local =
-    {
-        commanderCreateLocalEffects =
-        {
-            {private_sound = "sound/NS2.fev/alien/commander/spawn_2", isalien = true, done = true},
-            {private_sound = "sound/NS2.fev/marine/commander/spawn_2d", ismarine = true, done = true},
-        },
     },
     
     // Unit catches on fire. Called on server only.
@@ -366,7 +97,6 @@ kGeneralEffectData =
     {
         fireStartEffects =
         {
-            {parented_sound = "sound/NS2.fev/common/fire_large", classname = "Onos", done = true},
             {parented_sound = "sound/NS2.fev/common/fire_small"},
         },
     },
@@ -375,72 +105,16 @@ kGeneralEffectData =
     {
         fireStopEffects =
         {
-            {stop_sound = "sound/NS2.fev/common/fire_large", classname = "Onos", done = true},
             {stop_sound = "sound/NS2.fev/common/fire_small"},
         },
     },
-    
-    regenerate =
-    {
-        regenerateEffects =
-        {
-            {sound = "sound/NS2.fev/alien/common/regeneration"},
-            {private_sound = "sound/NS2.fev/alien/common/regeneration"},
-        },
-    },
-    
-    regenerate_ability =
-    {
-        regenerateAbilityEffects =
-        {
-            {sound = "sound/NS2.fev/alien/common/regeneration_ability"},
-            {private_sound = "sound/NS2.fev/alien/common/regeneration_ability"},
-        }
-    },
-    
-    infestation_grown =
-    {
-    },
-    
-    res_received =
-    {
-        resReceivedEffects =
-        {
-            {private_sound = "sound/NS2.fev/alien/common/res_received", classname = "Alien", done = true},
-            {private_sound = "sound/NS2.fev/alien/commander/res_received", classname = "Commander", isalien = true, done = true},
-            {private_sound = "sound/NS2.fev/marine/commander/res_received", classname = "Commander", isalien = false,  done = true},            
-            // Marine/Exo
-            {private_sound = "sound/NS2.fev/marine/common/res_received", done = true},
-
-        },
-    },
-    
+       
     complete_order =
     {
         completeOrderSound =
         {
             {sound = "sound/NS2.fev/marine/voiceovers/complete"},
         }
-    },
-    
-    destroydoor_front =
-    {
-        destroyDoorFrontEffects =
-        {
-            {sound = "sound/NS2.fev/marine/structures/generic_death"},
-            {cinematic = "cinematics/destroydoor_front.cinematic"},    
-        }
-    
-    },
-    
-    destroydoor_back =
-    {
-        destroyDoorFrontEffects =
-        {
-            {sound = "sound/NS2.fev/marine/structures/generic_death"},
-            {cinematic = "cinematics/destroydoor_back.cinematic"},    
-        }
-    
     },
             
 }

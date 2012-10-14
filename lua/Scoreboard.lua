@@ -6,30 +6,12 @@
 // Copyright 2011, Unknown Worlds Entertainment
 //
 //=============================================================================
-Script.Load("lua/Insight.lua")
 
 local playerData = { }
-
-function Insight_SetPlayerHealth(clientIndex, health, maxHealth, armor, maxArmor)
-    
-    for i = 1, table.maxn(playerData) do
-    
-        local playerRecord = playerData[i]
-        if playerRecord.ClientIndex == clientIndex then
-            playerRecord.Health = health
-            playerRecord.MaxHealth = maxHealth
-            playerRecord.Armor = armor
-            playerRecord.MaxArmor = maxArmor
-        end
-        
-    end
-    
-end
 
 function Scoreboard_Clear()
 
     playerData = { }
-    Insight_Clear()
     
 end
 
@@ -44,14 +26,9 @@ function Scoreboard_Sort()
             
                 if player1.Deaths == player2.Deaths then    
                 
-                    if player1.Resources == player2.Resources then    
-                    
-                        // Somewhat arbitrary but keeps more coherence and adds players to bottom in case of ties
-                        return player1.ClientIndex > player2.ClientIndex
-                        
-                    else
-                        return player1.Resources > player2.Resources
-                    end
+      
+                    // Somewhat arbitrary but keeps more coherence and adds players to bottom in case of ties
+                    return player1.ClientIndex > player2.ClientIndex
                     
                 else
                     return player1.Deaths < player2.Deaths
@@ -85,8 +62,6 @@ function Scoreboard_OnResetGame()
         playerRecord.Score = 0
         playerRecord.Kills = 0
         playerRecord.Deaths = 0
-        playerRecord.IsCommander = false
-        playerRecord.Resources = 0
         playerRecord.Status = ""
         playerRecord.IsSpectator = false
         
@@ -101,7 +76,7 @@ function Scoreboard_OnClientDisconnect(clientIndex)
     
 end
 
-function Scoreboard_SetPlayerData(clientIndex, entityId, playerName, teamNumber, score, kills, deaths, resources, isCommander, status, isSpectator)
+function Scoreboard_SetPlayerData(clientIndex, entityId, playerName, teamNumber, score, kills, deaths, status, isSpectator)
 
     // Lookup record for player and update it
     for i = 1, table.maxn(playerData) do
@@ -117,8 +92,6 @@ function Scoreboard_SetPlayerData(clientIndex, entityId, playerName, teamNumber,
             playerRecord.Score = score
             playerRecord.Kills = kills
             playerRecord.Deaths = deaths
-            playerRecord.IsCommander = isCommander
-            playerRecord.Resources = resources
             playerRecord.Status = status
             playerRecord.IsSpectator = isSpectator
             
@@ -139,8 +112,6 @@ function Scoreboard_SetPlayerData(clientIndex, entityId, playerName, teamNumber,
     playerRecord.Score = score
     playerRecord.Kills = kills
     playerRecord.Deaths = deaths
-    playerRecord.IsCommander = isCommander
-    playerRecord.Resources = 0
     playerRecord.Ping = 0
     playerRecord.Status = status
     playerRecord.IsSpectator = isSpectator
@@ -223,17 +194,9 @@ function GetScoreData(teamNumberTable)
     for index, playerRecord in ipairs(playerData) do
         if table.find(teamNumberTable, playerRecord.EntityTeamNumber) then
         
-            if not playerRecord.IsCommander then
-                table.insert(scoreData, playerRecord)
-            else
-                table.insert(commanders, playerRecord)
-            end    
+            table.insert(scoreData, playerRecord)    
                 
         end
-    end
-    
-    for _, commander in ipairs(commanders) do
-        table.insert(scoreData, 1, commander)
     end
     
     return scoreData
@@ -311,65 +274,4 @@ function ScoreboardUI_IsPlayerLocal(playerName)
     
     return false
     
-end
-
-function ScoreboardUI_IsPlayerCommander(playerName)
-
-    for i = 1, table.maxn(playerData) do
-
-        local playerRecord = playerData[i]        
-        if playerRecord.Name == playerName then
-            return playerRecord.IsCommander            
-        end
-        
-    end  
-    
-    return false
-    
-end
-
-function ScoreboardUI_GetOrderedCommanderNames(teamNumber)
-
-    local commanders = {}
-    
-    // Create table of commander entity ids and names
-    for i = 1, table.maxn(playerData) do
-    
-        local playerRecord = playerData[i]
-        
-        if (playerRecord.EntityTeamNumber == teamNumber) and playerRecord.IsCommander then
-            table.insert( commanders, {playerRecord.EntityId, playerRecord.Name} )
-        end
-        
-    end
-    
-    function sortCommandersByEntity(pair1, pair2)
-        return pair1[1] < pair2[1]
-    end
-    
-    // Sort it by entity id
-    table.sort(commanders, sortCommandersByEntity)
-    
-    // Return names in order
-    local commanderNames = {}
-    for index, pair in ipairs(commanders) do
-        table.insert(commanderNames, pair[2])
-    end
-    
-    return commanderNames
-    
-end
-
-function ScoreboardUI_GetNumberOfAliensByType(alienType)
-
-    local numberOfAliens = 0
-    
-    for index, playerRecord in ipairs(playerData) do
-        if alienType == playerRecord.Status then
-            numberOfAliens = numberOfAliens + 1
-        end
-    end
-    
-    return numberOfAliens
-
 end

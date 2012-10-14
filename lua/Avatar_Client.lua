@@ -7,15 +7,7 @@
 //
 // ========= For more information, visit us at http://www.unknownworlds.com =====================
 
-Avatar.k2DHUDFlash = "ui/marine_hud_2d.swf"
-Avatar.kBuyMenuTexture = "ui/marine_buymenu.dds"
-Avatar.kBuyMenuUpgradesTexture = "ui/marine_buymenu_upgrades.dds"
-Avatar.kBuyMenuiconsTexture = "ui/marine_buy_icons.dds"
-
 Avatar.kInfestationFootstepCinematic = PrecacheAsset("cinematics/marine/infestation_footstep.cinematic")
-Avatar.kSpitHitCinematic = PrecacheAsset("cinematics/marine/spit_hit_1p.cinematic")
-
-Avatar.kSpitHitEffectDuration = 1
 
 local kSensorBlipSize = 25
 
@@ -24,122 +16,17 @@ function Avatar:GetHealthbarOffset()
     return kMarineHealthbarOffset
 end
 
-function AvatarUI_GetHasArmsLab()
-
-    local player = Client.GetLocalPlayer()
-    
-    if player then
-        return GetHasTech(player, kTechId.ArmsLab)
-    end
-    
-    return false
-    
-end
-
-function PlayerUI_GetSensorBlipInfo()
-
-    PROFILE("PlayerUI_GetSensorBlipInfo")
-    
-    local player = Client.GetLocalPlayer()
-    local blips = {}
-    
-    if player then
-    
-        local eyePos = player:GetEyePos()
-        for index, blip in ientitylist(Shared.GetEntitiesWithClassname("SensorBlip")) do
-        
-            local blipOrigin = blip:GetOrigin()
-            local blipEntId = blip.entId
-            local blipName = ""
-            
-            // Lookup more recent position of blip
-            local blipEntity = Shared.GetEntity(blipEntId)
-            
-            // Do not display a blip for the local player.
-            if blipEntity ~= player then
-
-                if blipEntity then
-                
-                    if blipEntity:isa("Player") then
-                        blipName = Scoreboard_GetPlayerData(blipEntity:GetClientIndex(), kScoreboardDataIndexName)
-                    elseif blipEntity.GetTechId then
-                        blipName = GetDisplayNameForTechId(blipEntity:GetTechId())
-                    end
-                    
-                end
-                
-                if not blipName then
-                    blipName = ""
-                end
-                
-                // Get direction to blip. If off-screen, don't render. Bad values are generated if 
-                // Client.WorldToScreen is called on a point behind the camera.
-                local normToEntityVec = GetNormalizedVector(blipOrigin - eyePos)
-                local normViewVec = player:GetViewAngles():GetCoords().zAxis
-               
-                local dotProduct = normToEntityVec:DotProduct(normViewVec)
-                if dotProduct > 0 then
-                
-                    // Get distance to blip and determine radius
-                    local distance = (eyePos - blipOrigin):GetLength()
-                    local drawRadius = kSensorBlipSize/distance
-                    
-                    // Compute screen xy to draw blip
-                    local screenPos = Client.WorldToScreen(blipOrigin)
-
-                    local trace = Shared.TraceRay(eyePos, blipOrigin, CollisionRep.LOS, PhysicsMask.Bullets, EntityFilterTwo(player, entity))                               
-                    local obstructed = ((trace.fraction ~= 1) and ((trace.entity == nil) or trace.entity:isa("Door"))) 
-                    
-                    if not obstructed and entity and not entity:GetIsVisible() then
-                        obstructed = true
-                    end
-                    
-                    // Add to array (update numElementsPerBlip in GUISensorBlips:UpdateBlipList)
-                    table.insert(blips, screenPos.x)
-                    table.insert(blips, screenPos.y)
-                    table.insert(blips, drawRadius)
-                    table.insert(blips, obstructed)
-                    table.insert(blips, blipName)
-
-                end
-                
-            end
-            
-        end
-    
-    end
-    
-    return blips
-    
-end
-
-local function GetIsCloseToMenuStructure(self)
-    
-    local ptlabs = GetEntitiesForTeamWithinRange("PrototypeLab", self:GetTeamNumber(), self:GetOrigin(), PrototypeLab.kResupplyUseRange)
-    local armories = GetEntitiesForTeamWithinRange("Armory", self:GetTeamNumber(), self:GetOrigin(), Armory.kResupplyUseRange)
-    
-    return (ptlabs and #ptlabs > 0) or (armories and #armories > 0)
-
-end
-
 function Avatar:OnInitLocalClient()
 
     Player.OnInitLocalClient(self)
     
     self.notifications = {}
-    self.timeLastSpitHitEffect = 0
     
     if self:GetTeamNumber() ~= kTeamReadyRoom then
 
-        if self.marineHUD == nil then
-            self.marineHUD = GetGUIManager():CreateGUIScript("Hud/Marine/GUIMarineHUD")
+        if self.avatarHUD == nil then
+            self.avatarHUD = GetGUIManager():CreateGUIScript("Hud/Marine/GUIAvatarHUD")
         end
-        
-        if self.poisonedGUI == nil then
-            self.poisonedGUI = GetGUIManager():CreateGUIScript("GUIPoisonedFeedback")
-        end
-        
-        self:TriggerHudInitEffects()
         
         if self.pickups == nil then
             self.pickups = GetGUIManager():CreateGUIScript("GUIPickups")
@@ -148,32 +35,14 @@ function Avatar:OnInitLocalClient()
         if self.hints == nil then
             //self.hints = GetGUIManager():CreateGUIScript("GUIHints")
         end
-        
-        if self.sensorBlips == nil then
-            self.sensorBlips = GetGUIManager():CreateGUIScript("GUISensorBlips")
-        end 
        
         if self.unitStatusDisplay == nil then
             self.unitStatusDisplay = GetGUIManager():CreateGUIScript("GUIUnitStatus")
             self.unitStatusDisplay:EnableMarineStyle()
         end 
-
-        if self.objectiveDisplay == nil then
-            self.objectiveDisplay = GetGUIManager():CreateGUIScript("GUIObjectiveDisplay")
-        end 
-        
-        if self.progressDisplay == nil then
-            self.progressDisplay = GetGUIManager():CreateGUIScript("GUIProgressBar")
-        end
         
     end
     
-end
-
-function Avatar:TriggerHudInitEffects()
-
-    self.marineHUD:TriggerInitAnimations()
-
 end
 
 // check if player aims at a Weldable unit and return it's percentage
@@ -220,23 +89,6 @@ function Avatar:SetHudParams(hudParams)
     self.hudParams = hudParams
 end
 
-local function TriggerSpitHitEffect(coords)
-
-    local spitCinematic = Client.CreateCinematic(RenderScene.Zone_ViewModel)
-    spitCinematic:SetCinematic(Avatar.kSpitHitCinematic)
-    spitCinematic:SetRepeatStyle(Cinematic.Repeat_None)
-    spitCinematic:SetCoords(coords)
-    
-end
-
-function Avatar:UpdatePoisonedEffect()
-
-    if self.poisoned and self:GetIsAlive() and not self.poisonedGUI:GetIsAnimating() then    
-        self.poisonedGUI:TriggerPoisonEffect()        
-    end
-    
-end
-
 function Avatar:UpdateClientEffects(deltaTime, isLocal)
     
     Player.UpdateClientEffects(self, deltaTime, isLocal)
@@ -245,55 +97,13 @@ function Avatar:UpdateClientEffects(deltaTime, isLocal)
         
         self:UpdateGhostModel()
         
-        self:UpdatePoisonedEffect()
-        
-        if self.marineHUD then
-            self.marineHUD:SetIsVisible(self:GetIsAlive())
-        end
-        
-        if self.buyMenu then
-            if not self:GetIsAlive() or not GetIsCloseToMenuStructure(self) then
-                self:CloseMenu()
-            end
-        end    
-        
-        if self.screenEffects.disorient then
-            self.screenEffects.disorient:SetParameter("time", Client.GetTime())
+        if self.avatarHUD then
+            self.avatarHUD:SetIsVisible(self:GetIsAlive())
         end
 
         local blurEnabled = false
         self:SetBlurEnabled(blurEnabled)
-        
-        // update spit hit effect
-        if not Shared.GetIsRunningPrediction() then
-        
-            if self.timeLastSpitHit ~= self.timeLastSpitHitEffect then
-            
-                local viewAngle = self:GetViewAngles()
-                local angleDirection = Angles(GetPitchFromVector(self.lastSpitDirection), GetYawFromVector(self.lastSpitDirection), 0)
-                angleDirection.yaw = GetAnglesDifference(viewAngle.yaw, angleDirection.yaw)
-                angleDirection.pitch = GetAnglesDifference(viewAngle.pitch, angleDirection.pitch)
                 
-                TriggerSpitHitEffect(angleDirection:GetCoords())
-                
-                local intensity = self.lastSpitDirection:DotProduct(self:GetViewCoords().zAxis)
-                self.spitEffectIntensity = intensity
-                self.timeLastSpitHitEffect = self.timeLastSpitHit
-                
-            end
-            
-        end
-        
-        local spitHitDuration = Shared.GetTime() - self.timeLastSpitHitEffect
-        
-        if self.screenEffects.disorient and self.timeLastSpitHitEffect ~= 0 and spitHitDuration <= Avatar.kSpitHitEffectDuration then
-        
-            self.screenEffects.disorient:SetActive(true)
-            local amount = (1 - ( spitHitDuration/Avatar.kSpitHitEffectDuration) ) * 3.5 * self.spitEffectIntensity
-            self.screenEffects.disorient:SetParameter("amount", amount)
-            
-        end
-        
     end
     
 end
@@ -303,28 +113,7 @@ function Avatar:OnUpdateRender()
     PROFILE("Avatar:OnUpdateRender")
     
     Player.OnUpdateRender(self)
-    
-    local isLocal = self:GetIsLocalPlayer()
-    
-    // Synchronize the state of the light representing the flash light.
-    self.flashlight:SetIsVisible(self.flashlightOn and (isLocal or self:GetIsVisible()) )
-    
-    if self.flashlightOn then
-    
-        local coords = Coords(self:GetViewCoords())
-        coords.origin = coords.origin + coords.zAxis * 0.75
-        
-        self.flashlight:SetCoords(coords)
-        
-        // Only display atmospherics for third person players.
-        local density = 0.4
-        if isLocal and not self:GetIsThirdPerson() then
-            density = 0
-        end
-        self.flashlight:SetAtmosphericDensity(density)
-        
-    end
-    
+      
 end
 
 function Avatar:CloseMenu()
@@ -441,14 +230,6 @@ end
 function Avatar:TriggerFootstep()
 
     Player.TriggerFootstep(self)
-    
-    if self:GetGameEffectMask(kGameEffect.OnInfestation) and self:GetIsSprinting() and self == Client.GetLocalPlayer() and not self:GetIsThirdPerson() then
-    
-        local cinematic = Client.CreateCinematic(RenderScene.Zone_ViewModel)
-        cinematic:SetRepeatStyle(Cinematic.Repeat_None)
-        cinematic:SetCinematic(Avatar.kInfestationFootstepCinematic)
-    
-    end
 
 end
 
@@ -512,8 +293,8 @@ function Avatar:OnCountDown()
 
     Player.OnCountDown(self)
     
-    if self.marineHUD then
-        self.marineHUD:SetIsVisible(false)
+    if self.avatarHUD then
+        self.avatarHUD:SetIsVisible(false)
     end
 
 end
@@ -522,9 +303,8 @@ function Avatar:OnCountDownEnd()
 
     Player.OnCountDownEnd(self)
     
-    if self.marineHUD then
-        self.marineHUD:SetIsVisible(true)
-        self:TriggerHudInitEffects()
+    if self.avatarHUD then
+        self.avatarHUD:SetIsVisible(true)
     end
 
 end
