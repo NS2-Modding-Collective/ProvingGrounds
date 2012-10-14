@@ -16,7 +16,6 @@ Script.Load("lua/ScriptActor.lua")
 Script.Load("lua/PhysicsGroups.lua")
 Script.Load("lua/Mixins/ModelMixin.lua")
 Script.Load("lua/WeaponOwnerMixin.lua")
-Script.Load("lua/DoorMixin.lua")
 Script.Load("lua/mixins/ControllerMixin.lua")
 Script.Load("lua/LiveMixin.lua")
 Script.Load("lua/RagdollMixin.lua")
@@ -27,16 +26,11 @@ Script.Load("lua/FlinchMixin.lua")
 Script.Load("lua/TeamMixin.lua")
 Script.Load("lua/OrdersMixin.lua")
 Script.Load("lua/MobileTargetMixin.lua")
-Script.Load("lua/DetectableMixin.lua")
 Script.Load("lua/HintMixin.lua")
 Script.Load("lua/EntityChangeMixin.lua")
 Script.Load("lua/BadgeMixin.lua")
 Script.Load("lua/CorrodeMixin.lua")
 Script.Load("lua/UnitStatusMixin.lua")
-
-if Client then
-    Script.Load("lua/HelpMixin.lua")
-end
 
 --@Abstract
 class 'Player' (ScriptActor)
@@ -200,6 +194,9 @@ Player.kMaxStepAmount = 2
 local networkVars =
 {
     fullPrecisionOrigin = "private vector", 
+    // players need to be treated special by the interpolation code, as they are moved asynchronously
+    // compared to non-player entities.
+    onProcessMoveTime = "compensated time (by 0.001 [7 9 12])",
     
     // Controlling client index. -1 for not being controlled by a live player (ragdoll, fake player)
     clientIndex = "integer",
@@ -220,15 +217,14 @@ local networkVars =
     // bodyYaw must be compenstated as it feeds into the animation as a pose parameter
     bodyYaw = "compensated interpolated angle (11 bits)",
     standingBodyYaw = "angle interpolated (11 bits)",
+    
+    bodyYawRun = "compensated interpolated angle (11 bits)",
     runningBodyYaw = "angle interpolated (11 bits)",
     
     showScoreboard = "private boolean",
     sayingsMenu = "private integer (0 to 6)",
     timeLastMenu = "private time",
     darwinMode = "private boolean",
-    
-    // Time we last did damage to a target
-    timeTargetHit = "private time",
     
     // Set to true when jump key has been released after jump processed
     // Used to require the key to pressed multiple times
@@ -291,7 +287,6 @@ AddMixinNetworkVars(GameEffectsMixin, networkVars)
 AddMixinNetworkVars(FlinchMixin, networkVars)
 AddMixinNetworkVars(TeamMixin, networkVars)
 AddMixinNetworkVars(OrdersMixin, networkVars)
-AddMixinNetworkVars(DetectableMixin, networkVars)
 AddMixinNetworkVars(HintMixin, networkVars)
 AddMixinNetworkVars(BadgeMixin, networkVars)
 AddMixinNetworkVars(CorrodeMixin, networkVars)
@@ -314,7 +309,6 @@ function Player:OnCreate()
     InitMixin(self, ModelMixin)
     InitMixin(self, ControllerMixin)
     InitMixin(self, WeaponOwnerMixin, { kStowedWeaponWeightScalar = Player.kStowedWeaponWeightScalar })
-    InitMixin(self, DoorMixin)
     InitMixin(self, LiveMixin)
     InitMixin(self, RagdollMixin)
     InitMixin(self, UpgradableMixin)
@@ -323,15 +317,12 @@ function Player:OnCreate()
     InitMixin(self, TeamMixin)
     InitMixin(self, PointGiverMixin)
     InitMixin(self, OrdersMixin, { kMoveOrderCompleteDistance = kPlayerMoveOrderCompleteDistance })
-    InitMixin(self, DetectableMixin)
     InitMixin(self, HintMixin, { kHintSound = Player.kTooltipSound, kHintInterval = Player.kHintInterval })
     InitMixin(self, EntityChangeMixin)
     InitMixin(self, BadgeMixin)
     InitMixin(self, CorrodeMixin)
     
-    if Client then
-        InitMixin(self, HelpMixin)
-    end
+    self.onProcessMoveTime = 0
     
     self:SetLagCompensated(true)
     
@@ -346,6 +337,8 @@ function Player:OnCreate()
     
     self.bodyYaw = 0
     self.standingBodyYaw = 0
+    
+    self.bodyYawRun = 0
     self.runningBodyYaw = 0
     
     self.clientIndex = -1
@@ -364,7 +357,6 @@ function Player:OnCreate()
     self.timeLastMenu = 0    
     self.darwinMode = false
     self.timeLastSayingsAction = 0
-    self.timeTargetHit = 0
     self.kills = 0
     self.deaths = 0
     
@@ -468,7 +460,7 @@ function Player:OnInitialized()
         
         self.giveDamageTimeClient = self.giveDamageTime
         
-        if not self:GetIsLocalPlayer() and not self:isa("Commander") and not self:isa("Spectator") then
+        if not self:GetIsLocalPlayer() and not self:isa("Spectator") then
             InitMixin(self, UnitStatusMixin)
         end
         
@@ -501,11 +493,6 @@ function Player:OnInitialized()
     
     self.communicationStatus = kPlayerCommunicationStatus.None
     
-end
-
-// For signaling reticle hit feedback on client
-function Player:SetTimeTargetHit()
-    self.timeTargetHit = Shared.GetTime()
 end
 
 function Player:AddKill()
@@ -625,8 +612,8 @@ end
 
 function Player:OverrideSayingsMenu(input)
 
-    local sayingsButtonPressed = bit.band(input.commands, Move.ToggleSayings1) ~= 0 or
-                                 bit.band(input.commands, Move.ToggleSayings2) ~= 0 or
+    local sayingsButtonPressed = bit.band(input.commands, Move.ToggleRequest) ~= 0 or
+                                 bit.band(input.commands, Move.ToggleSayings) ~= 0 or
                                  bit.band(input.commands, Move.ToggleVoteMenu) ~= 0
     
     local voteButtonPressed = (self:GetTeamNumber() == kTeam1Index or self:GetTeamNumber() == kTeam2Index) and
@@ -639,7 +626,7 @@ function Player:OverrideSayingsMenu(input)
         if self.timeLastSayingsAction == nil or (Shared.GetTime() > self.timeLastSayingsAction + 0.2) then
         
             local newMenu = 1
-            if bit.band(input.commands, Move.ToggleSayings2) ~= 0 then
+            if bit.band(input.commands, Move.ToggleSayings) ~= 0 then
                 newMenu = ConditionalValue(self:isa("Alien"), 1, 2)
             elseif voteButtonPressed then
                 newMenu = ConditionalValue(self:isa("Alien"), 2, 3)
@@ -665,9 +652,9 @@ function Player:OverrideSayingsMenu(input)
         end
         
         // Sayings toggles are handled client side.
-        local removeToggleMenuMask = bit.bxor(0xFFFFFFFF, Move.ToggleSayings1)
+        local removeToggleMenuMask = bit.bxor(0xFFFFFFFF, Move.ToggleRequest)
         input.commands = bit.band(input.commands, removeToggleMenuMask)
-        removeToggleMenuMask = bit.bxor(0xFFFFFFFF, Move.ToggleSayings2)
+        removeToggleMenuMask = bit.bxor(0xFFFFFFFF, Move.ToggleSayings)
         input.commands = bit.band(input.commands, removeToggleMenuMask)
         removeToggleMenuMask = bit.bxor(0xFFFFFFFF, Move.ToggleVoteMenu)
         input.commands = bit.band(input.commands, removeToggleMenuMask)
@@ -1009,32 +996,6 @@ local function AttemptToUse(self, timePassed)
 
 end
 
-function Player:GetCurrentBuildPercentage()
-
-    local buildPercentage = 0
-    
-    if self:GetIsUsing() then
-        local entity, attachPoint = self:PerformUseTrace() 
-
-        if entity and HasMixin(entity, "Construct") then
-            buildPercentage = entity:GetBuiltFraction()
-        end
-    end
-
-    return buildPercentage
-
-end
-
-// Play different animations depending on current weapon
-function Player:GetCustomAnimationName(animName)
-    local activeWeapon = self:GetActiveWeapon()
-    if (activeWeapon ~= nil) then
-        return string.format("%s_%s", activeWeapon:GetMapName(), animName)
-    else
-        return animName
-    end
-end
-
 function Player:Buy()
 end
 
@@ -1333,16 +1294,6 @@ function Player:EndUse(deltaTime)
     
 end
 
-function Player:GetMinimapFov(targetEntity)
-
-    if targetEntity and targetEntity:isa("Player") then
-        return 28
-    end
-    
-    return 90
-    
-end
-
 // Make sure we can't move faster than our max speed (esp. when holding
 // down multiple keys, going down ramps, etc.)
 function Player:OnClampSpeed(input, velocity)
@@ -1514,18 +1465,6 @@ local function UpdateJumpLand(self, wasOnGround, previousVelocity)
     if self.jumping and wasOnGround == false and self:GetIsOnSurface() then
     
         local slowDown = false
-        if self:GetSlowOnLand() then
-        
-            /*
-            local slowdownScalar = Clamp(math.max(-previousVelocity.y, 0) / 16 , 0, 1)        
-            SetSpeedDebugText("jumpland y vel: %s slowdown: %s ", ToString(RoundVelocity(previousVelocity.y)), ToString(RoundVelocity(slowdownScalar)))        
-            self:AddSlowScalar(slowdownScalar)
-            */
-            
-            self:AddSlowScalar(0.5)
-            slowDown = true
-            
-        end
         
         self.landIntensity = math.abs(previousVelocity.y) / 10
         
@@ -1544,12 +1483,9 @@ local function UpdateBodyYaw(self, deltaTime, tempInput)
 
     local yaw = self:GetAngles().yaw
     
-    local moving = false
-    
     // Reset values when moving.
     if self:GetVelocityLength() > 0.1 then
     
-        moving = true
         // Take a bit of time to reset value so going into the move animation doesn't skip.
         self.standingBodyYaw = SlerpRadians(self.standingBodyYaw, yaw, deltaTime * kTurnMoveYawBlendToMovingSpeed)
         self.standingBodyYaw = Math.Wrap(self.standingBodyYaw, 0, kDoublePI)
@@ -1571,20 +1507,14 @@ local function UpdateBodyYaw(self, deltaTime, tempInput)
         
     end
     
-    if moving then
+    self.bodyYawRun = Clamp(RadianDiff(self.runningBodyYaw, yaw), -kHalfPI, kHalfPI)
+    self.runningBodyYaw = Math.Wrap(self.bodyYawRun + yaw, 0, kDoublePI)
     
-        self.bodyYaw = Clamp(RadianDiff(self.runningBodyYaw, yaw), -kHalfPI, kHalfPI)
-        self.runningBodyYaw = Math.Wrap(self.bodyYaw + yaw, 0, kDoublePI)
-        
+    local adjustedBodyYaw = RadianDiff(self.standingBodyYaw, yaw)
+    if adjustedBodyYaw >= 0 then
+        self.bodyYaw = adjustedBodyYaw % kHalfPI
     else
-    
-        local adjustedBodyYaw = RadianDiff(self.standingBodyYaw, yaw)
-        if adjustedBodyYaw >= 0 then
-            self.bodyYaw = adjustedBodyYaw % kHalfPI
-        else
-            self.bodyYaw = -(kHalfPI - adjustedBodyYaw % kHalfPI)
-        end
-        
+        self.bodyYaw = -(kHalfPI - adjustedBodyYaw % kHalfPI)
     end
     
 end
@@ -2088,9 +2018,8 @@ function Player:GetIsOnGround()
     
         self.onGround = false
         
-        // We're not on ground for a short time after we jump
         self.onGround = self:GetIsCloseToGround(Player.kOnGroundDistance)
-            
+        
         if self.onGround then
             self.timeLastOnGround = Shared.GetTime()
         end
@@ -2379,12 +2308,7 @@ function Player:GetMaterialBelowPlayer()
     if not material or string.len(material) == 0 then
         material = "metal"
     end
-    
-    // Have squishy footsteps on infestation 
-    if self:GetGameEffectMask(kGameEffect.OnInfestation) then
-        material = "organic"
-    end
-    
+   
     return material
 end
 
@@ -2780,10 +2704,6 @@ function Player:SetScoreboardChanged(state)
     self.scoreboardChanged = state
 end
 
-function Player:GetTimeTargetHit()
-    return self.timeTargetHit
-end
-
 function Player:GetHasSayings()
     return false
 end
@@ -2904,19 +2824,6 @@ end
 
 function Player:GetDarwinMode()
     return self.darwinMode
-end
-
-function Player:OnSighted(sighted)
-
-    if self.GetActiveWeapon then
-    
-        local weapon = self:GetActiveWeapon()
-        if weapon ~= nil then
-            weapon:SetRelevancy(sighted)
-        end
-        
-    end
-    
 end
 
 function Player:GetGameStarted()
@@ -3056,48 +2963,6 @@ function Player:OnInitialSpawn(techPointOrigin)
     self:SetViewAngles(angles)
     
 end
-
-
-// welding, constructing or attacking command structures will show the progress bar
-function Player:OnRepair(target, success)
-
-    if Client and self:GetIsLocalPlayer() then
-    
-        if self.timeLastConstructed ~= Shared.GetTime() and target and target ~= self and not target:isa("CommandStructure") and (not HasMixin(target, "Construct") or target:GetIsBuilt()) then
-        
-            if target:isa("Marine") then
-                self.progressFraction = target:GetArmorScalar()
-            else
-                self.progressFraction = target:GetHealthScalar()
-            end
-        
-            if target:isa("Player") then
-                self.progressText = target:GetName()
-            else        
-                self.progressText = GetDisplayName(target)
-            end    
-            
-            if success then
-                self.timeLastRepaired = Shared.GetTime()
-            end
-        
-        end
-    
-    end
-
-end
-
-function Player:OnConstructTarget(target)
-
-    if Client and self:GetIsLocalPlayer() and HasMixin(target, "Construct") then
-
-        self.progressText = GetDisplayName(target)
-        self.progressFraction = target:GetBuiltFraction()
-        self.timeLastConstructed = Shared.GetTime()
-    
-    end
-
-end  
 
 // This causes problems when doing a trace ray against CollisionRep.Move.
 function Player:OnCreateCollisionModel()

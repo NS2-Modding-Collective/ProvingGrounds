@@ -41,24 +41,6 @@ function PlayingTeam:Initialize(teamName, teamNumber)
     self:OnCreate()
         
     self.timeSinceLastLOSUpdate = Shared.GetTime()
-    self.timeSinceLastRTUpdate = Shared.GetTime()
-    
-    self.ejectCommVoteManager = VoteManager()
-    self.ejectCommVoteManager:Initialize()
-
-    // child classes can specify a custom team info class
-    local teamInfoMapName = TeamInfo.kMapName
-    if self.GetTeamInfoMapName then
-        teamInfoMapName = self:GetTeamInfoMapName()
-    end
-    
-    local teamInfoEntity = Server.CreateEntity(teamInfoMapName)
-    
-    self.teamInfoEntityId = teamInfoEntity:GetId()
-    teamInfoEntity:SetWatchTeam(self)
-    
-    self.lastCommPingTime = 0
-    self.lastCommPingPosition = Vector(0,0,0)
     
     self.entityTechIds = {}
     self.techIdCount = {}
@@ -66,13 +48,6 @@ function PlayingTeam:Initialize(teamName, teamNumber)
 end
 
 function PlayingTeam:Uninitialize()
-
-    if self.teamInfoEntityId and Shared.GetEntity(self.teamInfoEntityId) then
-    
-        DestroyEntity(Shared.GetEntity(self.teamInfoEntityId))
-        self.teamInfoEntityId = nil
-        
-    end
     
     self.entityTechIds = { }
     self.techIdCount = { }
@@ -112,16 +87,6 @@ function PlayingTeam:OnInitialized()
     self.timeOfLastPlayedTeamAlert = nil
     self.alerts = {}
     
-    self.timeSinceLastRTUpdate = Shared.GetTime()
-    
-    self.teamResources = 0
-    self.totalTeamResourcesCollected = 0
-    
-    self.ejectCommVoteManager:Reset()
-    
-    self.lastCommPingTime = 0
-    self.lastCommPingPosition = Vector(0,0,0)
-
 end
 
 function PlayingTeam:ResetTeam()
@@ -135,23 +100,6 @@ end
 function PlayingTeam:OnResetComplete()
 end
 
-function PlayingTeam:GetNumCapturedTechPoints()
-
-    local commandStructures = GetEntitiesForTeam("CommandStructure", self:GetTeamNumber())
-    local count = 0
-    
-    for index, cs in ipairs(commandStructures) do
-    
-        if cs:GetIsBuilt() and cs:GetIsAlive() and cs:GetAttached() then
-            count = count + 1
-        end
-        
-    end
-    
-    return count
-
-end
-
 function PlayingTeam:Reset()
 
     self:OnInitialized()
@@ -162,13 +110,6 @@ function PlayingTeam:Reset()
 
 end
 
-function PlayingTeam:GetHasCommander()
-    local commanders = GetEntitiesForTeam("Commander", self:GetTeamNumber())
-    return table.count(commanders) > 0
-end
-
-// This is the initial tech point for the team
-
 function PlayingTeam:InitTechTree()
    
     self.techTree = TechTree()
@@ -176,89 +117,12 @@ function PlayingTeam:InitTechTree()
     self.techTree:Initialize()
     
     self.techTree:SetTeamNumber(self:GetTeamNumber())
-    
-    // Menus
-    self.techTree:AddMenu(kTechId.RootMenu)
-    self.techTree:AddMenu(kTechId.BuildMenu)
-    self.techTree:AddMenu(kTechId.AdvancedMenu)
-    self.techTree:AddMenu(kTechId.AssistMenu)
-    
+
 end
 
 // Returns marine or alien type
 function PlayingTeam:GetTeamType()
     return self.teamType
-end
-
-local relevantResearchIds = nil
-local function GetIsResearchRelevant(techId)
-
-    if not relevantResearchIds then
-    
-        relevantResearchIds = {}
-        relevantResearchIds[kTechId.ShotgunTech] = 2
-        relevantResearchIds[kTechId.GrenadeLauncherTech] = 2
-        relevantResearchIds[kTechId.RifleUpgradeTech] = 2
-        relevantResearchIds[kTechId.FlamethrowerTech] = 2
-        relevantResearchIds[kTechId.ExosuitTech] = 3
-        relevantResearchIds[kTechId.JetpackTech] = 3
-        relevantResearchIds[kTechId.DualMinigunTech] = 3
-        
-        relevantResearchIds[kTechId.Armor1] = 1
-        relevantResearchIds[kTechId.Armor2] = 1
-        relevantResearchIds[kTechId.Armor3] = 1
-        
-        relevantResearchIds[kTechId.Weapons1] = 1
-        relevantResearchIds[kTechId.Weapons2] = 1
-        relevantResearchIds[kTechId.Weapons3] = 1
-        
-        relevantResearchIds[kTechId.Leap] = 1
-        relevantResearchIds[kTechId.BileBomb] = 1
-        relevantResearchIds[kTechId.Spores] = 1
-        relevantResearchIds[kTechId.Blink] = 1
-        relevantResearchIds[kTechId.Stomp] = 1
-        
-        relevantResearchIds[kTechId.Xenocide] = 1
-        //relevantResearchIds[kTechId.WebStalk] = 1
-        relevantResearchIds[kTechId.Umbra] = 1
-        relevantResearchIds[kTechId.Vortex] = 1
-        //relevantResearchIds[kTechId.BoneShield] = 1
-    
-    end
-    
-    return relevantResearchIds[techId]
-
-end
-
-function PlayingTeam:OnResearchComplete(structure, researchId)
-
-    // Loop through all entities on our team and tell them research was completed
-    local teamEnts = GetEntitiesWithMixinForTeam("Research", self:GetTeamNumber())
-    for index, ent in ipairs(teamEnts) do
-        ent:TechResearched(structure, researchId)
-    end
-    
-    if structure then
-    
-        local techNode = self:GetTechTree():GetTechNode(researchId)
-        
-        if techNode and (techNode:GetIsEnergyManufacture() or techNode:GetIsManufacture() or techNode:GetIsPlasmaManufacture()) then
-            self:TriggerAlert(ConditionalValue(self:GetTeamType() == kMarineTeamType, kTechId.MarineAlertManufactureComplete, kTechId.AlienAlertManufactureComplete), structure)  
-        else
-            self:TriggerAlert(ConditionalValue(self:GetTeamType() == kMarineTeamType, kTechId.MarineAlertResearchComplete, kTechId.AlienAlertResearchComplete), structure)
-        end
-        
-    end
-    
-    // pass relevant techIds to team info object
-    local techPriority = GetIsResearchRelevant(researchId)
-    if techPriority ~= nil then
-    
-        local teamInfoEntity = Shared.GetEntity(self.teamInfoEntityId)
-        teamInfoEntity:SetLatestResearchedTech(researchId, Shared.GetTime() + PlayingTeam.kResearchDisplayTime, techPriority) 
-        
-    end
-    
 end
 
 // Returns sound name of last alert and time last alert played (for testing)
@@ -431,7 +295,7 @@ function PlayingTeam:RespawnPlayer(player, origin, angles)
             local marineSpawnPoint = nil
             local marineSpawnPoints = Server.team1SpawnList
             local numSpawnPoints = table.maxn(marineSpawnPoints)
-            
+          
             if numSpawnPoints > 0 then
             
                 local marineSpawnPoint = GetRandomClearSpawnPoint(player, marineSpawnPoints)
@@ -500,75 +364,12 @@ function PlayingTeam:RespawnPlayer(player, origin, angles)
     
 end
 
-function PlayingTeam:TechAdded(entity)
-
-    PROFILE("PlayingTeam:TechAdded")
-
-    // Tell tech tree to recompute availability next think
-    local techId = entity:GetTechId()
-
-    if not self.requiredTechIds then
-        self.requiredTechIds = { }
-    end
-    
-    // don't do anything if this tech is not prereq of another tech
-    if not self.requiredTechIds[techId] then
-        return
-    end    
-    
-    table.insertunique(self.entityTechIds, techId)
-    
-    if self.techIdCount[techId] then
-        self.techIdCount[techId] = self.techIdCount[techId] + 1
-    else
-        self.techIdCount[techId] = 1
-    end
-    
-    //Print("TechAdded %s  id: %s", EnumToString(kTechId, entity:GetTechId()), ToString(entity:GetTechId()))
-    if self.techTree then
-        self.techTree:SetTechChanged()
-    end
-end
-
-function PlayingTeam:TechRemoved(entity)
-
-    PROFILE("PlayingTeam:TechRemoved")
-
-    // Tell tech tree to recompute availability next think
-    
-    local techId = entity:GetTechId()
-
-    // don't do anything if this tech is not prereq of another tech
-    if not self.requiredTechIds[techId] then
-        return
-    end
-    
-    if self.techIdCount[techId] then    
-        self.techIdCount[techId] = self.techIdCount[techId] - 1    
-    end
-    
-    if self.techIdCount[techId] == nil or self.techIdCount[techId] <= 0 then
-        table.removevalue(self.entityTechIds, techId)
-        self.techIdCount[techId] = nil
-    end
-    
-    //Print(ToString(debug.traceback()))
-    //Print("TechRemoved %s  id: %s", EnumToString(kTechId, entity:GetTechId()), ToString(entity:GetTechId()))
-    if(self.techTree ~= nil) then
-        self.techTree:SetTechChanged()
-    end
-    
-end
 
 function PlayingTeam:Update(timePassed)
 
     PROFILE("PlayingTeam:Update")
     
-    self:UpdateTechTree()
-    
     self:UpdateGameEffects(timePassed)
-    
-    self:UpdateVoteToEject()
     
 end
 
@@ -590,54 +391,6 @@ end
 function PlayingTeam:TriggerSayingAction(player, sayingActionTechId)
 end
 
-function PlayingTeam:UpdateTechTree()
-
-    PROFILE("PlayingTeam:UpdateTechTree")
-    
-    // Compute tech tree availability only so often because it's very slooow
-    if self.techTree ~= nil and (self.timeOfLastTechTreeUpdate == nil or Shared.GetTime() > self.timeOfLastTechTreeUpdate + PlayingTeam.kTechTreeUpdateTime) then
-
-        self.techTree:Update(self.entityTechIds, self.techIdCount)
-        
-        /*
-        local techTreeString = ""        
-        for _, techId in ipairs(self.entityTechIds) do            
-            techTreeString = techTreeString .. " " .. EnumToString(kTechId, techId) .. "(" .. ToString(self.techIdCount[techId]) .. ")"            
-        end        
-        Print("-----------team nr %s", ToString(self:GetTeamNumber()))
-        Print(techTreeString)
-        Print("------------------------")
-        */
-
-        // Send tech tree base line to players that just switched teams or joined the game        
-        local players = self:GetPlayers()
-        
-        for index, player in ipairs(players) do
-        
-            if player:GetSendTechTreeBase() then
-            
-                self.techTree:SendTechTreeBase(player)
-                
-                player:ClearSendTechTreeBase()
-                
-            end
-            
-        end
-        
-        // Send research, availability, etc. tech node updates to team players
-        self.techTree:SendTechTreeUpdates(players)
-        
-        self.timeOfLastTechTreeUpdate = Shared.GetTime()
-        
-        self:OnTechTreeUpdated()
-        
-    end
-    
-end
-
-function PlayingTeam:OnTechTreeUpdated()
-end
-
 // Update from alien team instead of in alien buildings think because we need to clear
 // game effect flag too.
 function PlayingTeam:UpdateGameEffects(timePassed)
@@ -649,125 +402,3 @@ end
 function PlayingTeam:UpdateTeamSpecificGameEffects()
 end
 
-function PlayingTeam:VoteToEjectCommander(votingPlayer, targetCommander)
-
-    local votingPlayerSteamId = tonumber(Server.GetOwner(votingPlayer):GetUserId())
-    local targetSteamId = tonumber(Server.GetOwner(targetCommander):GetUserId())
-    
-    if self.ejectCommVoteManager:PlayerVotesFor(votingPlayerSteamId, targetSteamId, Shared.GetTime()) then
-        PrintToLog("%s cast vote to eject commander %s", votingPlayer:GetName(), targetCommander:GetName())
-    end
-    
-end
-
-function PlayingTeam:UpdateVoteToEject()
-
-    PROFILE("PlayingTeam:UpdateVoteToEject")
-    
-    // Update with latest team size
-    self.ejectCommVoteManager:SetNumPlayers(self:GetNumPlayers())
-
-    // Eject commander if enough votes cast
-    if self.ejectCommVoteManager:GetVotePassed() then    
-        
-        local targetCommander = GetPlayerFromUserId( self.ejectCommVoteManager:GetTarget() )
-        
-        if targetCommander and targetCommander.Eject then
-            targetCommander:Eject()
-        end        
-        
-        self.ejectCommVoteManager:Reset()
-        
-    elseif self.ejectCommVoteManager:GetVoteElapsed(Shared.GetTime()) then
-    
-        self.ejectCommVoteManager:Reset()
-            
-    end
-    
-end
-
-function PlayingTeam:GetPresRecipientCount()
-
-    local recipientCount = 0
-    for i, playerId in ipairs(self.playerIds) do
-        
-        local player = Shared.GetEntity(playerId)
-        if player and player:GetResources() < kMaxPersonalResources and player:GetIsAlive() then
-            recipientCount = recipientCount + 1
-        end
-
-    end
-    
-    return recipientCount
-
-end
-
-// split resources to all players until their they either have all reached the maximum or the rewarded res was splitted evenly
-function PlayingTeam:SplitPres(resAwarded)
-
-    local recipientCount = self:GetPresRecipientCount()
-
-    for i = 1, recipientCount do 
-    
-        if resAwarded <= 0.001 or recipientCount <= 0 then
-            break;
-        end    
-    
-        local resPerPlayer = resAwarded / recipientCount
-        
-        for i, playerId in ipairs(self.playerIds) do
-            local player = Shared.GetEntity(playerId)
-            if player and player:GetIsAlive() then
-                resAwarded = resAwarded - player:AddResources(resPerPlayer)
-            end
-        end
-        
-        recipientCount = self:GetPresRecipientCount()
-
-    end
-
-end
-
-// add resources to player and split overflow amongst the team
-function PlayingTeam:AwardPersonalResources(min, max, pointOwner)
-
-    local resAwarded = math.random(min, max) 
-    resAwarded = resAwarded - pointOwner:AwardResForKill(resAwarded)
-    
-    if resAwarded > 0 then
-        self:SplitPres(resAwarded)
-    end
-
-end
-
-function PlayingTeam:GetCommander()
-
-    local commanders = GetEntitiesForTeam("Commander", self:GetTeamNumber())
-    if commanders and #commanders > 0 then
-        return commanders[1]
-    end    
-
-    return nil
-end
-
-function PlayingTeam:PlayCommanderSound(soundName)
-
-    local commander = self:GetCommander()
-    if commander then
-        StartSoundEffectForPlayer(soundName, commander)
-    end
-
-end
-
-function PlayingTeam:GetCommanderPingTime()
-    return self.lastCommPingTime
-end
-
-function PlayingTeam:GetCommanderPingPosition()
-    return self.lastCommPingPosition
-end
-
-function PlayingTeam:SetCommanderPing(position)
-    self.lastCommPingTime = Shared.GetTime()
-    self.lastCommPingPosition = position
-end

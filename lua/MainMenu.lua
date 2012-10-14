@@ -44,18 +44,26 @@ end
 
 function MainMenu_GetIsOpened()
 
-    if loadLuaMenu then
+    // Don't load or open main menu while debugging (too slow)
+    if not GetIsDebugging() then
     
-        if not gMainMenu then
-            return false
-        else
-            return gMainMenu:GetIsVisible()
-        end
+        if loadLuaMenu then
         
+            if not gMainMenu then
+                return false
+            else
+                return gMainMenu:GetIsVisible()
+            end
+            
+        else
+            return MenuManager.GetMenu() ~= nil
+        end
+
     else
-        return MenuManager.GetMenu() ~= nil
+//        Print("Skipping MainMenu_GetIsOpened() while debugging. Pass map map_name on command line.")
     end
     
+    return false    
 end
 
 function LeaveMenu()
@@ -108,15 +116,7 @@ function MainMenu_HostGame(mapFileName, modName)
 end
 
 function MainMenu_SelectServer(serverNum)
-
     gSelectedServerNum = serverNum
-    
-    /*
-    if gMainMenu then
-        gMainMenu:OpenServerDetail(serverNum)    
-    end
-    */
-    
 end
 
 function MainMenu_GetSelectedServer()
@@ -136,6 +136,23 @@ function MainMenu_GetSelectedRequiresPassword()
     return false
     
 end
+
+function MainMenu_GetSelectedIsFull()
+    
+    if gSelectedServerNum then
+        return Client.GetServerNumPlayers(gSelectedServerNum) == Client.GetServerMaxPlayers(gSelectedServerNum)
+    end
+    
+end
+
+function MainMenu_GetSelectedServerName()
+    
+    if gSelectedServerNum then
+        return Client.GetServerName(gSelectedServerNum)
+    end
+    
+end
+
 
 function MainMenu_JoinSelected()
     MainMenu_SBJoinServer( Client.GetServerAddress(gSelectedServerNum), gPassword )
@@ -204,24 +221,31 @@ end
 
 function MainMenu_Open()
 
-    // Load and set default sound levels
-    OptionsDialogUI_OnInit()
+    // Don't load or open main menu while debugging (too slow)
+    if not GetIsDebugging() then
     
-    if loadLuaMenu then
-    
-        if not gMainMenu then
-            gMainMenu = GetGUIManager():CreateGUIScript("menu/GUIMainMenu")
+        // Load and set default sound levels
+        OptionsDialogUI_OnInit()
+        
+        if loadLuaMenu then
+        
+            if not gMainMenu then
+                gMainMenu = GetGUIManager():CreateGUIScript("menu/GUIMainMenu")
+            end
+            gMainMenu:SetIsVisible(true)
+            
+        else
+        
+            MenuManager.SetMenu( kMainMenuFlash )
+            MouseTracker_SetIsVisible(true, "ui/Cursor_MenuDefault.dds", false)
+            
         end
-        gMainMenu:SetIsVisible(true)
         
+        MainMenu_OnOpenMenu()
+
     else
-    
-        MenuManager.SetMenu( kMainMenuFlash )
-        MouseTracker_SetIsVisible(true, "ui/Cursor_MenuDefault.dds", false)
-        
+        Print("Skipping MainMenu_Open() while debugging. Pass map name on command line.")        
     end
-    
-    MainMenu_OnOpenMenu()
     
 end
 
@@ -258,13 +282,6 @@ local function OnCommandConnect(address, password)
 end
 
 /**
- * Called when the user types the "exit" command at the console or clicks the exit button.
- */
-local function OnCommandExit()
-    Client.Exit()
-end
-
-/**
  * This is called if the user tries to join a server through the
  * Steam UI.
  */
@@ -287,7 +304,6 @@ local kCloseMenuSound = "sound/NS2.fev/common/menu_confirm"
 local kLoopingMenuSound = "sound/NS2.fev/common/menu_loop"
 local kWindowOpenSound = "sound/NS2.fev/common/open"
 
-
 Client.PrecacheLocalSound(kMouseInSound)
 Client.PrecacheLocalSound(kMouseOutSound)
 Client.PrecacheLocalSound(kClickSound)
@@ -298,7 +314,6 @@ Client.PrecacheLocalSound(kOpenMenuSound)
 Client.PrecacheLocalSound(kCloseMenuSound)
 Client.PrecacheLocalSound(kLoopingMenuSound)
 Client.PrecacheLocalSound(kWindowOpenSound)
-
 
 function MainMenu_OnMouseIn()
     Shared.PlaySound(nil, kMouseInSound)
@@ -329,17 +344,19 @@ function MainMenu_OnConnect()
 end
 
 function MainMenu_OnOpenMenu()
+
     Shared.PlaySound(nil, kOpenMenuSound)
     Shared.PlaySound(nil, kLoopingMenuSound)
     
 end
 
 function MainMenu_OnCloseMenu()
+
     Shared.PlaySound(nil, kCloseMenuSound)
     Shared.StopSound(nil, kLoopingMenuSound)
 end
 
-function OnClientDisconnected()
+local function OnClientDisconnected()
     LeaveMenu()
 end
 
@@ -347,5 +364,3 @@ Event.Hook("ClientDisconnected", OnClientDisconnected)
 Event.Hook("ConnectRequested", OnConnectRequested)
 Event.Hook("Console_connect",  OnCommandConnect)
 Event.Hook("Console_map",  OnCommandMap)
-Event.Hook("Console_exit", OnCommandExit)
-Event.Hook("Console_quit", OnCommandExit)

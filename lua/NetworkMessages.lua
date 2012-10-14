@@ -63,51 +63,36 @@ end
 
 Shared.RegisterNetworkMessage( "HitEffect", kHitEffectMessage )
 
-local kCommanderPingMessage =
+/*
+For damage numbers
+*/
+local kDamageMessage =
 {
-    position = "vector"
+    posx = string.format("float (%d to %d by 0.05)", -kHitEffectMaxPosition, kHitEffectMaxPosition),
+    posy = string.format("float (%d to %d by 0.05)", -kHitEffectMaxPosition, kHitEffectMaxPosition),
+    posz = string.format("float (%d to %d by 0.05)", -kHitEffectMaxPosition, kHitEffectMaxPosition),
+    targetId = "entityid",
+    amount = "float",
 }
 
-function BuildCommanderPingMessage(position)
-
-    local t = {}    
-    t.position = position    
-    return t
-
-end
-
-Shared.RegisterNetworkMessage( "CommanderPing", kCommanderPingMessage )
-
-// From TechNode.kTechNodeVars
-local kTechNodeUpdateMessage = 
-{
-    techId                  = "enum kTechId",
-    available               = "boolean",
-    researchProgress        = "float",
-    prereqResearchProgress  = "float",
-    researched              = "boolean",
-    researching             = "boolean",
-    hasTech                 = "boolean"
-}
-
-// Tech node messages. Base message is in TechNode.lua
-function BuildTechNodeUpdateMessage(techNode)
-
+function BuildDamageMessage(target, amount, hitpos)
+    
     local t = {}
-    
-    t.techId                    = techNode.techId
-    t.available                 = techNode.available
-    t.researchProgress          = techNode.researchProgress
-    t.prereqResearchProgress    = techNode.prereqResearchProgress
-    t.researched                = techNode.researched
-    t.researching               = techNode.researching
-    t.hasTech                   = techNode.hasTech
-    
+    t.posx = hitpos.x
+    t.posy = hitpos.y
+    t.posz = hitpos.z
+    t.amount = amount
+    t.targetId = (target and target:GetId()) or Entity.invalidId
     return t
     
 end
 
-Shared.RegisterNetworkMessage( "TechNodeUpdate", kTechNodeUpdateMessage )
+function ParseDamageMessage(message)
+    local position = Vector(message.posx, message.posy, message.posz)
+    return Shared.GetEntity(message.targetId), message.amount, position
+end
+
+Shared.RegisterNetworkMessage( "Damage", kDamageMessage )
 
 local kMaxPing = 999
 
@@ -134,7 +119,7 @@ end
 
 Shared.RegisterNetworkMessage( "Ping", kPingMessage )
 
-kWorldTextMessageType = enum({ 'Resources', 'Resource', 'Damage' })
+kWorldTextMessageType = enum({'Damage'})
 local kWorldTextMessage =
 {
     messageType = "enum kWorldTextMessageType",
@@ -166,8 +151,6 @@ local kScoresMessage =
     score = string.format("integer (0 to %d)", kMaxScore),
     kills = string.format("integer (0 to %d)", kMaxKills),
     deaths = string.format("integer (0 to %d)", kMaxDeaths),
-    resources = string.format("integer (0 to %d)", kMaxResources),
-    isCommander = "boolean",
     status = "enum kPlayerStatus",
     isSpectator = "boolean"
 }
@@ -188,8 +171,6 @@ function BuildScoresMessage(scorePlayer, sendToPlayer)
     end
     t.kills = scorePlayer:GetKills()
     t.deaths = scorePlayer:GetDeaths()
-    t.resources = ConditionalValue(isEnemy, 0, math.floor(scorePlayer:GetResources()))
-    t.isCommander = ConditionalValue(isEnemy, false, scorePlayer:isa("Commander"))
     t.status = ConditionalValue(isEnemy, kPlayerStatus.Hidden, scorePlayer:GetPlayerStatusDesc())
     t.isSpectator = ConditionalValue(isEnemy, false, scorePlayer:isa("Spectator"))
     
@@ -198,24 +179,6 @@ function BuildScoresMessage(scorePlayer, sendToPlayer)
 end
 
 Shared.RegisterNetworkMessage("Scores", kScoresMessage)
-
-// For idle workers
-local kSelectAndGotoMessage = 
-{
-    entityId = "entityid"
-}
-
-function BuildSelectAndGotoMessage(entId)
-    local t = {}
-    t.entityId = entId
-    return t   
-end
-
-function ParseSelectAndGotoMessage(message)
-    return message.entityId
-end
-
-Shared.RegisterNetworkMessage("SelectAndGoto", kSelectAndGotoMessage)
 
 // For taking damage
 local kTakeDamageIndicator =
@@ -257,169 +220,6 @@ function BuildEntityChangedMessage(oldId, newId)
     
 end
 
-// Selection
-local kMarqueeSelectMessage =
-{
-    pickStartVec = "vector",
-    pickEndVec = "vector",
-}
-
-function BuildMarqueeSelectCommand(pickStartVec, pickEndVec)
-
-    local t = {}
-    
-    t.pickStartVec = Vector(pickStartVec)
-    t.pickEndVec = Vector(pickEndVec)
-
-    return t
-    
-end
-
-function ParseCommMarqueeSelectMessage(message)
-    return message.pickStartVec, message.pickEndVec
-end
-
-local kClearSelectionMessage =
-{
-    removeAll = "boolean",
-    removeId = "entityid",
-    ctrlPressed = "boolean"
-}
-
-function BuildClearSelectionMessage(removeAll, entityId, ctrlPressed)
-    local t = {}
-    t.removeAll = removeAll == true
-    t.removeId = entityId or Entity.invalidId
-    t.ctrlPressed = ctrlPressed == true
-    return t
-end
-
-function ParseClearSelectionMessage(message)
-    return message.removeAll, message.removeId, message.ctrlPressed
-end
-
-local kClickSelectMessage =
-{
-    pickVec = "vector"
-}
-
-function BuildClickSelectCommand(pickVec)
-
-    local t = {}
-    t.pickVec = Vector(pickVec)
-    return t
-    
-end
-
-function ParseCommClickSelectMessage(message)
-    return message.pickVec
-end
-
-local kControlClickSelectMessage =
-{
-    pickVec = "vector",
-    minDot = "float"
-}
-
-function BuildControlClickSelectCommand(pickVec, minDot)
-
-    local t = {}
-    
-    t.pickVec = Vector(pickVec)
-    t.minDot = minDot
-    
-    return t
-    
-end
-
-local kCreateHotkeyGroupMessage =
-{
-    groupNumber = "integer (1 to " .. ToString(kMaxHotkeyGroups) .. ")"
-}
-function BuildCreateHotkeyGroupMessage(setGroupNumber)
-
-    local t = {}
-    
-    t.groupNumber = setGroupNumber
-    
-    return t
-
-end
-
-function ParseControlClickSelectMessage(message)
-    return message.pickVec, message.minDot
-end
-
-local kSelectHotkeyGroupMessage =
-{
-    groupNumber = "integer (1 to " .. ToString(kMaxHotkeyGroups) .. ")"
-}
-
-function BuildSelectHotkeyGroupMessage(setGroupNumber)
-
-    local t = {}
-    
-    t.groupNumber = setGroupNumber
-    
-    return t
-
-end
-
-function ParseSelectHotkeyGroupMessage(message)
-    return message.groupNumber
-end
-
-// Commander actions
-local kCommAction = 
-{
-    techId              = "enum kTechId"
-}
-
-function BuildCommActionMessage(techId)
-
-    local t = {}
-    
-    t.techId = techId
-    
-    return t
-    
-end
-
-function ParseCommActionMessage(t)
-    return t.techId
-end
-
-local kCommTargetedAction = 
-{
-    techId              = "enum kTechId",
-    
-    // normalized pick coords for CommTargetedAction
-    // or world coords for kCommTargetedAction
-    x                   = "float",
-    y                   = "float",
-    z                   = "float",
-    
-    orientationRadians  = "angle (11 bits)"
-}
-
-function BuildCommTargetedActionMessage(techId, x, y, z, orientationRadians)
-
-    local t = {}
-    
-    t.techId = techId
-    t.x = x
-    t.y = y
-    t.z = z
-    t.orientationRadians = orientationRadians
-    
-    return t
-    
-end
-
-function ParseCommTargetedActionMessage(t)
-    return t.techId, Vector(t.x, t.y, t.z), t.orientationRadians
-end
-
 local kExecuteSayingMessage = 
 {
     sayingIndex = "integer (1 to 5)",
@@ -437,26 +237,8 @@ function BuildExecuteSayingMessage(sayingIndex, sayingsMenu)
     
 end
 
-local kGorgeSelectStructureMessage = 
-{
-    structureIndex = "integer (1 to 5)",
-}
-
-function BuildGorgeSelectStructureMessage(structureIndex)
-
-    local t = {}
-    
-    t.structureIndex = structureIndex
-    
-    return t
-end    
-
 function ParseExecuteSayingMessage(t)
     return t.sayingIndex, t.sayingsMenu
-end
-
-function ParseGorgeSelectMessage(t)
-    return t.structureIndex
 end
 
 local kMutePlayerMessage = 
@@ -552,21 +334,6 @@ function ParseSelectIdMessage(t)
         
 end
 
-local kMinimapAlertMessage = 
-{
-    techId = "enum kTechId",
-    worldX = "float",
-    worldZ = "float",
-    entityId = "entityid",
-    entityTechId = "enum kTechId"
-}
-
-local kCommanderNotificationMessage =
-{
-    locationId = "integer",
-    techId = "enum kTechId"
-}
-
 local kSelectIdMessage =
 {
     entityId = "entityid"
@@ -645,53 +412,6 @@ function ParseTechNodeBaseMessage(techNode, networkVars)
     
 end
 
-// Update values from kTechNodeUpdateMessage
-// Was TechNode:UpdateFromNetwork
-function ParseTechNodeUpdateMessage(techNode, networkVars)
-
-    techNode.available              = networkVars.available
-    techNode.researchProgress       = networkVars.researchProgress
-    techNode.prereqResearchProgress = networkVars.prereqResearchProgress
-    techNode.researched             = networkVars.researched
-    techNode.researching            = networkVars.researching
-    techNode.hasTech                = networkVars.hasTech
-    
-end
-
-function BuildTechNodeBaseMessage(techNode)
-
-    local t = {}
-    
-    t.techId                    = techNode.techId
-    t.techType                  = techNode.techType
-    t.prereq1                   = techNode.prereq1
-    t.prereq2                   = techNode.prereq2
-    t.addOnTechId               = techNode.addOnTechId
-    t.cost                      = techNode.cost
-    t.available                 = techNode.available
-    t.time                      = techNode.time
-    t.researchProgress          = techNode.researchProgress
-    t.prereqResearchProgress    = techNode.prereqResearchProgress
-    t.researched                = techNode.researched
-    t.researching               = techNode.researching
-    t.requiresTarget            = techNode.requiresTarget
-    t.hasTech                   = techNode.hasTech
-    
-    return t
-    
-end
-
-function BuildCommanderNotificationMessage(locationId, techId)
-
-    local t = {}
-    
-    t.locationId        = locationId
-    t.techId            = techId
-    
-    return t
-
-end
-
 local kChatClientMessage =
 {
     teamOnly = "boolean",
@@ -737,30 +457,9 @@ Shared.RegisterNetworkMessage("EntityChanged", kEntityChangedMessage)
 Shared.RegisterNetworkMessage("ResetMouse", {} )
 Shared.RegisterNetworkMessage("ResetGame", {} )
 
-// Selection
-Shared.RegisterNetworkMessage("MarqueeSelect", kMarqueeSelectMessage)
-Shared.RegisterNetworkMessage("ClickSelect", kClickSelectMessage)
-Shared.RegisterNetworkMessage("ClearSelection", kClearSelectionMessage)
-Shared.RegisterNetworkMessage("ControlClickSelect", kControlClickSelectMessage)
-Shared.RegisterNetworkMessage("SelectHotkeyGroup", kSelectHotkeyGroupMessage)
-Shared.RegisterNetworkMessage("SelectId", kSelectIdMessage)
-
-// Commander actions
-Shared.RegisterNetworkMessage("CommAction", kCommAction)
-Shared.RegisterNetworkMessage("CommTargetedAction", kCommTargetedAction)
-Shared.RegisterNetworkMessage("CommTargetedActionWorld", kCommTargetedAction)
-Shared.RegisterNetworkMessage("CreateHotKeyGroup", kCreateHotkeyGroupMessage)
-
-// Notifications
-Shared.RegisterNetworkMessage("MinimapAlert", kMinimapAlertMessage)
-Shared.RegisterNetworkMessage("CommanderNotification", kCommanderNotificationMessage)
-
 // Player actions
 Shared.RegisterNetworkMessage("ExecuteSaying", kExecuteSayingMessage)
 Shared.RegisterNetworkMessage("MutePlayer", kMutePlayerMessage)
-
-// Gorge select structure message
-Shared.RegisterNetworkMessage("GorgeSelectStructure", kGorgeSelectStructureMessage)
 
 // Chat
 Shared.RegisterNetworkMessage("ChatClient", kChatClientMessage)
@@ -793,56 +492,3 @@ function ParseCommunicationStatus(t)
 end
 
 Shared.RegisterNetworkMessage( "SetCommunicationStatus", kCommunicationStatusMessage )
-
-local kBuyMessage =
-{
-    techId1 = "enum kTechId",
-    techId2 = "enum kTechId",
-    techId3 = "enum kTechId",
-    techId4 = "enum kTechId",
-    techId5 = "enum kTechId",
-    techId6 = "enum kTechId",
-    techId7 = "enum kTechId",
-    techId8 = "enum kTechId"
-}
-
-function BuildBuyMessage(techIds)
-
-    assert(#techIds <= table.countkeys(kBuyMessage))
-    
-    local buyMessage = { techId1 = kTechId.None, techId2 = kTechId.None, techId3 = kTechId.None,
-                         techId4 = kTechId.None, techId5 = kTechId.None, techId6 = kTechId.None,
-                         techId7 = kTechId.None, techId8 = kTechId.None }
-    
-    for t = 1, #techIds do
-        buyMessage["techId" .. t] = techIds[t]
-    end
-    
-    return buyMessage
-    
-end
-
-function ParseBuyMessage(buyMessage)
-
-    local maxNumTechs = table.countkeys(kBuyMessage)
-    
-    // We need to iterate over the buyMessage table and insert
-    // the tech Ids in the correct order into the techIds list.
-    local techIds = { }
-    for t = 1, maxNumTechs do
-    
-        for name, techId in pairs(buyMessage) do
-        
-            if ("techId" .. t) == name and techId ~= kTechId.None then
-                table.insert(techIds, techId)
-            end
-            
-        end
-        
-    end
-    
-    return techIds
-    
-end
-
-Shared.RegisterNetworkMessage("Buy", kBuyMessage)

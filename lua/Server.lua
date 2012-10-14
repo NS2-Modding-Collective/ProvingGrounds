@@ -17,31 +17,24 @@ Script.Load("lua/TargetCache.lua")
 
 Script.Load("lua/MarineTeam.lua")
 Script.Load("lua/RedTeam.lua")
-Script.Load("lua/TeamJoin.lua")
 Script.Load("lua/Bot.lua")
 Script.Load("lua/VoteManager.lua")
 
 Script.Load("lua/ServerConfig.lua")
-
 Script.Load("lua/ServerAdmin.lua")
 Script.Load("lua/ServerAdminCommands.lua")
-
 Script.Load("lua/ServerWebInterface.lua")
-
 Script.Load("lua/MapCycle.lua")
+Script.Load("lua/ConsistencyConfig.lua")
 
 Script.Load("lua/ConsoleCommands_Server.lua")
 Script.Load("lua/NetworkMessages_Server.lua")
 
 Script.Load("lua/dkjson.lua")
 
-Script.Load("lua/DbgTracer_Server.lua")
 Script.Load("lua/InfestationMap.lua")
 
 Script.Load("lua/NetworkDebug.lua")
- 
-Server.dbgTracer = DbgTracer()
-Server.dbgTracer:Init()
 
 Server.readyRoomSpawnList = table.array(32)
 
@@ -94,15 +87,9 @@ function GetLoadEntity(mapName, groupName, values)
     return values.onlyexplore ~= true
 end
 
-local function LoadServerMapEntity(mapName, groupName, values)
+function GetCreateEntityOnStart(mapName, groupName, values)
 
-    if not GetLoadEntity(mapName, groupName, values) then
-        return
-    end
-    
-    // Skip the classes that are not true entities and are handled separately
-    // on the client.
-    if mapName ~= "prop_static"
+    return mapName ~= "prop_static"
        and mapName ~= "light_point"
        and mapName ~= "light_spot"
        and mapName ~= "light_ambient"
@@ -113,7 +100,73 @@ local function LoadServerMapEntity(mapName, groupName, values)
        and mapName ~= ReadyRoomSpawn.kMapName
        and mapName ~= AmbientSound.kMapName
        and mapName ~= Reverb.kMapName
-       and mapName ~= Particles.kMapName then
+       and mapName ~= Particles.kMapName
+end
+
+function GetLoadSpecial(mapName, groupName, values)
+
+    local success = false
+
+    if mapName == ReadyRoomSpawn.kMapName then
+    
+        local entity = ReadyRoomSpawn()
+        entity:OnCreate()
+        LoadEntityFromValues(entity, values)
+        table.insert(Server.readyRoomSpawnList, entity)
+        success = true
+        
+	elseif mapName == TeamSpawn.kMapName then
+    
+        local entity = TeamSpawn()
+        entity:OnCreate()
+        LoadEntityFromValues(entity, values)
+        if entity.teamNumber == kTeam1Index then
+            table.insert(Server.team1SpawnList, entity)
+        end
+        if entity.teamNumber == kTeam2Index then
+            table.insert(Server.team2SpawnList, entity)
+        end
+
+    elseif (mapName == AmbientSound.kMapName) then
+    
+        // Make sure sound index is precached but only create ambient sound object on client
+        Shared.PrecacheSound(values.eventName)
+        success = true
+        
+    elseif mapName == Particles.kMapName then
+        Shared.PrecacheCinematic(values.cinematicName)
+        success = true
+
+    elseif mapName == "pathing_settings" then
+        ParsePathingSettings(values)
+        success = true
+    end
+
+    return success    
+
+end
+
+local function DumpServerEntity(mapName, groupName, values)
+
+    Print("------------ %s ------------", ToString(mapName))
+    
+    for key, value in pairs(values) do    
+        Print("[%s] %s", ToString(key), ToString(value))
+    end
+    
+    Print("---------------------------------------------")
+
+end
+
+local function LoadServerMapEntity(mapName, groupName, values)
+
+    if not GetLoadEntity(mapName, groupName, values) then
+        return
+    end
+    
+    // Skip the classes that are not true entities and are handled separately
+    // on the client.
+    if GetCreateEntityOnStart(mapName, groupName, values) then
         
         local entity = Server.CreateEntity(mapName, values)
         if entity then
@@ -130,48 +183,14 @@ local function LoadServerMapEntity(mapName, groupName, values)
                 table.insert(Server.mapLiveEntities, entity:GetId())
                 
             end
-            
-            local renderModelCommAlpha = GetAndCheckValue(values.commAlpha, 0, 1, "commAlpha", 1, true)
-            local blocksPlacement = groupName == kCommanderInvisibleGroupName or
-                                    groupName == kCommanderNoBuildGroupName
-            
-            if HasMixin(entity, "Model") and (renderModelCommAlpha < 1 or blocksPlacement) then
-                entity:SetPhysicsGroup(PhysicsGroup.CommanderPropsGroup)
-            end
-            
+                       
         end
         
-    end   
-    
-    if mapName == ReadyRoomSpawn.kMapName then
-    
-        local entity = ReadyRoomSpawn()
-        entity:OnCreate()
-        LoadEntityFromValues(entity, values)
-        table.insert(Server.readyRoomSpawnList, entity)
+        //DumpServerEntity(mapName, groupName, values)
         
-    elseif mapName == TeamSpawn.kMapName then
-    
-        local entity = TeamSpawn()
-        entity:OnCreate()
-        LoadEntityFromValues(entity, values)
-        if entity.teamNumber == kTeam1Index then
-            table.insert(Server.team1SpawnList, entity)
-        end
-        if entity.teamNumber == kTeam2Index then
-            table.insert(Server.team2SpawnList, entity)
-        end
-
-    elseif (mapName == AmbientSound.kMapName) then
-
-        // Make sure sound index is precached but only create ambient sound object on client
-        Shared.PrecacheSound(values.eventName)
-
-    elseif (mapName == Particles.kMapName) then
-        Shared.PrecacheCinematic(values.cinematicName)
-    elseif (mapName == "pathing_settings") then
-        ParsePathingSettings(values)
-    else
+    end  
+        
+    if not GetLoadSpecial(mapName, groupName, values) then
     
         // Allow the MapEntityLoader to load it if all else fails.
         LoadMapEntity(mapName, groupName, values)
@@ -197,13 +216,6 @@ function OnMapPreLoad()
 
     Shared.PreLoadSetGroupNeverVisible(kCollisionGeometryGroupName)
     Shared.PreLoadSetGroupPhysicsId(kNonCollisionGeometryGroupName, 0)
-    
-    Shared.PreLoadSetGroupNeverVisible(kCommanderBuildGroupName)   
-    Shared.PreLoadSetGroupPhysicsId(kCommanderBuildGroupName, PhysicsGroup.CommanderBuildGroup)     
-    
-    // Any geometry in kCommanderInvisibleGroupName or kCommanderNoBuildGroupName shouldn't interfere with selection or other commander actions
-    Shared.PreLoadSetGroupPhysicsId(kCommanderInvisibleGroupName, PhysicsGroup.CommanderPropsGroup)
-    Shared.PreLoadSetGroupPhysicsId(kCommanderNoBuildGroupName, PhysicsGroup.CommanderPropsGroup)
     
     // Don't have bullets collide with collision geometry
     Shared.PreLoadSetGroupPhysicsId(kCollisionGeometryGroupName, PhysicsGroup.CollisionGeometryGroup)

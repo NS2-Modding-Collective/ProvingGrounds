@@ -61,16 +61,6 @@ function RedTeam:InitTechTree()
     self.techTree:AddBuyNode(kTechId.Shotgun,             kTechId.None,                kTechId.None)
     self.techTree:AddBuyNode(kTechId.GrenadeLauncher,     kTechId.None,                kTechId.None)
     self.techTree:AddBuyNode(kTechId.Flamethrower,        kTechId.None,		           kTechId.none)
-//    self.techTree:AddBuyNode(kTechId.LayMines,            kTechId.None,                kTechId.None)
-    self.techTree:AddBuyNode(kTechId.Welder,              kTechId.None,                kTechId.None)
-    /*self.techTree:AddBuyNode(kTechId.Armor1,              kTechId.None,                kTechId.None)
-    self.techTree:AddBuyNode(kTechId.Weapons1,            kTechId.None,                kTechId.None)
-    self.techTree:AddBuyNode(kTechId.Armor2,              kTechId.None,                kTechId.None)
-    self.techTree:AddBuyNode(kTechId.Weapons2,            kTechId.None,                kTechId.None)  
-    self.techTree:AddBuyNode(kTechId.Armor3,              kTechId.None,                kTechId.None)
-    self.techTree:AddBuyNode(kTechId.Weapons3,            kTechId.None,                kTechId.None)
-    self.techTree:AddBuyNode(kTechId.Jetpack,             kTechId.None,                kTechId.None)
-    self.techTree:AddBuyNode(kTechId.Exosuit,             kTechId.None,                kTechId.None) */
     
     self.techTree:SetComplete()
 
