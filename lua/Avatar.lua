@@ -139,11 +139,6 @@ function Avatar:OnInitialized()
     
         self.armor = self:GetArmorAmount()
         self.maxArmor = self.armor
-       
-    elseif Client then
-    
-        InitMixin(self, HiveVisionMixin)
-        
     end
     
     local viewAngles = self:GetViewAngles()

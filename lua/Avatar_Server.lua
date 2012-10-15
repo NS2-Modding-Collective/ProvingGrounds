@@ -16,35 +16,6 @@ local function GetCanTriggerAlert(self, techId, timeOut)
 
 end
 
-function Avatar:OnPrimaryAttack()
-
-    local weapon = self:GetActiveWeapon()
-    if weapon and weapon:isa("ClipWeapon") then
-    
-        if weapon:GetAmmo() < weapon:GetClipSize() and GetCanTriggerAlert(self, kTechId.MarineAlertNeedAmmo, kAmmoAutoRequestTimeout) and #GetEntitiesForTeamWithinRange("Armoy", self:GetTeamNumber(), self:GetOrigin(), kFindArmoryRange) == 0 then
-        
-            self:GetTeam():TriggerAlert(kTechId.MarineAlertNeedAmmo, self)
-            self.alertTimes[kTechId.MarineAlertNeedAmmo] = Shared.GetTime()
-            self:PlaySound("sound/NS2.fev/marine/voiceovers/ammo")
-            
-        end
-    
-    end
-
-end
-
-function Avatar:RequestHeal()
-
-    if GetCanTriggerAlert(self, kTechId.MarineAlertNeedMedpack, Marine.kMarineAlertTimeout) then
-    
-        self:GetTeam():TriggerAlert(kTechId.MarineAlertNeedMedpack, self)
-        self.alertTimes[kTechId.MarineAlertNeedMedpack] = Shared.GetTime()
-        self:PlaySound("sound/NS2.fev/marine/voiceovers/medpack")
-            
-    end
-
-end
-
 function Avatar:ExecuteSaying(index, menu)
 
     if not Player.ExecuteSaying(self, index, menu) then
@@ -97,10 +68,6 @@ function Avatar:OnTakeDamage(damage, attacker, doer, point)
 
 end
 
-function Avatar:GetDamagedAlertId()
-    return kTechId.MarineAlertSoldierUnderAttack
-end
-
 function Avatar:ApplyCatPack()
 
     self.catpackboost = true
@@ -115,60 +82,6 @@ function Avatar:InitWeapons()
     self:GiveItem(Shotgun.kMapName)
     
     self:SetActiveWeapon(Shotgun.kMapName)
-
-end
-
-local function GetHostSupportsTechId(host, techId)
-
-    if Shared.GetCheatsEnabled() then
-        return true
-    end
-    
-    local techFound = false
-    
-    if host.GetItemList then
-    
-        for index, supportedTechId in ipairs(host:GetItemList()) do
-        
-            if supportedTechId == techId then
-            
-                techFound = true
-                break
-                
-            end
-            
-        end
-        
-    end
-    
-    return techFound
-    
-end
-
-local function PlayerIsFacingHostStructure(player, host)
-    return true
-end
-
-function GetHostStructureFor(entity, techId)
-
-    local hostStructures = {}
-    table.copy(GetEntitiesForTeamWithinRange("Armory", entity:GetTeamNumber(), entity:GetOrigin(), Armory.kResupplyUseRange), hostStructures, true)
-    table.copy(GetEntitiesForTeamWithinRange("PrototypeLab", entity:GetTeamNumber(), entity:GetOrigin(), PrototypeLab.kResupplyUseRange), hostStructures, true)
-    
-    if table.count(hostStructures) > 0 then
-    
-        for index, host in ipairs(hostStructures) do
-        
-            // check at first if the structure is hostign the techId:
-            if GetHostSupportsTechId(host, techId) and PlayerIsFacingHostStructure(player, host) then
-                return host
-            end    
-        
-        end
-            
-    end
-    
-    return nil
 
 end
 
