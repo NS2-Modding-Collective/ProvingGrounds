@@ -16,8 +16,6 @@ Script.Load("lua/GUICommunicationStatusIcons.lua")
 
 // These screen effects are only used on the local player so create them statically.
 Player.screenEffects = { }
-Player.screenEffects.fadeBlink = Client.CreateScreenEffect("shaders/FadeBlink.screenfx")
-Player.screenEffects.fadeBlink:SetActive(false)
 Player.screenEffects.lowHealth = Client.CreateScreenEffect("shaders/LowHealth.screenfx")
 Player.screenEffects.lowHealth:SetActive(false)
 Player.screenEffects.blur = Client.CreateScreenEffect("shaders/Blur.screenfx")
@@ -345,27 +343,6 @@ function PlayerUI_GetUnitStatusInfo()
 
                     local health = 0
                     local armor = 0
-
-                    local visibleToPlayer = true                        
-                    if HasMixin(unit, "Cloakable") and unit:GetIsCloaked() and GetAreEnemies(player, unit) then
-                        visibleToPlayer = false
-                    end
-                    
-                    // Don't show tech points or nozzles if they are attached
-                    if (unit:GetMapName() == TechPoint.kMapName or unit:GetMapName() == ResourcePoint.kPointMapName) and unit.GetAttached and (unit:GetAttached() ~= nil) then
-                        visibleToPlayer = false
-                    end
-                    
-                    if HasMixin(unit, "Live") and (not unit.GetShowHealthFor or unit:GetShowHealthFor(player)) then
-                    
-                        health = unit:GetHealthFraction()                
-                        if unit:GetArmor() == 0 then
-                            armor = 0
-                        else 
-                            armor = unit:GetArmorScalar()
-                        end
-
-                    end
                     
                     local badge = ""
                     
@@ -384,7 +361,7 @@ function PlayerUI_GetUnitStatusInfo()
                         StatusFraction = statusFraction,
                         HealthFraction = health,
                         ArmorFraction = armor,
-                        IsCrossHairTarget = (unit == crossHairTarget and visibleToPlayer),
+                        IsCrossHairTarget = (unit == crossHairTarget),
                         TeamType = kNeutralTeamType,
                         ForceName = unit:isa("Player") and not GetAreEnemies(player, unit),
                         OnScreen = onScreen,
@@ -1118,37 +1095,6 @@ function PlayerUI_GetGameStartTime()
     
 end
 
-function PlayerUI_GetNumCommandStructures()
-
-    local player = Client.GetLocalPlayer()
-    if player ~= nil then
-    
-        local teamInfo = GetEntitiesForTeam("TeamInfo", player:GetTeamNumber())
-        if table.count(teamInfo) > 0 then
-            return teamInfo[1]:GetNumCapturedTechPoints()
-        end
-        
-    end
-    
-    return 0
-    
-end
-
-/**
- * Called by Flash to get the value to display for the personal resources on
- * the HUD.
- */
-function PlayerUI_GetPlayerResources()
-
-    local player = Client.GetLocalPlayer()
-    if player then
-        return player:GetDisplayResources()
-    end
-    
-    return 0
-    
-end
-
 function PlayerUI_GetPlayerHealth()
 
     local player = Client.GetLocalPlayer()
@@ -1276,97 +1222,22 @@ function Player:UpdateCrossHairText(entity)
         return
     end
 
-    if not entity or ( entity.GetShowCrossHairText and not entity:GetShowCrossHairText(self) ) then
+    if not entity or not entity:isa("Player") then
         self.crossHairText = nil
         return
     end    
-    
-    if HasMixin(entity, "Cloakable") and GetAreEnemies(self, entity) and entity:GetIsCloaked() then
-        self.crossHairText = nil
-        return
-    end
-    
+       
     if entity:isa("Player") and GetAreEnemies(self, entity) then
         self.crossHairText = nil
         return
+    elseif entity:isa("Player") and GetAreFriends(self, entity) then
+        self.crossHairText = entity:GetName()
+        return
     end    
     
-    if HasMixin(entity, "Tech") and HasMixin(entity, "Live") and (entity:GetIsAlive() or (entity.GetShowHealthFor and entity:GetShowHealthFor(self))) then
-    
-        if self:isa("Marine") and entity:isa("Marine") and self:GetActiveWeapon() and self:GetActiveWeapon():isa("Welder") then
-            self.crossHairHealth = math.ceil(math.max(0.00, entity:GetArmor() / entity:GetMaxArmor() ) * 100)
-        else
-            self.crossHairHealth = math.ceil(math.max(0.00, entity:GetHealthScalar()) * 100)
-        end
-        
-        if entity:isa("Player") then        
-            self.crossHairText = entity:GetName()    
-        else 
-            self.crossHairText = Locale.ResolveString(LookupTechData(entity:GetTechId(), kTechDataDisplayName, ""))
-            
-            if entity:isa("CommandStructure") then
-              self.crossHairText = entity:GetLocationName() .. " " .. self.crossHairText          
-            end
-            
-        end    
-            
-        // add maturity % 
-        /*
-        if HasMixin(entity, "Maturity") then
-        
-            self.crossHairMaturity = 0
-        
-            if entity:GetMaturityLevel() == kMaturityLevel.Mature then
-                self.crossHairText = "Mature " .. self.crossHairText
-                //self.crossHairMaturity = 100
-            else
-                //self.crossHairMaturity = math.ceil(entity:GetMaturityFraction() * 100)
-                
-                if entity:GetMaturityLevel() == kMaturityLevel.Newborn then
-                    self.crossHairText = "Newborn " .. self.crossHairText
-                end
-                
-            end
-            
-        else
-            self.crossHairMaturity = 0
-        end
-        
-        */
-        
-        // add build %
-        if HasMixin(entity, "Construct") then
-        
-            if entity:GetIsBuilt() then
-                self.crossHairBuildStatus = 100
-            else
-                self.crossHairBuildStatus = math.floor(entity:GetBuiltFraction() * 100)
-            end
-        
-        else
-            self.crossHairBuildStatus = 0
-        end
-        
-        if HasMixin(entity, "Team") then
-            self.crossHairTeamType = entity:GetTeamType()        
-        end
-        
-    else
-    
-        self.crossHairText = nil
-        self.crossHairHealth = 0
-        
-        if entity:isa("Player") then
-            self.crossHairText = entity:GetName()
-        end
-        
-    end
-        
     if GetAreEnemies(self, entity) then
         self.crossHairTextColor = kEnemyColor
-    elseif HasMixin(entity, "GameEffects") and entity:GetGameEffectMask(kGameEffect.Parasite) then
-        self.crossHairTextColor = kParasitedTextColor
-    elseif HasMixin(entity, "Team") and self:GetTeamNumber() == entity:GetTeamNumber() then
+    elseif GetAreFriends(self, entity) then
         self.crossHairTextColor = kFriendlyColor
     else
         self.crossHairTextColor = kNeutralColor
@@ -1472,75 +1343,12 @@ function Player:GetDrawWorld(isLocal)
     return not self:GetIsLocalPlayer() or self:GetIsThirdPerson() or ((self.countingDown and not Shared.GetCheatsEnabled()) and self:GetTeamNumber() ~= kNeutralTeamType)
 end
 
-local kDangerCheckEndDistance = 25
-local kDangerCheckStartDistance = 15
-assert(kDangerCheckEndDistance > kDangerCheckStartDistance)
-local kDangerHealthEndAmount = 0.6
-local kDangerHealthStartAmount = 0.5
-assert(kDangerHealthEndAmount > kDangerHealthStartAmount)
-local function UpdateDangerEffects(self)
-
-    if self:GetGameStarted() then
-    
-        local now = Shared.GetTime()
-        self.lastDangerCheckTime = self.lastDangerCheckTime or now
-        if now - self.lastDangerCheckTime > 1 then
-        
-            local playerOrigin = self:GetOrigin()
-            // Check to see if there are any nearby Command Structures that are close to death.
-            local commandStructures = GetEntitiesWithinRange("CommandStructure", playerOrigin, kDangerCheckEndDistance)
-            Shared.SortEntitiesByDistance(playerOrigin, commandStructures)
-            
-            // Check if danger needs to be enabled or disabled
-            if not self.dangerEnabled then
-            
-                if #commandStructures > 0 then
-                
-                    local commandStructure = commandStructures[1]
-                    if commandStructure:GetIsBuilt() and commandStructure:GetIsAlive() and
-                       commandStructure:GetIsInCombat() and
-                       commandStructure:GetHealthScalar() <= kDangerHealthStartAmount and
-                       commandStructure:GetDistance(playerOrigin) <= kDangerCheckStartDistance then
-                    
-                        self.dangerEnabled = true
-                        self.dangerOrigin = commandStructure:GetOrigin()
-                        Client.PlayMusic("danger")
-                        
-                    end
-                    
-                end
-                
-            else
-            
-                local commandStructure = commandStructures[1]
-                if not commandStructure or not commandStructure:GetIsAlive() or
-                   commandStructure:GetHealthScalar() >= kDangerHealthEndAmount or
-                   not commandStructure:GetIsInCombat() or
-                   self.dangerOrigin:GetDistanceTo(playerOrigin) > kDangerCheckEndDistance then
-                
-                    Client.PlayMusic("no_danger")
-                    self.dangerEnabled = false
-                    self.dangerOrigin = nil
-                    
-                end
-                
-            end
-            
-            self.lastDangerCheckTime = now
-            
-        end
-        
-    end
-    
-end
-
 // Only called when not running prediction
 function Player:UpdateClientEffects(deltaTime, isLocal)
 
     if isLocal then
     
         self:UpdateIdleSound()
-        UpdateDangerEffects(self)
         
     end
     
@@ -1653,9 +1461,6 @@ function Player:OnInitLocalClient()
     // Re-enable skybox rendering after commanding
     SetSkyboxDrawState(true)
     
-    // Show props normally
-    SetCommanderPropState(false)
-    
     // Turn on sound occlusion for non-commanders
     Client.SetSoundGeometryEnabled(true)
     
@@ -1689,9 +1494,6 @@ function Player:OnInitLocalClient()
     // reset mouse sens in case it hase been forgotten somewhere else
     Client.SetMouseSensitivityScalar(1)
     
-    // Just in case the danger music wasn't stopped already for some reason.
-    DisableDanger(self)
-    
 end
 
 function Player:SetEthereal(ethereal)
@@ -1702,33 +1504,10 @@ function Player:SetEthereal(ethereal)
     
 end
 
-local function DisableScreenEffects(self)
-
-    if self.screenEffects ~= nil then
-    
-        for effectName, effect in pairs(self.screenEffects) do
-            Client.DestroyScreenEffect(effect)
-        end
-        
-        self.screenEffects = { }
-        
-    end
-    
-end
-
 /**
  * Called when the player entity is destroyed.
  */
 function Player:OnDestroy()
-
-    ScriptActor.OnDestroy(self)
-    
-    if self.viewModel ~= nil then
-        Client.DestroyRenderViewModel(self.viewModel)
-        self.viewModel = nil
-    end
-    
-    DisableScreenEffects()
     
     self:CloseMenu()
     
@@ -1750,19 +1529,12 @@ function Player:OnDestroy()
         
     end
     
-    DisableDanger(self)
+    if self.viewModel ~= nil then
+        Client.DestroyRenderViewModel(self.viewModel)
+        self.viewModel = nil
+    end
     
-end
-
-/**
- * Clear screen effects on the player immediately upon being killed so
- * they don't have them enabled while spectating. This is required now
- * that the dead player entity exists alongside the new spectator player.
- */
-function Player:OnKillClient()
-
-    DisableScreenEffects()
-    DisableDanger(self)
+    ScriptActor.OnDestroy(self)
     
 end
 
@@ -2806,11 +2578,7 @@ end
 function Player:OnUpdatePlayer(deltaTime)
 
     if not Shared.GetIsRunningPrediction() then
-    
-        if self.UpdateClientHelp then
-            self:UpdateClientHelp()
-        end
-        
+           
         self:UpdateClientEffects(deltaTime, self:GetIsLocalPlayer())
         
         self:UpdateCommunicationStatus()

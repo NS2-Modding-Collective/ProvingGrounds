@@ -283,18 +283,6 @@ function OnMapLoadEntity(className, groupName, values)
     
 end
 
-// TODO: Change this to setting the alpha instead of visibility when supported
-function SetCommanderPropState(isComm)
-
-    for index, propPair in ipairs(Client.propList) do
-        local prop = propPair[1]
-        if prop.commAlpha < 1 then
-            prop:SetIsVisible(not isComm)
-        end
-    end
-
-end
-
 function UpdateAmbientSounds(deltaTime)
     
     PROFILE("Client:UpdateAmbientSounds")

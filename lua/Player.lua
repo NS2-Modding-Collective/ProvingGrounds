@@ -203,8 +203,6 @@ local networkVars =
     
     viewModelId = "private entityid",
     
-    resources = "private float (0 to " .. kMaxResources .. " by 0.1)",
-    teamResources = "private float (0 to " .. kMaxResources .. " by 0.1)",
     gameStarted = "private boolean",
     countingDown = "private boolean",
     frozen = "private boolean",
