@@ -50,10 +50,6 @@ Avatar.kHealth = kMarineHealth
 Avatar.kBaseArmor = kMarineArmor
 Avatar.kMaxSprintFov = 95
 
-Avatar.kWalkMaxSpeed = 7                // Four miles an hour = 6,437 meters/hour = 1.8 meters/second (increase for FPS tastes)
-Avatar.kClampMaxSpeed = 12.0               // 10 miles an hour = 16,093 meters/hour = 4.4 meters/second (increase for FPS tastes)
-
-
 // tracked per techId
 Avatar.kAvatarAlertTimeout = 4
 
@@ -182,10 +178,6 @@ function Avatar:MakeSpecialEdition()
     
 end
 
-function Avatar:GetSlowOnLand()
-    return false
-end
-
 function Avatar:GetArmorAmount()
     return Avatar.kBaseArmor  
 end
@@ -234,28 +226,6 @@ end
 
 function Avatar:GetOnGroundRecently()
     return (self.timeLastOnGround ~= nil and Shared.GetTime() < self.timeLastOnGround + 0.4) 
-end
-
-function Avatar:GetCrouchSpeedScalar()
-    return Player.kCrouchSpeedScalar
-end
-
-function Avatar:GetMaxSpeed(possible)
-
-    if possible then
-        return Avatar.kWalkMaxSpeed
-    end
-
-    local maxSpeed = Avatar.kWalkMaxSpeed
-    
-    // Take into account crouching
-    if not self:GetIsJumping() then
-        maxSpeed = ( 1 - self:GetCrouchAmount() * self:GetCrouchSpeedScalar() ) * maxSpeed
-    end
-
-    local adjustedMaxSpeed = maxSpeed * self:GetCatalystMoveSpeedModifier()
-    return adjustedMaxSpeed
-    
 end
 
 function Avatar:OnClampSpeed(input, velocity)
@@ -401,7 +371,11 @@ function Avatar:OnUpdateAnimationInput(modelMixin)
 
     PROFILE("Avatar:OnUpdateAnimationInput")
     
-    Player.OnUpdateAnimationInput(self, modelMixin)    
+    Player.OnUpdateAnimationInput(self, modelMixin) 
+
+   /* if self:GetIsDiving() then
+        modelMixin:SetAnimationInput("move", "toss") 
+    end*/
     modelMixin:SetAnimationInput("attack_speed", self:GetCatalystFireModifier())
     
 end

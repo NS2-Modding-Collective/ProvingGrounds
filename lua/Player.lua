@@ -104,7 +104,7 @@ Player.kCountDownLength = kCountDownLength
     
 Player.kGravity = -24
 Player.kMass = 90.7 // ~200 pounds (incl. armor, weapons)
-Player.kWalkBackwardSpeedScalar = 0.4
+
 // Weapon weight scalars (from NS1)
 Player.kStowedWeaponWeightScalar = 0.7
 Player.kJumpHeight =  1.25
@@ -131,7 +131,7 @@ Player.kThinkInterval = .2
 Player.kMinimumPlayerVelocity = .05    // Minimum player velocity for network performance and ease of debugging
 
 // Player speeds
-Player.kWalkMaxSpeed = 5                // Four miles an hour = 6,437 meters/hour = 1.8 meters/second (increase for FPS tastes)
+Player.kWalkMaxSpeed = 7                // Four miles an hour = 6,437 meters/hour = 1.8 meters/second (increase for FPS tastes)
 Player.kMaxWalkableNormal =  math.cos( math.rad(45) )
 Player.kDownSlopeFactor = math.tan( math.rad(60) ) // Stick to ground on down slopes up to 60 degrees
 
@@ -2181,10 +2181,10 @@ function Player:GetMaxSpeed(possible)
     if possible then
         return Player.kWalkMaxSpeed
     end
-    
     // Take into account crouching
-    return ( 1 - self:GetCrouchAmount() * Player.kCrouchSpeedScalar ) * Player.kWalkMaxSpeed
-        
+    if not self:GetIsJumping() then
+        return ( 1 - self:GetCrouchAmount() * Player.kCrouchSpeedScalar ) * Player.kWalkMaxSpeed
+    end
 end
 
 function Player:GetAcceleration()
@@ -2537,32 +2537,27 @@ function Player:HandleButtons(input)
         self:Taunt()
         self.timeOfLastTaunt = Shared.GetTime()
     end
-    
-    // Weapon switch
-    if not self:GetIsCommander() and not self:GetIsUsing() then
-    
-        if bit.band(input.commands, Move.Weapon1) ~= 0 then
-            self:SwitchWeapon(1)
-        end
-        
-        if bit.band(input.commands, Move.Weapon2) ~= 0 then
-            self:SwitchWeapon(2)
-        end
-        
-        if bit.band(input.commands, Move.Weapon3) ~= 0 then
-            self:SwitchWeapon(3)
-        end
-        
-        if bit.band(input.commands, Move.Weapon4) ~= 0 then
-            self:SwitchWeapon(4)
-        end
-        
-        if bit.band(input.commands, Move.Weapon5) ~= 0 then
-            self:SwitchWeapon(5)
-        end
-        
+   
+    if bit.band(input.commands, Move.Weapon1) ~= 0 then
+        self:SwitchWeapon(1)
     end
-    
+        
+    if bit.band(input.commands, Move.Weapon2) ~= 0 then
+        self:SwitchWeapon(2)
+    end
+        
+    if bit.band(input.commands, Move.Weapon3) ~= 0 then
+        self:SwitchWeapon(3)
+    end
+        
+    if bit.band(input.commands, Move.Weapon4) ~= 0 then
+        self:SwitchWeapon(4)
+    end
+        
+    if bit.band(input.commands, Move.Weapon5) ~= 0 then
+        self:SwitchWeapon(5)
+    end
+   
     self:SetCrouchState(bit.band(input.commands, Move.Crouch) ~= 0)    
     
 end
