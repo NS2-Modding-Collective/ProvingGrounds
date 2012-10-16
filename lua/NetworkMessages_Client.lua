@@ -156,6 +156,9 @@ function OnCommandWorldText(message)
     
 end
 
+function OnCommandReset()
+end
+
 Client.HookNetworkMessage("Ping", OnCommandPing)
 Client.HookNetworkMessage("HitEffect", OnCommandHitEffect)
 Client.HookNetworkMessage("Damage", OnCommandDamage)
@@ -163,9 +166,6 @@ Client.HookNetworkMessage("Scores", OnCommandScores)
 
 Client.HookNetworkMessage("ClearTechTree", OnCommandClearTechTree)
 Client.HookNetworkMessage("TechNodeBase", OnCommandTechNodeBase)
-Client.HookNetworkMessage("TechNodeUpdate", OnCommandTechNodeUpdate)
-
-Client.HookNetworkMessage("CommanderNotification", OnCommandCommanderNotification)
 
 Client.HookNetworkMessage("ResetMouse", OnCommandResetMouse)
 Client.HookNetworkMessage("ResetGame", OnCommandOnResetGame)
@@ -174,3 +174,4 @@ Client.HookNetworkMessage("DebugLine", OnCommandDebugLine)
 Client.HookNetworkMessage("DebugCapsule", OnCommandDebugCapsule)
 
 Client.HookNetworkMessage("WorldText", OnCommandWorldText)
+Client.HookNetworkMessage("Reset", OnCommandReset)

@@ -109,7 +109,7 @@ function Avatar:OnKill(attacker, doer, point, direction)
     self:DestroyWeapons()
     
     Player.OnKill(self, attacker, doer, point, direction)
-    self:PlaySound(Marine.kDieSoundName)
+    self:PlaySound(Avatar.kDieSoundName)
 
     self.originOnDeath = self:GetOrigin()
     
