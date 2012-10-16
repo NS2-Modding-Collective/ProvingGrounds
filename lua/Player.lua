@@ -2178,13 +2178,7 @@ end
 // Pass true as param to find out how fast the player can ever go
 function Player:GetMaxSpeed(possible)
 
-    if possible then
-        return Player.kWalkMaxSpeed
-    end
-    // Take into account crouching
-    if not self:GetIsJumping() then
-        return ( 1 - self:GetCrouchAmount() * Player.kCrouchSpeedScalar ) * Player.kWalkMaxSpeed
-    end
+    return Player.kWalkMaxSpeed
 end
 
 function Player:GetAcceleration()
