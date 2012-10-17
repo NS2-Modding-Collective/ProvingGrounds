@@ -92,6 +92,8 @@ function OnCommandScores(scoreTable)
         status = Locale.ResolveString("STATUS_SHOTGUN")
     elseif scoreTable.status == kPlayerStatus.Flamethrower then
         status = Locale.ResolveString("STATUS_FLAMETHROWER")
+    elseif scoreTable.status == kPlayerStatus.AntiMatterSword then
+        status = Locale.ResolveString("STATUS_ANTI-MATTER_SWORD")
     elseif scoreTable.status == kPlayerStatus.Void then
         status = Locale.ResolveString("STATUS_VOID")
     elseif scoreTable.status == kPlayerStatus.Spectator then
@@ -136,15 +138,6 @@ end
 
 function OnCommandDebugCapsule(debugCapsuleMessage)
     DebugCapsule(ParseDebugCapsuleMessage(debugCapsuleMessage))
-end
-
-function OnCommandCommanderNotification(message)
-
-    local player = Client.GetLocalPlayer()
-    if player:isa("Marine") then
-        player:AddNotification(message.locationId, message.techId)
-    end
-    
 end
 
 kWorldTextResolveStrings = { }

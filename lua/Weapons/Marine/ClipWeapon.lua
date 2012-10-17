@@ -326,11 +326,10 @@ end
 
 function ClipWeapon:OnSecondaryAttack(player)
 
-    local sprintedRecently = (Shared.GetTime() - self.lastTimeSprinted) < kMaxTimeToSprintAfterAttack
-    local attackAllowed = not sprintedRecently and (not self:GetIsReloading() or self:GetSecondaryCanInterruptReload()) and (not self:GetSecondaryAttackRequiresPress() or not player:GetSecondaryAttackLastFrame())
+    local attackAllowed = (not self:GetIsReloading() or self:GetSecondaryCanInterruptReload()) and (not self:GetSecondaryAttackRequiresPress() or not player:GetSecondaryAttackLastFrame())
     attackAllowed = attackAllowed and (not self:GetPrimaryIsBlocking() or not self.blockingPrimary) and not self.blockingSecondary
     
-    if not player:GetIsSprinting() and self:GetIsDeployed() and attackAllowed and not self.primaryAttacking then
+    if self:GetIsDeployed() and attackAllowed and not self.primaryAttacking then
     
         self.secondaryAttacking = true
         

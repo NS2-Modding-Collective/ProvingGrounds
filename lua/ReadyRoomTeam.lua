@@ -49,10 +49,6 @@ function ReadyRoomTeam:ReplaceRespawnPlayer(player, origin, angles)
     
 end
 
-function ReadyRoomTeam:GetSupportsOrders()
-    return false
-end
-
 function ReadyRoomTeam:TriggerAlert(techId, entity)
     return false
 end

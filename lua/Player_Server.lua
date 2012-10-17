@@ -201,7 +201,7 @@ function Player:OnKill(killer, doer, point, direction)
     
     // Set next think to 0 to disable
     self:SetNextThink(0)
-    
+
     self:GetTeam():ReplaceRespawnPlayer(self,nil,nil)
         
 end
@@ -388,8 +388,6 @@ function Player:CopyPlayerDataFrom(player)
     
     end
     
-    player:TransferOrders(self)
-    
     // Remember this player's muted clients.
     self.mutedClients = player.mutedClients
     
@@ -437,10 +435,6 @@ function Player:Replace(mapName, newTeamNumber, preserveWeapons, atOrigin, extra
     
     // Make model look where the player is looking
     player.standingBodyYaw = self:GetAngles().yaw
-    
-    if not player:GetTeam():GetSupportsOrders() then
-        player:ClearOrders()
-    end
     
     // Remove newly spawned weapons and reparent originals
     if preserveWeapons then
