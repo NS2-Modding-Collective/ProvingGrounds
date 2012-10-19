@@ -252,13 +252,12 @@ function ClipWeapon:GetIsPrimaryAttackAllowed(player)
         return false
     end    
 
-    local sprintedRecently = (Shared.GetTime() - self.lastTimeSprinted) < kMaxTimeToSprintAfterAttack
     local attackAllowed = (not self:GetPrimaryAttackRequiresPress() or not player:GetPrimaryAttackLastFrame())
     attackAllowed = attackAllowed and (not self:GetIsReloading() or self:GetPrimaryCanInterruptReload())
     attackAllowed = attackAllowed and not self.blockingSecondary
     attackAllowed = attackAllowed and (not self:GetPrimaryIsBlocking() or not self.blockingPrimary)
     
-    return self:GetIsDeployed() and not sprintedRecently and attackAllowed
+    return self:GetIsDeployed() and attackAllowed
 
 end
 

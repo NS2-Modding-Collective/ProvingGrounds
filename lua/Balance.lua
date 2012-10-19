@@ -10,34 +10,6 @@
 Script.Load("lua/BalanceHealth.lua")
 Script.Load("lua/BalanceMisc.lua")
 
-// used as fallback
-kDefaultBuildTime = 8
-
-// MARINE COSTS
-kCommandStationCost = 15
-
-kExtractorCost = 10
-kResourceUpgradeResearchCost = 5
-
-kInfantryPortalCost = 15
-
-kArmoryCost = 10
-kArmsLabCost = 20
-
-kAdvancedArmoryUpgradeCost = 20
-kPrototypeLabCost = 40
-
-kSentryCost = 5
-kPowerNodeCost = 0
-
-kMACCost = 5
-kMineCost = 15
-kMineResearchCost  = 15
-kTechEMPResearchCost = 15
-kTechMACSpeedResearchCost = 15
-
-kWelderTechResearchTime = 10
-
 kShotgunCost = 20
 kShotgunTechResearchCost = 20
 
@@ -109,17 +81,17 @@ kAntiMatterSwordFireDelay = 0.1
 kAxeDamage = 30
 kAxeDamageType = kDamageType.Structural
 
-
+kGrenadeLauncherFireDelay = 1.5
 kGrenadeLauncherGrenadeDamage = 130
 kGrenadeLauncherGrenadeDamageType = kDamageType.Structural
 kGrenadeLauncherClipSize = 4
 kGrenadeLauncherGrenadeDamageRadius = 8
 kGrenadeLifetime = 2.0
 
-kShotgunDamage = 15
+kShotgunDamage = 17
 kShotgunDamageType = kDamageType.Normal
 kShotgunClipSize = 8
-kShotgunBulletsPerShot = 10
+kShotgunBulletsPerShot = 8
 kShotgunRange = 15
 
 kNadeLauncherClipSize = 4

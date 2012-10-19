@@ -37,6 +37,7 @@ local kAnimationGraph = PrecacheAsset("models/marine/shotgun/shotgun_view.animat
 local kMuzzleEffect = PrecacheAsset("cinematics/marine/shotgun/muzzle_flash.cinematic")
 local kMuzzleAttachPoint = "fxnode_shotgunmuzzle"
 
+
 function Shotgun:OnCreate()
 
     ClipWeapon.OnCreate(self)
@@ -102,6 +103,8 @@ end
 function Shotgun:GetBulletDamage(target, endPoint)
     return kShotgunDamage    
 end
+
+
 
 function Shotgun:GetHasSecondary(player)
     return true
@@ -234,6 +237,69 @@ end
 function Shotgun:GetAmmoPackMapName()
     return ShotgunAmmo.kMapName
 end    
+
+/*local function ShootGrenade(self)
+
+    local player = self:GetParent()
+    if Server and player then
+        
+        local viewAngles = player:GetViewAngles()
+        local viewCoords = viewAngles:GetCoords()
+        
+        // Make sure start point isn't on the other side of a wall or object
+        local startPoint = player:GetEyePos() - (viewCoords.zAxis * 0.2)
+        local trace = Shared.TraceRay(startPoint, startPoint + viewCoords.zAxis * 25, CollisionRep.Default, PhysicsMask.Bullets, EntityFilterOne(player))
+
+        // make sure the grenades flies to the crosshairs target
+        local grenadeStartPoint = player:GetEyePos() + viewCoords.zAxis * .5 - viewCoords.xAxis * .1 - viewCoords.yAxis * .25
+        
+        // if we would hit something use the trace endpoint, otherwise use the players view direction (for long range shots)
+        local grenadeDirection = ConditionalValue(trace.fraction ~= 1, trace.endPoint - grenadeStartPoint, viewCoords.zAxis)
+        grenadeDirection:Normalize()
+        
+        local grenade = CreateEntity(Grenade.kMapName, grenadeStartPoint, player:GetTeamNumber())
+        SetAnglesFromVector(grenade, grenadeDirection)
+        
+        // Inherit player velocity?
+        local startVelocity = grenadeDirection * 15
+        startVelocity.y = startVelocity.y + 3
+        grenade:SetVelocity(startVelocity)
+        
+        // Set grenade owner to player so we don't collide with ourselves and so we
+        // can attribute a kill to us
+        grenade:SetOwner(player)
+        
+    end
+
+end
+
+function Shotgun:OnSecondaryAttack(player)
+
+    local enoughTimePassed = self.timeAttackStarted + kGrenadeLauncherFireDelay < Shared.GetTime()
+    local attackAllowed = (not self:GetIsReloading() or self:GetSecondaryCanInterruptReload()) and (not self:GetSecondaryAttackRequiresPress() or not player:GetSecondaryAttackLastFrame()) and enoughTimePassed
+    attackAllowed = attackAllowed and (not self:GetPrimaryIsBlocking() or not self.blockingPrimary) and not self.blockingSecondary
+    
+    if self:GetIsDeployed() and attackAllowed and not self.primaryAttacking then
+    
+        self.secondaryAttacking = true
+        
+        if self:GetIsReloading() then
+            CancelReload(self)
+        end
+        
+        Weapon.OnSecondaryAttack(self, player)
+        
+        self.blockingSecondary = true
+        self.timeAttackStarted = Shared.GetTime()
+        ShootGrenade(self)
+        
+        return true
+        
+    end
+    
+    return false
+    
+end*/
 
 
 Shared.LinkClassToMap("Shotgun", Shotgun.kMapName, networkVars)
