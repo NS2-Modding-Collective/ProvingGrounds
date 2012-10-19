@@ -150,7 +150,6 @@ local function ShootGrenade(self)
         local startVelocity = grenadeDirection * 15
         startVelocity.y = startVelocity.y + 3
         grenade:Setup(player, startVelocity, true)
-        //grenade:SetVelocity(startVelocity)
         
         // Set grenade owner to player so we don't collide with ourselves and so we
         // can attribute a kill to us

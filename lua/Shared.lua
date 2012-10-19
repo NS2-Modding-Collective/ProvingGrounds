@@ -89,6 +89,7 @@ Script.Load("lua/Weapons/Marine/Pistol.lua")
 Script.Load("lua/Weapons/Marine/Shotgun.lua")
 Script.Load("lua/Weapons/Marine/Axe.lua")
 Script.Load("lua/Weapons/Marine/GrenadeLauncher.lua")
+Script.Load("lua/Weapons/Marine/RocketLauncher.lua")
 Script.Load("lua/Weapons/Marine/Flamethrower.lua")
 Script.Load("lua/Weapons/Marine/AMS.lua")
 

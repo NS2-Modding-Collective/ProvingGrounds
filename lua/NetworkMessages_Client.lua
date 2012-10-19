@@ -86,6 +86,8 @@ function OnCommandScores(scoreTable)
         status = Locale.ResolveString("STATUS_DEAD")
     elseif scoreTable.status == kPlayerStatus.GrenadeLauncher then
         status = Locale.ResolveString("STATUS_GRENADE_LAUNCHER")
+    elseif scoreTable.status == kPlayerStatus.RocketLauncher then
+        status = Locale.ResolveString("STATUS_ROCKET_LAUNCHER")
     elseif scoreTable.status == kPlayerStatus.Rifle then
         status = Locale.ResolveString("STATUS_RIFLE")
     elseif scoreTable.status == kPlayerStatus.Shotgun then
