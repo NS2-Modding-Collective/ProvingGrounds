@@ -55,6 +55,10 @@ if Server then
     function Rocket:ProcessHit(targetHit, surface)
         if targetHit then
             self:Detonate(targetHit)            
+        else
+            if self:GetVelocity():GetLength() > 2 then
+                self:Detonate(nil)
+            end
         end
         
     end
