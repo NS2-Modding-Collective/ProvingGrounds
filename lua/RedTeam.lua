@@ -61,6 +61,7 @@ function RedTeam:InitTechTree()
     self.techTree:AddBuyNode(kTechId.Shotgun,             kTechId.None,                kTechId.None)
     self.techTree:AddBuyNode(kTechId.GrenadeLauncher,     kTechId.None,                kTechId.None)
     self.techTree:AddBuyNode(kTechId.Flamethrower,        kTechId.None,		           kTechId.none)
+    self.techTree:AddBuyNode(kTechId.AntiMatterSword,     kTechId.None,		           kTechId.none)
     
     self.techTree:SetComplete()
 

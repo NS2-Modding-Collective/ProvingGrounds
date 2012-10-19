@@ -252,13 +252,12 @@ function ClipWeapon:GetIsPrimaryAttackAllowed(player)
         return false
     end    
 
-    local sprintedRecently = (Shared.GetTime() - self.lastTimeSprinted) < kMaxTimeToSprintAfterAttack
     local attackAllowed = (not self:GetPrimaryAttackRequiresPress() or not player:GetPrimaryAttackLastFrame())
     attackAllowed = attackAllowed and (not self:GetIsReloading() or self:GetPrimaryCanInterruptReload())
     attackAllowed = attackAllowed and not self.blockingSecondary
     attackAllowed = attackAllowed and (not self:GetPrimaryIsBlocking() or not self.blockingPrimary)
     
-    return self:GetIsDeployed() and not sprintedRecently and attackAllowed
+    return self:GetIsDeployed() and attackAllowed
 
 end
 
@@ -326,11 +325,10 @@ end
 
 function ClipWeapon:OnSecondaryAttack(player)
 
-    local sprintedRecently = (Shared.GetTime() - self.lastTimeSprinted) < kMaxTimeToSprintAfterAttack
-    local attackAllowed = not sprintedRecently and (not self:GetIsReloading() or self:GetSecondaryCanInterruptReload()) and (not self:GetSecondaryAttackRequiresPress() or not player:GetSecondaryAttackLastFrame())
+    local attackAllowed = (not self:GetIsReloading() or self:GetSecondaryCanInterruptReload()) and (not self:GetSecondaryAttackRequiresPress() or not player:GetSecondaryAttackLastFrame())
     attackAllowed = attackAllowed and (not self:GetPrimaryIsBlocking() or not self.blockingPrimary) and not self.blockingSecondary
     
-    if not player:GetIsSprinting() and self:GetIsDeployed() and attackAllowed and not self.primaryAttacking then
+    if self:GetIsDeployed() and attackAllowed and not self.primaryAttacking then
     
         self.secondaryAttacking = true
         

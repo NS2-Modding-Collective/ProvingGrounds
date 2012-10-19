@@ -1454,34 +1454,6 @@ if Client then
         input.pitch = Math.Clamp(input.pitch, -kMaxPitch, kMaxPitch)
     end
     
-    // &ol& = order location
-    // &ot& = order target entity name
-    function TranslateHintText(text)
-    
-        local translatedText = text
-        local player = Client.GetLocalPlayer()
-        
-        if player and HasMixin(player, "Orders") then
-        
-            local order = player:GetCurrentOrder()
-            if order then
-            
-                local orderDestination = order:GetLocation()
-                local location = GetLocationForPoint(orderDestination)
-                local orderLocationName = location and location:GetName() or ""
-                translatedText = string.gsub(translatedText, "&ol&", orderLocationName)
-                
-                local orderTargetEntityName = LookupTechData(order:GetParam(), kTechDataDisplayName, "<entity name>")
-                translatedText = string.gsub(translatedText, "&ot&", orderTargetEntityName)
-                
-            end
-            
-        end
-        
-        return translatedText
-        
-    end
-    
 end
 
 gSpeedDebug = nil
@@ -1580,7 +1552,7 @@ function GetTexCoordsForTechId(techId)
         // marine weapons
         gTechIdPosition[kTechId.Rifle] = kDeathMessageIcon.Rifle
         gTechIdPosition[kTechId.Pistol] = kDeathMessageIcon.Pistol
-        gTechIdPosition[kTechId.Axe] = kDeathMessageIcon.Axe
+        gTechIdPosition[kTechId.AntiMatterSword] = kDeathMessageIcon.Axe
         gTechIdPosition[kTechId.Shotgun] = kDeathMessageIcon.Shotgun
         gTechIdPosition[kTechId.Flamethrower] = kDeathMessageIcon.Flamethrower
         gTechIdPosition[kTechId.GrenadeLauncher] = kDeathMessageIcon.Grenade

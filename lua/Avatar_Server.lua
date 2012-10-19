@@ -79,9 +79,10 @@ function Avatar:InitWeapons()
 
     Player.InitWeapons(self)
     //Amended for Proving Grounds
-    self:GiveItem(Shotgun.kMapName)
+    self:GiveItem(GrenadeLauncher.kMapName)
+    self:GiveItem(AntiMatterSword.kMapName)
     
-    self:SetActiveWeapon(Shotgun.kMapName)
+    self:SetActiveWeapon(GrenadeLauncher.kMapName)
 
 end
 
@@ -125,36 +126,4 @@ end
 
 function Avatar:GetOriginOnDeath()
     return self.originOnDeath
-end
-
-function Avatar:GiveJetpack()
-
-    local activeWeapon = self:GetActiveWeapon()
-    local activeWeaponMapName = nil
-    local health = self:GetHealth()
-    
-    if activeWeapon ~= nil then
-        activeWeaponMapName = activeWeapon:GetMapName()
-    end
-    
-    local jetpackMarine = self:Replace(JetpackMarine.kMapName, self:GetTeamNumber(), true, Vector(self:GetOrigin()))
-    
-    jetpackMarine:SetActiveWeapon(activeWeaponMapName)
-    jetpackMarine:SetHealth(health)
-    
-end
-
-function Avatar:GiveExo(spawnPoint)
-
-    self:DropAllWeapons()
-    self:Replace(Exo.kMapName, self:GetTeamNumber(), false, spawnPoint)
-    
-end
-
-function Avatar:GiveDualExo(spawnPoint)
-
-    self:DropAllWeapons()
-    local exo = self:Replace(Exo.kMapName, self:GetTeamNumber(), false, spawnPoint)
-    exo:InitDualMinigun()
-    
 end

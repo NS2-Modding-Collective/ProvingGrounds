@@ -241,12 +241,6 @@ function Avatar:OnCountDownEnd()
 
 end
 
-function Avatar:OnOrderSelfComplete(orderType)
-
-    self:TriggerEffects("complete_order")
-
-end
-
 function Avatar:GetSpeedDebugSpecial()
     return self:GetSprintTime() / SprintMixin.kMaxSprintTime
 end

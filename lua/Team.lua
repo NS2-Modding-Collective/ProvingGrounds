@@ -34,14 +34,6 @@ function Team:OnEntityKilled(targetEntity, killer, doer, point, direction)
 end
 
 /**
- * If a team doesn't support orders then any player changing to the team will have it's
- * orders cleared.
- */
-function Team:GetSupportsOrders()
-    return true
-end
-
-/**
  * Called only by Gamerules.
  */
 function Team:AddPlayer(player)

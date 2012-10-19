@@ -13,7 +13,6 @@ Script.Load("lua/Mixins/CameraHolderMixin.lua")
 Script.Load("lua/MarineActionFinderMixin.lua")
 Script.Load("lua/ScoringMixin.lua")
 Script.Load("lua/UnitStatusMixin.lua")
-Script.Load("lua/DissolveMixin.lua")
 Script.Load("lua/LOSMixin.lua")
 Script.Load("lua/CombatMixin.lua")
 
@@ -83,7 +82,6 @@ AddMixinNetworkVars(BaseMoveMixin, networkVars)
 AddMixinNetworkVars(GroundMoveMixin, networkVars)
 AddMixinNetworkVars(CameraHolderMixin, networkVars)
 
-AddMixinNetworkVars(DissolveMixin, networkVars)
 AddMixinNetworkVars(LOSMixin, networkVars)
 AddMixinNetworkVars(CombatMixin, networkVars)
 
@@ -98,8 +96,7 @@ function Avatar:OnCreate()
 
     
     Player.OnCreate(self)
-    
-    InitMixin(self, DissolveMixin)
+
     InitMixin(self, EntityChangeMixin)
     InitMixin(self, LOSMixin)
     

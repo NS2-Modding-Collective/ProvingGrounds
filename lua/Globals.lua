@@ -97,7 +97,7 @@ kMaxHotkeyGroups = 5
 kSurfaceList = { "door", "electronic", "metal", "organic", "rock", "thin_metal", "membrane", "armor", "flesh", "flame", "infestation", "glass" }
 
 // a longer surface list, for hiteffects only (used by hiteffects network message, don't remove any values)
-kHitEffectSurface = enum( { "metal", "door", "electronic", "organic", "rock", "thin_metal", "membrane", "armor", "flesh", "flame", "infestation", "glass", "ethereal", "flame", "hallucination", "umbra", "nanoshield" } )
+kHitEffectSurface = enum( { "metal", "electronic", "organic", "rock", "thin_metal", "membrane", "armor", "flesh", "flame", "infestation", "glass", "ethereal", "flame", "hallucination", "umbra", "nanoshield" } )
 kHitEffectRelevancyDistance = 40
 kHitEffectMaxPosition = 1638 // used for precision in hiteffect message
 kTracerSpeed = 75
@@ -105,7 +105,7 @@ kMaxHitEffectsPerSecond = 200
 
 kMainMenuFlash = "ui/main_menu.swf"
 
-kPlayerStatus = enum( { "Hidden", "Dead", "Evolving", "Embryo", "Commander", "Exo", "GrenadeLauncher", "Rifle", "Shotgun", "Flamethrower", "Void", "Spectator", "Skulk", "Gorge", "Fade", "Lerk", "Onos" } )
+kPlayerStatus = enum( { "Hidden", "Dead", "GrenadeLauncher", "Rifle", "Shotgun", "Flamethrower", "Void", "Spectator", "AntiMatterSword" } )
 kPlayerCommunicationStatus = enum( {'None', 'Voice', 'Typing', 'Menu'} )
 
 kMaxAlienAbilities = 3
@@ -125,7 +125,7 @@ kSpecialEditionProductId = 4930
 // Death message indices 
 kDeathMessageIcon = enum( {'None', 'Rifle', 'RifleButt',
                            'Pistol', 'Axe', 'Shotgun',
-                           'Flamethrower', 'Grenade'} )
+                           'Flamethrower', 'Grenade', 'AntiMatterSword' } )
 // Bit mask table for non-stackable game effects. OnInfestation is set if we're on ANY infestation (regardless of team).
 // Always keep "Max" as last element.
 kGameEffect = CreateBitMask( {"NearDeath", "OnFire", "Max"} )
