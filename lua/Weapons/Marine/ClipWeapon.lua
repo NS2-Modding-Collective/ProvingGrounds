@@ -25,8 +25,7 @@ local networkVars =
     blockingSecondary = "boolean",
     timeAttackStarted = "time",
     deployed = "boolean",
-    
-    ammo = "integer (0 to 255)",
+
     clip = "integer (0 to 200)",
     
     reloading = "boolean",
@@ -66,15 +65,10 @@ function ClipWeapon:OnCreate()
 end
 
 local function FillClip(self)
-
-    // Stick the bullets in the clip back into our pool so that we don't lose
-    // bullets. Not realistic, but more enjoyable
-    self.ammo = self.ammo + self.clip
     
-    // Transfer bullets from our ammo pool to the weapon's clip
-    self.clip = math.min(self.ammo, self:GetClipSize())
-    self.ammo = self.ammo - self.clip
-    
+    //Fill Clip up directly
+    self.clip = self:GetClipSize()
+ 
 end
 
 function ClipWeapon:OnInitialized()
@@ -84,8 +78,7 @@ function ClipWeapon:OnInitialized()
     if worldModel ~= nil then
         self:SetModel(worldModel)
     end
-    
-    self.ammo = self:GetNumStartClips() * self:GetClipSize()
+
     self.clip = 0
     self.reloading = false
     
@@ -101,10 +94,6 @@ end
 
 function ClipWeapon:GetBulletsPerShot()
     return 1
-end
-
-function ClipWeapon:GetNumStartClips()
-    return 5
 end
 
 function ClipWeapon:GetClipSize()
@@ -125,10 +114,6 @@ function ClipWeapon:GetRange()
     return 8012
 end
 
-function ClipWeapon:GetAmmo()
-    return self.ammo
-end
-
 function ClipWeapon:GetClip()
     return self.clip
 end
@@ -139,10 +124,6 @@ end
 
 function ClipWeapon:GetAuxClip()
     return 0
-end
-
-function ClipWeapon:GetMaxAmmo()
-    return 4 * self:GetClipSize()
 end
 
 // Return world position of gun barrel, used for weapon effects.
@@ -196,42 +177,8 @@ local function CancelReload(self)
     
 end
 
-function ClipWeapon:GiveAmmo(numClips, includeClip)
-
-    // Fill reserves, then clip. NS1 just filled reserves but I like the implications of filling the clip too.
-    // But don't do it until reserves full.
-    local success = false
-    local bulletsToGive = numClips * self:GetClipSize()
-    
-    local bulletsToAmmo = math.min(bulletsToGive, self:GetMaxAmmo() - self:GetAmmo())        
-    if bulletsToAmmo > 0 then
-
-        self.ammo = self.ammo + bulletsToAmmo
-
-        bulletsToGive = bulletsToGive - bulletsToAmmo        
-        
-        success = true
-        
-    end
-    
-    if bulletsToGive > 0 and (self:GetClip() < self:GetClipSize() and includeClip) then
-        
-        self.clip = self.clip + math.min(bulletsToGive, self:GetClipSize() - self:GetClip())
-        success = true        
-        
-    end
-
-    return success
-    
-end
-
-function ClipWeapon:GiveReserveAmmo(bullets)
-    local bulletsToAmmo = math.min(bullets, self:GetMaxAmmo() - self:GetAmmo())  
-    self.ammo = self.ammo + bulletsToAmmo
-end
-
 function ClipWeapon:GetNeedsAmmo(includeClip)
-    return (includeClip and (self:GetClip() < self:GetClipSize())) or (self:GetAmmo() < self:GetMaxAmmo())
+    return (includeClip and (self:GetClip() < self:GetClipSize()))
 end
 
 function ClipWeapon:GetWarmupTime()
@@ -283,8 +230,7 @@ function ClipWeapon:OnPrimaryAttack(player)
                 
             end
             
-        elseif self.ammo > 0 then
-        
+        elseif self.clip == 0 then        
             self:OnPrimaryAttackEnd(player)
             // Automatically reload if we're out of ammo.
             player:Reload()
@@ -449,15 +395,11 @@ function ClipWeapon:GetTracerEffectFrequency()
 end
 
 function ClipWeapon:GetIsDroppable()
-    return true
-end
-
-function ClipWeapon:GetSprintAllowed()
-    return not self.reloading and (Shared.GetTime() > (self.timeAttackStarted + kMaxTimeToSprintAfterAttack))
+    return false
 end
 
 function ClipWeapon:CanReload()
-    return self.ammo > 0 and self.clip < self:GetClipSize() and not self.reloading and not self.blockingSecondary
+    return self.clip < self:GetClipSize() and not self.reloading and not self.blockingSecondary
 end
 
 function ClipWeapon:OnReload(player)
@@ -572,7 +514,7 @@ function ClipWeapon:OnUpdateAnimationInput(modelMixin)
     
     modelMixin:SetAnimationInput("activity", activity)
     modelMixin:SetAnimationInput("flinch_gore", interrupted)
-    modelMixin:SetAnimationInput("empty", (self.ammo + self.clip) == 0)
+    modelMixin:SetAnimationInput("empty", (self.clip) == 0)
 
 end
 
@@ -581,25 +523,7 @@ function ClipWeapon:GetAmmoPackMapName()
     return nil
 end    
 
-if Server then
-
-    function ClipWeapon:Dropped(prevOwner)
-        
-        Weapon.Dropped(self, prevOwner)
-        
-        local ammopackMapName = self:GetAmmoPackMapName()
-        
-        if ammopackMapName and self.ammo ~= 0 then
-        
-            local ammoPack = CreateEntity(ammopackMapName, self:GetOrigin(), self:GetTeamNumber())
-            ammoPack:SetAmmoPackSize(self.ammo)
-            self.ammo = 0
-        
-        end
-        
-    end
-
-elseif Client then
+if Client then
 
     function ClipWeapon:GetTriggerPrimaryEffects()
         return not self:GetIsReloading()

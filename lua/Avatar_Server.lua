@@ -78,8 +78,9 @@ end
 function Avatar:InitWeapons()
 
     Player.InitWeapons(self)
-    //Amended for Proving Grounds
+
     self:GiveItem(GrenadeLauncher.kMapName)
+    self:GiveItem(RocketLauncher.kMapName)
     self:GiveItem(AntiMatterSword.kMapName)
     
     self:SetActiveWeapon(GrenadeLauncher.kMapName)

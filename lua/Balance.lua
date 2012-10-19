@@ -82,11 +82,16 @@ kAxeDamage = 30
 kAxeDamageType = kDamageType.Structural
 
 kGrenadeLauncherFireDelay = 1.5
-kGrenadeLauncherGrenadeDamage = 130
-kGrenadeLauncherGrenadeDamageType = kDamageType.Structural
+kGrenadeLauncherGrenadeDamage = 80
+kGrenadeLauncherGrenadeDamageType = kDamageType.Light
 kGrenadeLauncherClipSize = 4
 kGrenadeLauncherGrenadeDamageRadius = 8
 kGrenadeLifetime = 2.0
+
+kRocketLauncherRocketDamage = 130
+kRocketLauncherRocketDamageType = kDamageType.Normal
+kRocketLauncherRocketDamageRadius = 6
+kRocketLauncherClipSize = 4
 
 kShotgunDamage = 17
 kShotgunDamageType = kDamageType.Normal

@@ -29,7 +29,7 @@ kIconOffsets["Shotgun"] = 1
 kIconOffsets["Pistol"] = 2
 kIconOffsets["Flamethrower"] = 3
 kIconOffsets["GrenadeLauncher"] = 4
-kIconOffsets["NadeLauncher"] = 4
+kIconOffsets["RocketLauncher"] = 4
 
 // Hold-button progress
 local kBarPadding = 4

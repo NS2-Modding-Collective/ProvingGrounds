@@ -353,7 +353,7 @@ function PlayerUI_GetCrosshairY()
             local index 
             local mapname = weapon:GetMapName()
             
-            if mapname == Rifle.kMapName or mapname == GrenadeLauncher.kMapName then 
+            if mapname == Rifle.kMapName or mapname == GrenadeLauncher.kMapName or mapname == RocketLauncher.kMapName then 
                 index = 0
             elseif mapname == Pistol.kMapName then
                 index = 1
@@ -682,15 +682,6 @@ function PlayerUI_GetMinimapPlayerDirection()
     end
     return 0
 
-end
-
-
-function PlayerUI_GetWeaponAmmo()
-    local player = Client.GetLocalPlayer()
-    if player then
-        return player:GetWeaponAmmo()
-    end
-    return 0
 end
 
 function PlayerUI_GetWeaponClip()
@@ -1269,20 +1260,6 @@ end
 
 function Player:CloseMenu()
     return false    
-end
-
-function Player:GetWeaponAmmo()
-
-    // We could do some checks to make sure we have a non-nil ClipWeapon,
-    // but this should never be called unless we do.
-    local weapon = self:GetActiveWeapon()
-    
-    if(weapon ~= nil and weapon:isa("ClipWeapon")) then
-        return weapon:GetAmmo()
-    end
-    
-    return 0
-    
 end
 
 function Player:GetWeaponClip()

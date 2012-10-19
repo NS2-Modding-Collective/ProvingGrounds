@@ -15,7 +15,7 @@ kTechId = enum({
     'Avatar', 'Spectator', 'MarineSpectator', 'RedSpectator',
  
     // Weapons 
-    'Rifle', 'Pistol', 'Shotgun', 'Claw', 'Minigun', 'GrenadeLauncher', 'Flamethrower', 'Axe', 'AntiMatterSword',
+    'Rifle', 'Pistol', 'Shotgun', 'Claw', 'Minigun', 'GrenadeLauncher', 'RocketLauncher', 'Flamethrower', 'Axe', 'AntiMatterSword',
 	'Blink',
     'GameStarted',
     

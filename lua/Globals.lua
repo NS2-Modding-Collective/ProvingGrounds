@@ -105,7 +105,7 @@ kMaxHitEffectsPerSecond = 200
 
 kMainMenuFlash = "ui/main_menu.swf"
 
-kPlayerStatus = enum( { "Hidden", "Dead", "GrenadeLauncher", "Rifle", "Shotgun", "Flamethrower", "Void", "Spectator", "AntiMatterSword" } )
+kPlayerStatus = enum( { "Hidden", "Dead", "GrenadeLauncher", "RocketLauncher", "Rifle", "Shotgun", "Flamethrower", "Void", "Spectator", "AntiMatterSword" } )
 kPlayerCommunicationStatus = enum( {'None', 'Voice', 'Typing', 'Menu'} )
 
 kMaxAlienAbilities = 3
