@@ -86,7 +86,7 @@ kGrenadeLauncherGrenadeDamage = 80
 kGrenadeLauncherGrenadeDamageType = kDamageType.Light
 kGrenadeLauncherClipSize = 4
 kGrenadeLauncherGrenadeDamageRadius = 8
-kGrenadeLifetime = 2.0
+kGrenadeLifetime = 1.5
 
 kRocketLauncherRocketDamage = 130
 kRocketLauncherRocketDamageType = kDamageType.Normal
