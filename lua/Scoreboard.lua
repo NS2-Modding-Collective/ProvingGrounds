@@ -24,11 +24,17 @@ function Scoreboard_Sort()
         
             if player1.Kills == player2.Kills then
             
-                if player1.Deaths == player2.Deaths then    
+                if player1.Deaths == player2.Deaths then
+
+                    if player1.Streak == player2.Streak then    
                 
       
-                    // Somewhat arbitrary but keeps more coherence and adds players to bottom in case of ties
-                    return player1.ClientIndex > player2.ClientIndex
+                        // Somewhat arbitrary but keeps more coherence and adds players to bottom in case of ties
+                        return player1.ClientIndex > player2.ClientIndex
+                        
+                    else
+                        return player1.Streak < player2.Streak
+                    end
                     
                 else
                     return player1.Deaths < player2.Deaths
@@ -61,6 +67,7 @@ function Scoreboard_OnResetGame()
         playerRecord.EntityTeamNumber = 0
         playerRecord.Score = 0
         playerRecord.Kills = 0
+        playerRecord.Streak = 0
         playerRecord.Deaths = 0
         playerRecord.Status = ""
         playerRecord.IsSpectator = false
@@ -76,7 +83,7 @@ function Scoreboard_OnClientDisconnect(clientIndex)
     
 end
 
-function Scoreboard_SetPlayerData(clientIndex, entityId, playerName, teamNumber, score, kills, deaths, status, isSpectator)
+function Scoreboard_SetPlayerData(clientIndex, entityId, playerName, teamNumber, score, kills, deaths, streak, status, isSpectator)
 
     // Lookup record for player and update it
     for i = 1, table.maxn(playerData) do
@@ -91,6 +98,7 @@ function Scoreboard_SetPlayerData(clientIndex, entityId, playerName, teamNumber,
             playerRecord.EntityTeamNumber = teamNumber
             playerRecord.Score = score
             playerRecord.Kills = kills
+            playerRecord.Streak = streak
             playerRecord.Deaths = deaths
             playerRecord.Status = status
             playerRecord.IsSpectator = isSpectator
@@ -111,6 +119,7 @@ function Scoreboard_SetPlayerData(clientIndex, entityId, playerName, teamNumber,
     playerRecord.EntityTeamNumber = teamNumber
     playerRecord.Score = score
     playerRecord.Kills = kills
+    playerRecord.Streak = streak
     playerRecord.Deaths = deaths
     playerRecord.Ping = 0
     playerRecord.Status = status

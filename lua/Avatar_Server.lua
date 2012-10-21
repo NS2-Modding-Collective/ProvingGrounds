@@ -80,6 +80,7 @@ function Avatar:InitWeapons()
     Player.InitWeapons(self)
 
     self:GiveItem(GrenadeLauncher.kMapName)
+    self:GiveItem(Rifle.kMapName)
     self:GiveItem(RocketLauncher.kMapName)
     self:GiveItem(AntiMatterSword.kMapName)
     

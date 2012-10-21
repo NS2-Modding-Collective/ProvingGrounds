@@ -58,7 +58,7 @@ kRifleUpgradeTechResearchCost = 10
 // MARINE DAMAGE
 kRifleDamage = 10
 kRifleDamageType = kDamageType.Normal
-kRifleClipSize = 50
+kRifleClipSize = 200
 
 
 kRifleMeleeDamage = 20
@@ -83,17 +83,17 @@ kAxeDamageType = kDamageType.Structural
 
 kGrenadeLauncherFireDelay = 1.5
 kGrenadeLauncherGrenadeDamage = 80
-kGrenadeLauncherGrenadeDamageType = kDamageType.Light
+kGrenadeLauncherGrenadeDamageType = kDamageType.Normal
 kGrenadeLauncherClipSize = 4
 kGrenadeLauncherGrenadeDamageRadius = 8
-kGrenadeLifetime = 2.0
+kGrenadeLifetime = 1.5
 
 kRocketLauncherRocketDamage = 130
 kRocketLauncherRocketDamageType = kDamageType.Normal
-kRocketLauncherRocketDamageRadius = 6
+kRocketLauncherRocketDamageRadius = 4
 kRocketLauncherClipSize = 4
 
-kShotgunDamage = 17
+kShotgunDamage = 20
 kShotgunDamageType = kDamageType.Normal
 kShotgunClipSize = 8
 kShotgunBulletsPerShot = 8

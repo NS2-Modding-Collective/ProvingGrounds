@@ -18,7 +18,7 @@ GrenadeLauncher.kModelName = PrecacheAsset("models/marine/shotgun/shotgun.model"
 local kViewModelName = PrecacheAsset("models/marine/shotgun/shotgun_view.model")
 
 local kLauncherFireDelay = kGrenadeLauncherFireDelay
-local kReloadTimer = 2
+local kReloadTimer = kGrenadeLifetime
 local kTimeReloaded = 0
 
 GrenadeLauncher.networkVars =
@@ -147,7 +147,7 @@ local function ShootGrenade(self)
         SetAnglesFromVector(grenade, grenadeDirection)
         
         // Inherit player velocity?
-        local startVelocity = grenadeDirection * 15
+        local startVelocity = grenadeDirection * 20
         startVelocity.y = startVelocity.y + 3
         grenade:Setup(player, startVelocity, true)
         

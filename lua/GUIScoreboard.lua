@@ -303,16 +303,16 @@ function GUIScoreboard:CreateTeamBackground(teamNumber)
     currentColumnX = currentColumnX + GUIScoreboard.kTeamColumnSpacingX
     
     // Resources text item.
-    local resItem = GUIManager:CreateTextItem()
-    resItem:SetFontName(GUIScoreboard.kFontName)
-    resItem:SetFontSize(GUIScoreboard.kPlayerStatsFontSize)
-    resItem:SetAnchor(GUIItem.Left, GUIItem.Top)
-    resItem:SetTextAlignmentX(GUIItem.Align_Min)
-    resItem:SetTextAlignmentY(GUIItem.Align_Min)
-    resItem:SetPosition(Vector(currentColumnX , playerDataRowY, 0))
-    resItem:SetColor(color)
-    resItem:SetText(Locale.ResolveString("SB_RES"))
-    teamItem:AddChild(resItem)
+    local streakItem = GUIManager:CreateTextItem()
+    streakItem:SetFontName(GUIScoreboard.kFontName)
+    streakItem:SetFontSize(GUIScoreboard.kPlayerStatsFontSize)
+    streakItem:SetAnchor(GUIItem.Left, GUIItem.Top)
+    streakItem:SetTextAlignmentX(GUIItem.Align_Min)
+    streakItem:SetTextAlignmentY(GUIItem.Align_Min)
+    streakItem:SetPosition(Vector(currentColumnX , playerDataRowY, 0))
+    streakItem:SetColor(color)
+    streakItem:SetText(Locale.ResolveString("SB_STREAK"))
+    teamItem:AddChild(streakItem)
     
     currentColumnX = currentColumnX + GUIScoreboard.kTeamColumnSpacingX
     
@@ -495,6 +495,7 @@ function GUIScoreboard:UpdateTeam(updateTeam)
         local clientIndex = playerRecord.ClientIndex
         local score = playerRecord.Score
         local kills = playerRecord.Kills
+        local streak = playerRecord.Streak
         local deaths = playerRecord.Deaths
         local isCommander = playerRecord.IsCommander
         local resourcesStr = ConditionalValue(isVisibleTeam, tostring(playerRecord.Resources), "-")
@@ -536,29 +537,18 @@ function GUIScoreboard:UpdateTeam(updateTeam)
         player["Voice"]:SetColor(playerVoiceColor)
         player["Score"]:SetText(tostring(score))
         player["Kills"]:SetText(tostring(kills))
+        player["Streak"]:SetText(tostring(streak))
         player["Deaths"]:SetText(tostring(deaths))
         player["Status"]:SetText(playerStatus)
         player["Ping"]:SetText(pingStr)
         
-        if playerRecord.IsCommander then
-        
-            player["Score"]:SetColor(GUIScoreboard.kCommanderFontColor)
-            player["Kills"]:SetColor(GUIScoreboard.kCommanderFontColor)
-            player["Deaths"]:SetColor(GUIScoreboard.kCommanderFontColor)
-            player["Status"]:SetColor(GUIScoreboard.kCommanderFontColor)
-            player["Ping"]:SetColor(GUIScoreboard.kCommanderFontColor)    
-            player["Name"]:SetColor(GUIScoreboard.kCommanderFontColor)
-
-        else
-        
-            player["Score"]:SetColor(GUIScoreboard.kWhiteColor)
-            player["Kills"]:SetColor(GUIScoreboard.kWhiteColor)
-            player["Deaths"]:SetColor(GUIScoreboard.kWhiteColor)
-            player["Status"]:SetColor(GUIScoreboard.kWhiteColor)
-            player["Ping"]:SetColor(GUIScoreboard.kWhiteColor)
-            player["Name"]:SetColor(GUIScoreboard.kWhiteColor)
-
-        end  
+        player["Score"]:SetColor(GUIScoreboard.kWhiteColor)
+        player["Kills"]:SetColor(GUIScoreboard.kWhiteColor)
+        player["Streak"]:SetColor(GUIScoreboard.kWhiteColor)
+        player["Deaths"]:SetColor(GUIScoreboard.kWhiteColor)
+        player["Status"]:SetColor(GUIScoreboard.kWhiteColor)
+        player["Ping"]:SetColor(GUIScoreboard.kWhiteColor)
+        player["Name"]:SetColor(GUIScoreboard.kWhiteColor)
         
         if ping < GUIScoreboard.kLowPingThreshold then
             player["Ping"]:SetColor(GUIScoreboard.kLowPingColor)
@@ -685,6 +675,19 @@ function GUIScoreboard:CreatePlayerItem()
     
     currentColumnX = currentColumnX + GUIScoreboard.kTeamColumnSpacingX
     
+    // Kill text item.
+    local streakItem = GUIManager:CreateTextItem()
+    streakItem:SetFontName(GUIScoreboard.kFontName)
+    streakItem:SetFontSize(GUIScoreboard.kPlayerStatsFontSize)
+    streakItem:SetAnchor(GUIItem.Left, GUIItem.Top)
+    streakItem:SetTextAlignmentX(GUIItem.Align_Min)
+    streakItem:SetTextAlignmentY(GUIItem.Align_Min)
+    streakItem:SetPosition(Vector(currentColumnX, 5, 0))
+    streakItem:SetColor(Color(1, 1, 1, 1))
+    playerItem:AddChild(streakItem)
+    
+    currentColumnX = currentColumnX + GUIScoreboard.kTeamColumnSpacingX
+    
     // Ping text item.
     local pingItem = GUIManager:CreateTextItem()
     pingItem:SetFontName(GUIScoreboard.kFontName)
@@ -696,7 +699,7 @@ function GUIScoreboard:CreatePlayerItem()
     pingItem:SetColor(Color(1, 1, 1, 1))
     playerItem:AddChild(pingItem)
     
-    return { Background = playerItem, Name = playerNameItem, Voice = playerVoiceIcon, Status = statusItem, Score = scoreItem, Kills = killsItem, Deaths = deathsItem, Resources = resItem, Ping = pingItem }
+    return { Background = playerItem, Name = playerNameItem, Voice = playerVoiceIcon, Status = statusItem, Score = scoreItem, Kills = killsItem, Deaths = deathsItem, Streak = streakItem, Ping = pingItem }
     
 end
 

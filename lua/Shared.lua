@@ -14,6 +14,7 @@ math.randomseed(Shared.GetSystemTime())
 for i = 1, 100 do math.random() end
 
 // Utility and constants
+
 Script.Load("lua/Globals.lua")
 Script.Load("lua/DamageTypes.lua")
 Script.Load("lua/Debug.lua")

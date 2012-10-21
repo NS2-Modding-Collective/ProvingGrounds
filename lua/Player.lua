@@ -100,12 +100,12 @@ local kUseBoxSize = Vector(0.5, 0.5, 0.5)
 
 Player.kCountDownLength = kCountDownLength
     
-Player.kGravity = -24
+Player.kGravity = -36
 Player.kMass = 90.7 // ~200 pounds (incl. armor, weapons)
 
 // Weapon weight scalars (from NS1)
-Player.kStowedWeaponWeightScalar = 0.7
-Player.kJumpHeight =  1.25
+Player.kStowedWeaponWeightScalar = 0.01
+Player.kJumpHeight =  1.6
 Player.kOnGroundDistance = 0.1
 
 // The physics shapes used for player collision have a "skin" that makes them appear to float, this makes the shape
@@ -116,20 +116,12 @@ Player.kYExtents = 0.95
 // Eyes a bit below the top of the head. NS1 marine was 64" tall.
 local kViewOffsetHeight = Player.kYExtents * 2 - 0.2
 
-// Slow down players when crouching
-Player.kCrouchSpeedScalar = 0.5
-// Percentage change in height when full crouched
-local kCrouchShrinkAmount = 0.7
-local kExtentsCrouchShrinkAmount = 0.5
-// How long does it take to crouch or uncrouch
-local kCrouchAnimationTime = 0.25
-
 Player.kMinVelocityForGravity = .5
 Player.kThinkInterval = .2
 Player.kMinimumPlayerVelocity = .05    // Minimum player velocity for network performance and ease of debugging
 
 // Player speeds
-Player.kWalkMaxSpeed = 7                // Four miles an hour = 6,437 meters/hour = 1.8 meters/second (increase for FPS tastes)
+Player.kWalkMaxSpeed = 6.5                // Four miles an hour = 6,437 meters/hour = 1.8 meters/second (increase for FPS tastes)
 Player.kMaxWalkableNormal =  math.cos( math.rad(45) )
 Player.kDownSlopeFactor = math.tan( math.rad(60) ) // Stick to ground on down slopes up to 60 degrees
 
@@ -206,9 +198,6 @@ local networkVars =
     frozen = "private boolean",
     
     timeOfLastUse = "private time",
-    
-    crouching = "compensated boolean",
-    timeOfCrouchChange = "compensated time",
     
     // bodyYaw must be compenstated as it feeds into the animation as a pose parameter
     bodyYaw = "compensated interpolated angle (11 bits)",
@@ -369,8 +358,6 @@ function Player:OnCreate()
     self.respawnQueueEntryTime = nil
 
     self.timeOfDeath = nil
-    self.crouching = false
-    self.timeOfCrouchChange = 0
     self.onGroundNeedsUpdate = true
     self.onGround = false
     
@@ -491,6 +478,8 @@ end
 function Player:AddKill()
 
     self.kills = Clamp(self.kills + 1, 0, kMaxKills)
+    self.streak = Clamp(self.streak + 1, 0, kMaxStreak)
+    self:CheckForMultiKills(self.name, self.streak)
     self:SetScoreboardChanged(true)
     
 end
@@ -690,21 +679,6 @@ end
 
 function Player:GetViewOffset()
     return self.viewOffset
-end
-
-/**
- * Returns the view offset with the step smoothing factored in.
- */
-function Player:GetSmoothedViewOffset()
-
-    local deltaTime = Shared.GetTime() - self.stepStartTime
-    
-    if deltaTime < Player.stepTotalTime then
-        return self.viewOffset + Vector( 0, -self.stepAmount * (1 - deltaTime / Player.stepTotalTime), 0 )
-    end
-    
-    return self.viewOffset
-    
 end
 
 /**
@@ -1026,16 +1000,6 @@ function Player:Draw(previousWeaponName)
     
 end
 
-function Player:GetExtentsOverride()
-
-    local extents = self:GetMaxExtents()
-    if self.crouching then
-        extents.y = extents.y * (1 - self:GetExtentsCrouchShrinkAmount())
-    end
-    return extents
-    
-end
-
 /**
  * Returns true if the player is currently on a team and the game has started.
  */
@@ -1158,7 +1122,7 @@ function Player:GetIsAffectedByAirFriction()
 end
 
 function Player:GetGroundFrictionForce()
-    return ConditionalValue(self.crouching or self.isUsing, 14, 8)
+    return ConditionalValue(self.isUsing, 14, 8)
 end   
 
 function Player:GetAirFrictionForce()
@@ -1421,17 +1385,7 @@ function Player:UpdateViewAngles(input)
     // Update to the current view angles.    
     local viewAngles = Angles(input.pitch, input.yaw, 0)
     self:SetViewAngles(viewAngles)
-        
-    // Update view offset from crouching
-
-    local viewY = self:GetMaxViewOffsetHeight()
-
-    // Don't set new view offset height unless needed (avoids Vector churn).
-    local lastViewOffsetHeight = self:GetSmoothedViewOffset().y
-    if math.abs(viewY - lastViewOffsetHeight) > kEpsilon then
-        self:SetViewOffsetHeight(viewY)
-    end
-    
+  
     self:AdjustAngles(input.time)
     
 end
@@ -1966,42 +1920,6 @@ function Player:GetStepHeight()
     return .5
 end
 
-/**
- * Returns a value between 0 and 1 indicating how much the player has crouched
- * visually (actual crouching is binary).
- */
-function Player:GetCrouchAmount()
-     
-    // Get 0-1 scalar of time since crouch changed        
-    local crouchScalar = 0
-    if self.timeOfCrouchChange > 0 then
-    
-        crouchScalar = math.min(Shared.GetTime() - self.timeOfCrouchChange, kCrouchAnimationTime) / kCrouchAnimationTime
-        
-        if(self.crouching) then
-            crouchScalar = math.sin(crouchScalar * math.pi/2)
-        else
-            crouchScalar = math.cos(crouchScalar * math.pi/2)
-        end
-        
-    end
-    
-    return crouchScalar
-
-end
-
-function Player:GetCrouching()
-    return self.crouching
-end
-
-function Player:GetCrouchShrinkAmount()
-    return kCrouchShrinkAmount
-end
-
-function Player:GetExtentsCrouchShrinkAmount()
-    return kExtentsCrouchShrinkAmount
-end
-
 // Returns true if the player is currently standing on top of something solid. Recalculates
 // onGround if we've updated our position since we've last called this.
 function Player:GetIsOnGround()
@@ -2093,15 +2011,12 @@ end
 
 function Player:GetPlayFootsteps()
 
-    return not self.crouching and self:GetVelocityLength() > .75 and self:GetIsOnGround() 
+    return self:GetVelocityLength() > .75 and self:GetIsOnGround() 
     
 end
 
 // Called by client/server UpdateMisc()
 function Player:UpdateSharedMisc(input)
-
-    // Update the view offet with the smoothed value.
-    self:SetViewOffsetHeight(self:GetSmoothedViewOffset().y)
     
     self:UpdateMode()
     
@@ -2468,7 +2383,7 @@ function Player:HandleButtons(input)
                                                                    Move.PrimaryAttack, Move.SecondaryAttack,
                                                                    Move.NextWeapon, Move.PrevWeapon, Move.Reload,
                                                                    Move.Taunt, Move.Weapon1, Move.Weapon2,
-                                                                   Move.Weapon3, Move.Weapon4, Move.Weapon5, Move.Crouch)))
+                                                                   Move.Weapon3, Move.Weapon4, Move.Weapon5)))
                                                                    
         input.move.x = 0
         input.move.y = 0
@@ -2546,54 +2461,7 @@ function Player:HandleButtons(input)
     if bit.band(input.commands, Move.Weapon5) ~= 0 then
         self:SwitchWeapon(5)
     end
-   
-    self:SetCrouchState(bit.band(input.commands, Move.Crouch) ~= 0)    
     
-end
-
-function Player:GetCanCrouch()
-    return true
-end
-
-function Player:SetCrouchState(crouching)
-
-    PROFILE("Player:SetCrouchState")
-
-    if crouching == self.crouching then
-        return
-    end
-   
-    if not crouching then
-        
-        // Check if there is room for us to stand up.
-        self.crouching = crouching
-        self:UpdateControllerFromEntity()
-        
-        if self:GetIsColliding() then
-            self.crouching = true
-            self:UpdateControllerFromEntity()
-        else
-            self.timeOfCrouchChange = Shared.GetTime()
-        end
-        
-    elseif self:GetCanCrouch() then
-        self.crouching = crouching
-        self.timeOfCrouchChange = Shared.GetTime()
-        self:UpdateControllerFromEntity()
-    end
-
-end
-
-function Player:GetNotEnoughResourcesSound()
-    return Player.kNotEnoughResourcesSound    
-end
-
-function Player:GetIsCommander()
-    return false
-end
-
-function Player:GetIsOverhead()
-    return false
 end
 
 // Children should override with specific menu actions
@@ -2826,13 +2694,11 @@ if Client then
     function Player:TriggerFootstep()
     
         self.leftFoot = not self.leftFoot
-        local sprinting = HasMixin(self, "Sprint") and self:GetIsSprinting()
         local viewVec = self:GetViewAngles():GetCoords().zAxis
         local forward = self:GetVelocity():DotProduct(viewVec) > -0.1
-        local crouch = self:GetCrouching()
         local localPlayer = Client.GetLocalPlayer()
         local enemy = localPlayer and GetAreEnemies(self, localPlayer)
-        self:TriggerEffects("footstep", {surface = self:GetMaterialBelowPlayer(), left = self.leftFoot, sprinting = sprinting, forward = forward, crouch = crouch, enemy = enemy})
+        self:TriggerEffects("footstep", {surface = self:GetMaterialBelowPlayer(), left = self.leftFoot, forward = forward, enemy = enemy})
         
     end
     
@@ -2842,16 +2708,10 @@ local kStepTagNames = { }
 kStepTagNames["step"] = true
 kStepTagNames["step_run"] = true
 kStepTagNames["step_sprint"] = true
-kStepTagNames["step_crouch"] = true
 function Player:OnTag(tagName)
 
     PROFILE("Player:OnTag")
-    
-    // Filter out crouch steps from playing at inappropriate times.
-    if tagName == "step_crouch" and not self:GetCrouching() then
-        return
-    end
-    
+       
     // Play footstep when foot hits the ground. Client side only.
     if Client and self:GetPlayFootsteps() and not Shared.GetIsRunningPrediction() and kStepTagNames[tagName] then
         self:TriggerFootstep()
@@ -2894,14 +2754,6 @@ end
 
 function Player:GetSpeedScalar()
     return self:GetVelocityLength() / self:GetMaxSpeed(true)
-end
-
-function Player:OnUpdateCamera(deltaTime)
-
-    // Update view offset from crouching
-    local offset = -self:GetCrouchShrinkAmount() * self:GetCrouchAmount()
-    self:SetCameraYOffset(offset)
-    
 end
 
 function Player:BlockMove()
@@ -2983,6 +2835,52 @@ end
 
 function Player:SetCommunicationStatus(status)
     self.communicationStatus = status
+end
+
+function Player:CheckForMultiKills(name,streak)
+        
+    local text = ""
+    
+    if streak == 3 then
+        text = name .. " is on triple kill!"
+    elseif streak == 5 then    
+        text = name .. " is on multikill!"
+    elseif streak == 6 then
+        text = name .. " is on rampage!"
+    elseif streak == 7 then
+        text = name .. " is on a killing spree!"
+    elseif streak == 9 then
+        text = name .. " is dominating!"
+    elseif streak == 11 then
+        text = name .. " is unstoppable!"
+    elseif streak == 13 then
+        text = name .. " made a mega kill!"
+    elseif streak == 15 then
+        text = name .. " made an ultra kill!"
+    elseif streak == 16 then
+        text = name .. " has an eagle eye!"
+    elseif streak == 17 then
+        text = name .. " owns!"
+    elseif streak == 18 then
+        text = name .. " made a ludicrouskill!"
+    elseif streak == 19 then
+        text = name .. " is a head hunter!"
+    elseif streak == 20 then
+        text = name .. " is whicked sick!"
+    elseif streak == 21 then
+        text = name .. " made a monster kill!"
+    elseif streak == 23 then
+        text = "Holy Shit! " .. name .. " got another one!"
+    elseif streak > 23 then
+        text = name .. " is G o d L i k e !!!"
+    end
+    
+    if text ~= "" then    	
+    if streak > 26 then 
+        streak = 26 //for color
+    end
+        Cout:addServerTextMessageToAllClients(1/2,1/10,text,4,{r = 255, g = 230-(streak*10), b = 260-(streak*10) },"multikill")
+    end
 end
 
 Shared.LinkClassToMap("Player", Player.kMapName, networkVars)

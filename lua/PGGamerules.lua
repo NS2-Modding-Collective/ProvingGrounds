@@ -904,24 +904,9 @@ if Server then
             end
             
             // Spawn immediately if going to ready room, game hasn't started, cheats on, or game started recently
-            if newTeamNumber == kTeamReadyRoom or self:GetCanSpawnImmediately() or force then
+            if newTeamNumber and self:GetCanSpawnImmediately() or force then
             
                 success, newPlayer = team:ReplaceRespawnPlayer(player, nil, nil)
-                
-                local teamTechPoint = team.GetInitialTechPoint and team:GetInitialTechPoint()
-                if teamTechPoint then
-                    newPlayer:OnInitialSpawn(teamTechPoint:GetOrigin())
-                end
-                
-            else
-            
-                // Destroy the existing player and create a spectator in their place.
-                newPlayer = player:Replace(team:GetSpectatorMapName(), newTeamNumber)
-                
-                // Queue up the spectator for respawn.
-                team:PutPlayerInRespawnQueue(newPlayer, Shared.GetTime())
-                
-                success = true
                 
             end
             

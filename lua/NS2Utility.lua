@@ -896,8 +896,7 @@ function SetPlayerPoseParameters(player, viewModel)
     player:SetPoseParam("body_pitch", pitch)
     player:SetPoseParam("body_yaw", bodyYaw)
     player:SetPoseParam("body_yaw_run", bodyYawRun)
-    
-    player:SetPoseParam("crouch", player:GetCrouchAmount())
+
     player:SetPoseParam("land_intensity", landIntensity)
     
     if viewModel then
@@ -905,7 +904,6 @@ function SetPlayerPoseParameters(player, viewModel)
         viewModel:SetPoseParam("body_pitch", pitch)
         viewModel:SetPoseParam("move_yaw", moveYaw)
         viewModel:SetPoseParam("move_speed", speedScalar)
-        viewModel:SetPoseParam("crouch", player:GetCrouchAmount())
         viewModel:SetPoseParam("body_yaw", bodyYaw)
         viewModel:SetPoseParam("body_yaw_run", bodyYawRun)
         viewModel:SetPoseParam("land_intensity", landIntensity)

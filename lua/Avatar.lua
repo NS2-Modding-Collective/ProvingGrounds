@@ -54,7 +54,7 @@ Avatar.kAvatarAlertTimeout = 4
 
 Avatar.kAcceleration = 100
 
-Avatar.kAirStrafeWeight = 2
+Avatar.kAirStrafeWeight = 1
 
 //Added for Proving Grounds
 Avatar.kShadowStepCooldown = 1.5

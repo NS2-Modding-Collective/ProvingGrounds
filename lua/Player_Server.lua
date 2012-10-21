@@ -34,6 +34,7 @@ function Player:Reset()
     ScriptActor.Reset(self)
     
     self.kills = 0
+    self.streak = 0
     self.deaths = 0
     
     self:SetScoreboardChanged(true)
@@ -345,12 +346,12 @@ function Player:CopyPlayerDataFrom(player)
     self.showScoreboard = player.showScoreboard
     self.score = player.score or 0
     self.kills = player.kills
+    self.streak = player.streak
     self.deaths = player.deaths
     
     self.timeOfDeath = player.timeOfDeath
     self.timeOfLastUse = player.timeOfLastUse
-    self.crouching = player.crouching
-    self.timeOfCrouchChange = player.timeOfCrouchChange   
+ 
     self.timeOfLastPoseUpdate = player.timeOfLastPoseUpdate
 
     self.timeLastBuyMenu = player.timeLastBuyMenu
@@ -578,6 +579,10 @@ function Player:GetKills()
     return self.kills
 end
 
+function Player:GetStreak()
+    return self.streak
+end
+
 function Player:GetDeaths()
     return self.deaths
 end
@@ -585,6 +590,7 @@ end
 function Player:AddDeaths()
 
     self.deaths = Clamp(self.deaths + 1, 0, kMaxDeaths)
+    self.streak = 0
     self:SetScoreboardChanged(true)
     
 end

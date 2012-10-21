@@ -89,7 +89,6 @@ kEffectFilterFrom                   = "upgraded"
 kEffectFilterLeft                   = "left"
 kEffectFilterSprinting              = "sprinting"
 kEffectFilterForward                = "forward"
-kEffectFilterCrouch                 = "crouch"
 kEffectFilterActive                 = "active"              // Generic "active" tag to denote change of state. Used for infantry portal spinning effects.
 kEffectFilterHitSurface             = "surface"             // Set in events that hit something
 kEffectFilterDeployed               = "deployed"            // When entity is in a deployed state
@@ -101,7 +100,7 @@ kEffectFilters =
 {
     kEffectFilterClassName, kEffectFilterDoerName, kEffectFilterDamageType, kEffectFilterIsAlien, kEffectFilterIsMarine, kEffectFilterBuilt, kEffectFilterFlinchSevere,
     kEffectFilterInAltMode, kEffectFilterOccupied, kEffectFilterEmpty, kEffectFilterVariant, kEffectFilterFrom, kEffectFilterFromAnimation, 
-    kEffectFilterFrom, kEffectFilterLeft, kEffectFilterSprinting, kEffectFilterForward, kEffectFilterCrouch, kEffectFilterActive, kEffectFilterHitSurface,
+    kEffectFilterFrom, kEffectFilterLeft, kEffectFilterSprinting, kEffectFilterForward, kEffectFilterActive, kEffectFilterHitSurface,
     kEffectFilterDeployed, kEffectFilterCloaked, kEffectFilterEnemy, kEffectFilterSilenceUpgrade
 }
 

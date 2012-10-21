@@ -164,7 +164,7 @@ local function ShootRocket(self, player)
         
         // Inherit player velocity?
         local startVelocity = rocketDirection
-        startVelocity = startVelocity * 25
+        startVelocity = startVelocity * 50
         
         local angles = Angles(0,0,0)
         angles.yaw = GetYawFromVector(rocketDirection)
@@ -212,14 +212,6 @@ if Server then
     end
 
     function RocketLauncher:OnSecondaryAttack(player)
-
-        local sprintedRecently = (Shared.GetTime() - self.lastTimeSprinted) < kMaxTimeToSprintAfterAttack
-        local attackAllowed = not sprintedRecently and not self:GetSecondaryAttackRequiresPress() or not player:GetSecondaryAttackLastFrame()
-    
-        if not player:GetIsSprinting() and self:GetIsDeployed() and attackAllowed and not self.primaryAttacking then        
-            DetonateGrenades(self, player) 
-        end    
-
     end
 
 end

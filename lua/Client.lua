@@ -596,14 +596,7 @@ function OnUpdateRender()
 			(1-adjustValue)*kMinFOVAdjustmentDegrees + adjustValue*kMaxFOVAdjustmentDegrees)
 		
         camera:SetFov(player:GetRenderFov()+adjustRadians)
-        
-        // In commander mode use frustum culling since the occlusion geometry
-        // isn't generally setup for viewing the level from the outside (and
-        // there is very little occlusion anyway)
-        if player:GetIsOverhead() then
-            cullingMode = RenderCamera.CullingMode_Frustum
-        end
-        
+               
         local horizontalFov = GetScreenAdjustedFov( camera:GetFov(), 4 / 3 )
         
         gRenderCamera:SetCoords(camera:GetCoords())

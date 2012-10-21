@@ -150,6 +150,7 @@ local kScoresMessage =
     teamNumber = string.format("integer (-1 to %d)", kRandomTeamType),
     score = string.format("integer (0 to %d)", kMaxScore),
     kills = string.format("integer (0 to %d)", kMaxKills),
+    streak = string.format("integer (0 to %d)", kMaxStreak),
     deaths = string.format("integer (0 to %d)", kMaxDeaths),
     status = "enum kPlayerStatus",
     isSpectator = "boolean"
@@ -170,6 +171,7 @@ function BuildScoresMessage(scorePlayer, sendToPlayer)
         t.score = scorePlayer:GetScore()
     end
     t.kills = scorePlayer:GetKills()
+    t.streak = scorePlayer:GetStreak()
     t.deaths = scorePlayer:GetDeaths()
     t.status = ConditionalValue(isEnemy, kPlayerStatus.Hidden, scorePlayer:GetPlayerStatusDesc())
     t.isSpectator = ConditionalValue(isEnemy, false, scorePlayer:isa("Spectator"))
