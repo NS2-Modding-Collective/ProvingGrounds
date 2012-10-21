@@ -85,6 +85,7 @@ kWorldDamageRepeatAnimationScalar = .1
 kMaxNameLength = 20
 kMaxScore = 9999
 kMaxKills = 254
+kMaxStreak = 254
 kMaxDeaths = 254
 kMaxPing = 999
 

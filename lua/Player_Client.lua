@@ -2305,9 +2305,10 @@ function Player:UpdateChat(input)
 end
 
 function Player:GetCustomSelectionText()
-    return string.format("%s kills\n%s deaths\n%s score",
+    return string.format("%s kills\n%s deaths\n%s sreak\n%s score",
             ToString(Scoreboard_GetPlayerData(self:GetClientIndex(), "Kills")),
             ToString(Scoreboard_GetPlayerData(self:GetClientIndex(), "Deaths")),
+            ToString(Scoreboard_GetPlayerData(self:GetClientIndex(), "Streak")),
             ToString(Scoreboard_GetPlayerData(self:GetClientIndex(), "Score")))
 end
 

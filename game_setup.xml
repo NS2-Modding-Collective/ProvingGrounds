@@ -1,7 +1,9 @@
 <game>
 	<name>pg</name>
 	<description>Proving Grounds</description>
-	<client>lua/Client.lua</client>
-	<server>lua/Server.lua</server>
+	<client>cout/Cout.lua</client>
+	<server>cout/Cout.lua</server>
+	<loading>lua/Loading.lua</loading> 
+
     <soundinfo>sound/NS2.soundinfo</soundinfo>
 </game>

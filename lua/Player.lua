@@ -100,11 +100,11 @@ local kUseBoxSize = Vector(0.5, 0.5, 0.5)
 
 Player.kCountDownLength = kCountDownLength
     
-Player.kGravity = -24
+Player.kGravity = -36
 Player.kMass = 90.7 // ~200 pounds (incl. armor, weapons)
 
 // Weapon weight scalars (from NS1)
-Player.kStowedWeaponWeightScalar = 0.7
+Player.kStowedWeaponWeightScalar = 0.01
 Player.kJumpHeight =  1.6
 Player.kOnGroundDistance = 0.1
 
@@ -478,6 +478,8 @@ end
 function Player:AddKill()
 
     self.kills = Clamp(self.kills + 1, 0, kMaxKills)
+    self.streak = Clamp(self.streak + 1, 0, kMaxStreak)
+    self:CheckForMultiKills(self.name, self.streak)
     self:SetScoreboardChanged(true)
     
 end
@@ -2833,6 +2835,52 @@ end
 
 function Player:SetCommunicationStatus(status)
     self.communicationStatus = status
+end
+
+function Player:CheckForMultiKills(name,streak)
+        
+    local text = ""
+    
+    if streak == 3 then
+        text = name .. " is on triple kill!"
+    elseif streak == 5 then    
+        text = name .. " is on multikill!"
+    elseif streak == 6 then
+        text = name .. " is on rampage!"
+    elseif streak == 7 then
+        text = name .. " is on a killing spree!"
+    elseif streak == 9 then
+        text = name .. " is dominating!"
+    elseif streak == 11 then
+        text = name .. " is unstoppable!"
+    elseif streak == 13 then
+        text = name .. " made a mega kill!"
+    elseif streak == 15 then
+        text = name .. " made an ultra kill!"
+    elseif streak == 16 then
+        text = name .. " has an eagle eye!"
+    elseif streak == 17 then
+        text = name .. " owns!"
+    elseif streak == 18 then
+        text = name .. " made a ludicrouskill!"
+    elseif streak == 19 then
+        text = name .. " is a head hunter!"
+    elseif streak == 20 then
+        text = name .. " is whicked sick!"
+    elseif streak == 21 then
+        text = name .. " made a monster kill!"
+    elseif streak == 23 then
+        text = "Holy Shit! " .. name .. " got another one!"
+    elseif streak > 23 then
+        text = name .. " is G o d L i k e !!!"
+    end
+    
+    if text ~= "" then    	
+    if streak > 26 then 
+        streak = 26 //for color
+    end
+        Cout:addServerTextMessageToAllClients(1/2,1/10,text,4,{r = 255, g = 230-(streak*10), b = 260-(streak*10) },"multikill")
+    end
 end
 
 Shared.LinkClassToMap("Player", Player.kMapName, networkVars)

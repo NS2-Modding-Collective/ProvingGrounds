@@ -103,7 +103,7 @@ function OnCommandScores(scoreTable)
     end
     
     Scoreboard_SetPlayerData(scoreTable.clientId, scoreTable.entityId, scoreTable.playerName, scoreTable.teamNumber, scoreTable.score,
-                             scoreTable.kills, scoreTable.deaths, 
+                             scoreTable.kills, scoreTable.deaths, scoreTable.streak,
                              status, scoreTable.isSpectator)
     
 end
