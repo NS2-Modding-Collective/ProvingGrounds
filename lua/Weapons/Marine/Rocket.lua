@@ -11,11 +11,13 @@ Script.Load("lua/Weapons/Projectile.lua")
 Script.Load("lua/Mixins/ModelMixin.lua")
 Script.Load("lua/TeamMixin.lua")
 Script.Load("lua/DamageMixin.lua")
+Script.Load("lua/Weapons/ProjectileEffectsMixin.lua")
 
 class 'Rocket' (Projectile)
 
 Rocket.kMapName = "rocket"
 Rocket.kModelName = PrecacheAsset("models/marine/rifle/rifle_grenade.model")
+Rocket.kSmokeEffect = "cinematics/marine/jetpack/trail.cinematic"
 
 local kMinLifeTime = .2
 
@@ -36,6 +38,7 @@ function Rocket:OnCreate()
     InitMixin(self, ModelMixin)
     InitMixin(self, TeamMixin)
     InitMixin(self, DamageMixin)
+	InitMixin(self, ProjectileEffectsMixin)
         
 end
 
@@ -48,6 +51,10 @@ end
 
 function Rocket:GetDamageType()
     return kRocketLauncherRocketDamageType
+end
+
+function Rocket:GetRepeatCinematic()
+	return Rocket.kSmokeEffect
 end
 
 if Server then
