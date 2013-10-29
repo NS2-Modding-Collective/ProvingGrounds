@@ -18,28 +18,17 @@ function Player:OnClientConnect(client)
     
 end
 
-// childs should override this
-function Player:RequestHeal()
-end
-
 function Player:GetClient()
     return self.client
-end
-
-function Player:SetEthereal(ethereal)
 end
 
 function Player:Reset()
 
     ScriptActor.Reset(self)
     
-    self.kills = 0
-    self.streak = 0
-    self.deaths = 0
-    
-    self:SetScoreboardChanged(true)
-    
     self:SetCameraDistance(0)
+    
+    local client = Server.GetOwner(self)
     
 end
 
@@ -61,6 +50,8 @@ function Player:SetName(name)
     
     // Strip out surrounding "s
     local newName = string.gsub(name, "\"(.*)\"", "%1")
+    // Strip out escape characters.
+    newName = string.gsub(newName, "[\a\b\f\n\r\t\v]", "")
     
     // Make sure it's not too long
     newName = string.sub(newName, 0, kMaxNameLength)
@@ -91,7 +82,6 @@ function Player:SetClientMuted(muteClientIndex, setMuted)
     self.mutedClients[muteClientIndex] = setMuted
     
 end
-AddFunctionContract(Player.SetClientMuted, { Arguments = { "Player", "number", "boolean" }, Returns = { } })
 
 /**
  * Returns true if the passed in client is muted by this Player.
@@ -101,20 +91,6 @@ function Player:GetClientMuted(checkClientIndex)
     if not self.mutedClients then self.mutedClients = { } end
     return self.mutedClients[checkClientIndex] == true
     
-end
-AddFunctionContract(Player.GetClientMuted, { Arguments = { "Player", "number" }, Returns = { "boolean" } })
-
-// Changes the visual appearance of the player to the special edition version.
-function Player:MakeSpecialEdition()
-    self:SetModel(Player.kSpecialModelName, Avatar.kMarineAnimationGraph)
-end
-
-function Player:GetSendTechTreeBase()
-    return self.sendTechTreeBase
-end
-
-function Player:ClearSendTechTreeBase()
-    self.sendTechTreeBase = false
 end
 
 function Player:GetRequestsScores()
@@ -127,19 +103,6 @@ end
 
 // Call to give player default weapons, abilities, equipment, etc. Usually called after CreateEntity() and OnInitialized()
 function Player:InitWeapons()
-end
-
-// Add resources for kills and play sound, returns how much resources have been awarded
-function Player:AwardResForKill(amount)
-
-    local resReward = self:AddResources(amount)
-    
-    if resReward > 0 then
-        self:TriggerEffects("res_received")
-    end
-    
-    return resReward
-    
 end
 
 local function DestroyViewModel(self)
@@ -157,6 +120,12 @@ end
  * may be nil if the damage wasn't directional.
  */
 function Player:OnKill(killer, doer, point, direction)
+
+    if not Shared.GetCheatsEnabled() then
+        if (killer == nil and doer == nil) or killer:isa("DeathTrigger") or doer:isa("DeathTrigger") then
+            self.spawnBlockTime = Shared.GetTime() + kSuicideDelay + kFadeToBlackTime
+        end
+    end
 
     // Determine the killer's player name.
     local killerName = nil
@@ -192,27 +161,22 @@ function Player:OnKill(killer, doer, point, direction)
     
     self:AddDeaths()
     
-    // Fade out screen
+    // Fade out screen.
     self.timeOfDeath = Shared.GetTime()
-    
-    // So we aren't moving in spectator mode
-    self:SetVelocity(Vector(0, 0, 0))
     
     DestroyViewModel(self)
     
-    // Set next think to 0 to disable
-    self:SetNextThink(0)
-
-    self:GetTeam():ReplaceRespawnPlayer(self,nil,nil)
-        
+    //self:GetTeam():ReplaceRespawnPlayer(self,nil,nil)
+    
 end
 
-function Player:SetControllingPlayer(client)
+function Player:SetControllerClient(client)
 
     if client ~= nil then
     
         client:SetControllingPlayer(self)
         self:UpdateClientRelevancyMask()
+        self:OnClientUpdated(client)
         
     end
     
@@ -223,12 +187,18 @@ function Player:UpdateClientRelevancyMask()
     local mask = 0xFFFFFFFF
     
     if self:GetTeamNumber() == 1 then
+    
         mask = kRelevantToTeam1Unit
+        
     elseif self:GetTeamNumber() == 2 then
+    
         mask = kRelevantToTeam2Unit
+        
     // Spectators should see all map blips.
     elseif self:GetTeamNumber() == kSpectatorIndex then
+    
         mask = bit.bor(kRelevantToTeam1Unit, kRelevantToTeam2Unit, kRelevantToReadyRoom)
+        
     // ReadyRoomPlayers should not see any blips.
     elseif self:GetTeamNumber() == kTeamReadyRoom then
         mask = kRelevantToReadyRoom
@@ -244,21 +214,23 @@ end
 
 function Player:OnTeamChange()
 
+    self:UpdateIncludeRelevancyMask()
     self:SetScoreboardChanged(true)
     
 end
 
-function Player:SetResources(amount)
+function Player:UpdateIncludeRelevancyMask()
 
-    local oldVisibleResources = math.floor(self.resources)
+    // Players are always relevant to their commanders.
+    local includeMask = 0
     
-    self.resources = Clamp(amount, 0, kMaxPersonalResources)
-    
-    local newVisibleResources = math.floor(self.resources)
-    
-    if oldVisibleResources ~= newVisibleResources then
-        self:SetScoreboardChanged(true)
+    if self:GetTeamNumber() == 1 then
+        includeMask = kRelevantToTeam1
+    elseif self:GetTeamNumber() == 2 then
+        includeMask = kRelevantToTeam2
     end
+    
+    self:SetIncludeRelevancyMask(includeMask)
     
 end
 
@@ -266,17 +238,41 @@ function Player:GetDeathMapName()
     return Spectator.kMapName
 end
 
+local function UpdateChangeToSpectator(self)
+
+    if not self:GetIsAlive() and not self:isa("Spectator") then
+    
+        local time = Shared.GetTime()
+        if self.timeOfDeath ~= nil and (time - self.timeOfDeath > kFadeToBlackTime) then
+        
+            // Destroy the existing player and create a spectator in their place (but only if it has an owner, ie not a body left behind by Phantom use)
+            local owner = Server.GetOwner(self)
+            if owner then
+            
+                self:GetTeam():ReplaceRespawnPlayer(self,nil,nil)                
+                // Queue up the spectator for respawn.
+                /*local spectator = self:Replace(self:GetDeathMapName())
+                spectator:GetTeam():PutPlayerInRespawnQueue(spectator)*/
+                
+            end
+            
+        end
+        
+    end
+    
+end
+
 function Player:OnUpdatePlayer(deltaTime)
+
+    UpdateChangeToSpectator(self)
     
     local gamerules = GetGamerules()
     self.gameStarted = gamerules:GetGameStarted()
-    // TODO: Change this after making NS2Player
     if self:GetTeamNumber() == kTeam1Index or self:GetTeamNumber() == kTeam2Index then
         self.countingDown = gamerules:GetCountingDown()
     else
         self.countingDown = false
     end
-    self.teamLastThink = self:GetTeam()
     
 end
 
@@ -284,15 +280,12 @@ end
 function Player:SetRespawnQueueEntryTime(time)
     self.respawnQueueEntryTime = time
 end
-
 function Player:ReplaceRespawn()
     return self:GetTeam():ReplaceRespawnPlayer(self, nil, nil)
 end
 
 function Player:GetRespawnQueueEntryTime()
-
     return self.respawnQueueEntryTime
-    
 end
 
 // For children classes to override if they need to adjust data
@@ -306,6 +299,9 @@ function Player:CopyPlayerDataFrom(player)
     // This is stuff from the former LiveScriptActor.
     self.gameEffectsFlags = player.gameEffectsFlags
     self.timeOfLastDamage = player.timeOfLastDamage
+    self.spawnBlockTime = player.spawnBlockTime
+    self.spawnReductionTime = player.spawnReductionTime
+	self.desiredSpawnPoint = player.desiredSpawnPoint
     
     // ScriptActor and Actor fields
     self:SetAngles(player:GetAngles())
@@ -323,35 +319,17 @@ function Player:CopyPlayerDataFrom(player)
     // This is a hack, CameraHolderMixin should be doing this.
     self.baseYaw = player.baseYaw
     
-    // MoveMixin fields.
-    self:SetVelocity(player:GetVelocity())
-    self:SetGravityEnabled(player:GetGravityEnabled())
-    
     self.name = player.name
     self.clientIndex = player.clientIndex
     self.client = player.client
-    
-    // Preserve hotkeys when logging in/out of command structures
-    if player:GetTeamType() == kMarineTeamType or player:GetTeamType() == kRedTeamType then
-        table.copy(player.hotkeyGroups, self.hotkeyGroups)
-    end
     
     // Copy network data over because it won't be necessarily be resent
     self.gameStarted = player.gameStarted
     self.countingDown = player.countingDown
     self.frozen = player.frozen
     
-    // Don't copy alive, health, maxhealth, armor, maxArmor - they are set in Spawn()
-    
-    self.showScoreboard = player.showScoreboard
-    self.score = player.score or 0
-    self.kills = player.kills
-    self.streak = player.streak
-    self.deaths = player.deaths
-    
     self.timeOfDeath = player.timeOfDeath
     self.timeOfLastUse = player.timeOfLastUse
- 
     self.timeOfLastPoseUpdate = player.timeOfLastPoseUpdate
 
     self.timeLastBuyMenu = player.timeLastBuyMenu
@@ -367,30 +345,48 @@ function Player:CopyPlayerDataFrom(player)
     self.modeTime = player.modeTime
     
     self.requestsScores = player.requestsScores
+    self.isRookie = player.isRookie
     self.communicationStatus = player.communicationStatus
-    
-    // Don't lose purchased upgrades when becoming commander
-    
-    if self:GetTeamNumber() == kRedTeamType or self:GetTeamNumber() == kMarineTeamType then
-    
-        self.upgrade1 = player.upgrade1
-        self.upgrade2 = player.upgrade2
-        self.upgrade3 = player.upgrade3
-        self.upgrade4 = player.upgrade4
-        self.upgrade5 = player.upgrade5
-        self.upgrade6 = player.upgrade6
-        
-        self.forbidden1 = player.forbidden1
-        self.forbidden2 = player.forbidden2
-        self.forbidden3 = player.forbidden3
-        self.forbidden4 = player.forbidden4
-        self.forbidden5 = player.forbidden5
-        self.forbidden6 = player.forbidden6
-    
-    end
     
     // Remember this player's muted clients.
     self.mutedClients = player.mutedClients
+    self.hotGroupNumber = player.hotGroupNumber
+    
+end
+
+/**
+ * Check if there were any spectators watching them. Make these
+ * spectators follow the new player unless the new player is also
+ * a spectator (in which case, make the spectating players follow a new target).
+ */
+function Player:RemoveSpectators(newPlayer)
+
+    local spectators = Shared.GetEntitiesWithClassname("Spectator")
+    for e = 0, spectators:GetSize() - 1 do
+    
+        local spectatorEntity = spectators:GetEntityAtIndex(e)
+        if spectatorEntity ~= newPlayer then
+        
+            local spectatorClient = Server.GetOwner(spectatorEntity)
+            if spectatorClient and spectatorClient:GetSpectatingPlayer() == self then
+            
+                local allowedToFollowNewPlayer = newPlayer and not newPlayer:isa("Spectator") and newPlayer:GetIsOnPlayingTeam()
+                if not allowedToFollowNewPlayer then
+                
+                    local success = spectatorEntity:CycleSpectatingPlayer(self, true)
+                    if not success and not self:GetIsOnPlayingTeam() then
+                        spectatorEntity:SetSpectatorMode(kSpectatorMode.FreeLook)
+                    end
+                    
+                else
+                    spectatorClient:SetSpectatingPlayer(newPlayer)
+                end
+                
+            end
+            
+        end
+        
+    end
     
 end
 
@@ -409,7 +405,7 @@ function Player:Replace(mapName, newTeamNumber, preserveWeapons, atOrigin, extra
     end
     
     local teamNumber = team:GetTeamNumber()
-    local owner = Server.GetOwner(self)
+    local client = Server.GetOwner(self)
     local teamChanged = newTeamNumber ~= nil and newTeamNumber ~= self:GetTeamNumber()
     
     // Add new player to new team if specified
@@ -435,7 +431,11 @@ function Player:Replace(mapName, newTeamNumber, preserveWeapons, atOrigin, extra
     player:CopyPlayerDataFrom(self)
     
     // Make model look where the player is looking
-    player.standingBodyYaw = self:GetAngles().yaw
+    player.standingBodyYaw = Math.Wrap( self:GetAngles().yaw, 0, 2*math.pi )
+    
+    if not player:GetTeam():GetSupportsOrders() and HasMixin(player, "Orders") then
+        player:ClearOrders()
+    end
     
     // Remove newly spawned weapons and reparent originals
     if preserveWeapons then
@@ -461,20 +461,22 @@ function Player:Replace(mapName, newTeamNumber, preserveWeapons, atOrigin, extra
     // This player is no longer controlled by a client.
     self.client = nil
     
+    // Remove any spectators currently spectating this player.
+    self:RemoveSpectators(player)
+    
     // Only destroy the old player if it is not a ragdoll.
     // Ragdolls will eventually destroy themselve.
     if not HasMixin(self, "Ragdoll") or not self:GetIsRagdoll() then
         DestroyEntity(self)
     end
     
-    player:SetControllingPlayer(owner)
+    player:SetControllerClient(client)
     
-    // Must happen after the owner has been set on the player.
-    player:InitializeBadges()
-    
-    // Set up special armor marines if player owns special edition 
-    if owner and Server.GetIsDlcAuthorized(owner, kSpecialEditionProductId) then
-        player:MakeSpecialEdition()
+    // There are some cases where the spectating player isn't set to nil.
+    // Handle any edge cases here (like being dead when the game is reset).
+    // In some cases, client will be nil (when the map is changing for example).
+    if client and not player:isa("Spectator") then
+        client:SetSpectatingPlayer(nil)
     end
     
     // Log player spawning
@@ -483,59 +485,6 @@ function Player:Replace(mapName, newTeamNumber, preserveWeapons, atOrigin, extra
     end
     
     return player
-    
-end
-
-function Player:GetIsAllowedToBuy()
-    return self:GetIsAlive() and not GetIsVortexed(self)
-end
-
-/**
- * A table of tech Ids is passed in.
- */
-function Player:ProcessBuyAction(techIds)
-
-    ASSERT(type(techIds) == "table")
-    ASSERT(table.count(techIds) > 0)
-    
-    local techTree = self:GetTechTree()
-    local buyAllowed = true
-    local totalCost = 0
-    local validBuyIds = { }
-    
-    for i, techId in ipairs(techIds) do
-    
-        local techNode = techTree:GetTechNode(techId)
-        if(techNode ~= nil and techNode.available) and not self:GetHasUpgrade(techId) then
-        
-            local cost = GetCostForTech(techId)
-            if cost ~= nil then
-                totalCost = totalCost + cost
-                table.insert(validBuyIds, techId)
-            end
-        
-        else
-        
-            buyAllowed = false
-            break
-        
-        end
-        
-    end
-    
-    if totalCost <= self:GetResources() then
-    
-        if self:AttemptToBuy(validBuyIds) then
-            self:AddResources(-totalCost)
-            return true
-        end
-        
-    else
-        Print("not enough resources sound server")
-        Server.PlayPrivateSound(self, self:GetNotEnoughResourcesSound(), self, 1.0, Vector(0, 0, 0))        
-    end
-
-    return false
     
 end
 
@@ -556,7 +505,12 @@ function Player:GiveItem(itemMapName, setActive)
         if newItem then
 
             if newItem:isa("Weapon") then
-                self:AddWeapon(newItem, setActive)
+                local removedWeapon = self:AddWeapon(newItem, setActive)
+                
+                if removedWeapon and HasMixin(removedWeapon, "Tech") and LookupTechData(removedWeapon:GetTechId(), kTechDataCostKey, 0) == 0 then
+                    DestroyEntity(removedWeapon)
+                end
+                
             else
 
                 if newItem.OnCollision then
@@ -572,26 +526,6 @@ function Player:GiveItem(itemMapName, setActive)
     end
     
     return newItem
-    
-end
-
-function Player:GetKills()
-    return self.kills
-end
-
-function Player:GetStreak()
-    return self.streak
-end
-
-function Player:GetDeaths()
-    return self.deaths
-end
-
-function Player:AddDeaths()
-
-    self.deaths = Clamp(self.deaths + 1, 0, kMaxDeaths)
-    self.streak = 0
-    self:SetScoreboardChanged(true)
     
 end
 
@@ -614,42 +548,9 @@ end
 
 function Player:UpdateMisc(input)
 
-    // Set near death mask so we can add sound/visual effects
+    // Set near death mask so we can add sound/visual effects.
     self:SetGameEffectMask(kGameEffect.NearDeath, self:GetHealth() < 0.2 * self:GetMaxHealth())
     
-    // Check if the player wants to go to the ready room.
-    if bit.band(input.commands, Move.ReadyRoom) ~= 0 and not self:isa("ReadyRoomPlayer") then
-        self:SetCameraDistance(0)
-        GetGamerules():JoinTeam(self, kTeamReadyRoom)
-    end
-    
-    if self:GetTeamType() == kMarineTeamType then
-    
-        self.weaponUpgradeLevel = 0
-            
-        if GetHasTech(self, kTechId.Weapons3, true) then    
-            self.weaponUpgradeLevel = 3
-        elseif GetHasTech(self, kTechId.Weapons2, true) then    
-            self.weaponUpgradeLevel = 2
-        elseif GetHasTech(self, kTechId.Weapons1, true) then    
-            self.weaponUpgradeLevel = 1
-        end
-        
-    end
-    
-end
-
-function Player:GetTechTree()
-
-    local techTree = nil
-    
-    local team = self:GetTeam()
-    if team ~= nil and team:isa("PlayingTeam") then
-        techTree = team:GetTechTree()
-    end
-    
-    return techTree
-
 end
 
 function Player:GetPreviousMapName()
@@ -658,15 +559,6 @@ end
 
 function Player:SetDarwinMode(darwinMode)
     self.darwinMode = darwinMode
-end
-
-function Player:UpdateArmorAmount()
-
-    // note: some player may have maxArmor == 0
-    local armorPercent = self.maxArmor > 0 and self.armor/self.maxArmor or 0
-    self.maxArmor = self:GetArmorAmount()
-    self:SetArmor(self.maxArmor * armorPercent)
-    
 end
 
 function Player:GetIsInterestedInAlert(techId)
@@ -703,4 +595,30 @@ function Player:TriggerAlert(techId, entity)
     
     return false
     
+end
+
+function Player:SetRookieMode(rookieMode)
+
+     if self.isRookie ~= rookieMode then
+    
+        self.isRookie = rookieMode
+        
+        // rookie status sent along with scores
+        self:SetScoreboardChanged(true)
+        
+    end
+    
+end
+
+function Player:OnClientUpdated(client)
+    // override me
+    //DebugPrint("Player:OnClientUpdated")
+end
+
+// only use intensity value here to reduce traffic
+function Player:SetCameraShake(intensity)
+
+    local message = BuildCameraShakeMessage(intensity)
+    Server.SendNetworkMessage(self, "CameraShake", message, false)
+
 end

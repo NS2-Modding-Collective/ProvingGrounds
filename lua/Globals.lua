@@ -7,46 +7,59 @@
 // ========= For more information, visit us at http://www.unknownworlds.com =====================
 Script.Load("lua/Utility.lua")
 
+kMaxPlayerSkill = 1000
+kMaxPlayerLevel = 100
+
+kSuicideDelay = 6
+
+kDecalMaxLifetime = 60
+
 // All the layouts are based around this screen height.
 kBaseScreenHeight = 1080
 
 // Team types - corresponds with teamNumber in editor_setup.xml
 kNeutralTeamType = 0
-kMarineTeamType = 1
-kRedTeamType = 2
+kGreenTeamType = 1
+kPurpleTeamType = 2
 kRandomTeamType = 3
 
-// Team colors
-kMarineFontName = "fonts/AgencyFB_large.fnt"
-kMarineFontColor = Color(0.756, 0.952, 0.988, 1)
+// Spawn Item types - corresponds with itemName in editor_setup.xml
+kSpawnItem1 = 1
 
-kAlienFontName = "fonts/AgencyFB_large.fnt"
-kAlienFontColor = Color(0.901, 0.623, 0.215, 1)
+// after 5 minutes players are allowed to give up a round
+kMinTimeBeforeConcede = 10 * 60
+kPercentNeededForVoteConcede = 0.75
+
+// Team colors
+kGreenFontName = "fonts/AgencyFB_large.fnt"
+kGreenFontColor = Color(0.756, 0.952, 0.988, 1)
+
+kPurpleFontName = "fonts/AgencyFB_large.fnt"
+kPurpleFontColor = Color(0.901, 0.623, 0.215, 1)
 
 kNeutralFontName = "fonts/AgencyFB_large.fnt"
 kNeutralFontColor = Color(0.7, 0.7, 0.7, 1)
 
 // Move hit effect slightly off surface we hit so particles don't penetrate. In meters.
 kHitEffectOffset = 0.13
+// max distance of blood from impact point to nearby geometry
+kBloodDistance = 3.5
 
-kMarineTeamColor = 0x4DB1FF
-kMarineTeamColorFloat = Color(0.302, 0.859, 1)
-kAlienTeamColor = 0xFFCA3A
-kRedColor = Color(1, .61, 0, 1)
-kAlienTeamColorFloat = Color(1, 0.792, 0.227)
+kGreenTeamColor = 0x4DB1FF
+kGreenTeamColorFloat = Color(0.302, 0.859, 1)
+kPurpleTeamColor = 0xFFCA3A
+kPurpleTeamColorFloat = Color(1, 0.792, 0.227)
 kNeutralTeamColor = 0xEEEEEE
 kChatPrefixTextColor = 0xFFFFFF
 kChatTextColor = { [kNeutralTeamType] = kNeutralFontColor,
-                   [kMarineTeamType] = kMarineFontColor,
-                   [kRedTeamType] = kAlienFontColor }
+                   [kGreenTeamType] = kGreenFontColor,
+                   [kPurpleTeamType] = kPurpleFontColor }
+kNewPlayerColor = 0x00DC00
+kNewPlayerColorFloat = Color(0, 0.862, 0, 1)
 kChatTypeTextColor = 0xDD4444
 kFriendlyColor = 0xFFFFFF
 kNeutralColor = 0xAAAAFF
 kEnemyColor = 0xFF0000
-kParasitedTextColor = 0xFFEB7F
-
-kParasiteColor = Color(1, 1, 0, 1)
-kPoisonedColor = Color(0, 1, 0, 1)
 
 kCountDownLength = 6
 
@@ -57,17 +70,18 @@ kTeam1Index = 1
 kTeam2Index = 2
 kSpectatorIndex = 3
 
-// Marines vs. Aliens
-kTeam1Type = kMarineTeamType
-kTeam2Type = kRedTeamType //Changed From: kAlienTeamType
+// Green vs. Purple
+kTeam1Type = kGreenTeamType
+kTeam2Type = kPurpleTeamType
 
 // Used for playing team and scoreboard
-kTeam1Name = "Blue Team"
-kTeam2Name = "Red Team"
+kTeam1Name = "Engineers"
+kTeam2Name = "Scientists"
 kSpectatorTeamName = "Ready room"
 kDefaultPlayerName = "Avatar"
 
-kMaxResources = 999
+// Used for cross team win scenarios
+kTeamWin = enum( { 'None', 'Team1Win', 'Team2Win', 'TheyDraw' }) 
 
 // Max number of entities allowed in radius. Don't allow creating any more entities if this number is rearched.
 // Don't include players in count.
@@ -77,7 +91,7 @@ kMaxEntityRadius = 15
 kWorldMessageLifeTime = 1.0
 kWorldMessageResourceOffset = Vector(0, 2.5, 0)
 kResourceMessageRange = 35
-kWorldDamageNumberAnimationSpeed = 150
+kWorldDamageNumberAnimationSpeed = 220
 // Updating messages with new numbers shouldn't reset animation - keep it big and faded-in intead of growing
 kWorldDamageRepeatAnimationScalar = .1
 
@@ -85,51 +99,51 @@ kWorldDamageRepeatAnimationScalar = .1
 kMaxNameLength = 20
 kMaxScore = 9999
 kMaxKills = 254
-kMaxStreak = 254
 kMaxDeaths = 254
 kMaxPing = 999
 
 kMaxChatLength = 80
 
-kMaxHotkeyGroups = 5
+kMaxHotkeyGroups = 9
 
 // Surface list. Add more materials here to precache ricochets, bashes, footsteps, etc
 // Used with PrecacheMultipleAssets
-kSurfaceList = { "door", "electronic", "metal", "organic", "rock", "thin_metal", "membrane", "armor", "flesh", "flame", "infestation", "glass" }
+kSurfaceList = { "electronic", "metal", "rock", "thin_metal", "armor", "flame", "glass" }
 
 // a longer surface list, for hiteffects only (used by hiteffects network message, don't remove any values)
-kHitEffectSurface = enum( { "metal", "electronic", "organic", "rock", "thin_metal", "membrane", "armor", "flesh", "flame", "infestation", "glass", "ethereal", "flame", "hallucination", "umbra", "nanoshield" } )
+kHitEffectSurface = enum( { "metal", "electronic", "rock", "thin_metal", "armor", "glass", "flame"} )
 kHitEffectRelevancyDistance = 40
 kHitEffectMaxPosition = 1638 // used for precision in hiteffect message
-kTracerSpeed = 75
+kTracerSpeed = 115
 kMaxHitEffectsPerSecond = 200
 
 kMainMenuFlash = "ui/main_menu.swf"
 
-kPlayerStatus = enum( { "Hidden", "Dead", "GrenadeLauncher", "RocketLauncher", "Rifle", "Shotgun", "Flamethrower", "Void", "Spectator", "AntiMatterSword" } )
+kPlayerStatus = enum( { "Hidden", "Dead", "Void", "Spectator"} )
 kPlayerCommunicationStatus = enum( {'None', 'Voice', 'Typing', 'Menu'} )
-
-kMaxAlienAbilities = 3
+kSpectatorMode = enum( { 'FreeLook', 'None' /*'Following', 'FirstPerson'*/ } )
 
 kNoWeaponSlot = 0
-// Weapon slots (marine only). Alien weapons use just regular numbers.
+// Weapon slots.
 kPrimaryWeaponSlot = 1
 kSecondaryWeaponSlot = 2
 kTertiaryWeaponSlot = 3
+kFourthWeaponSlot = 4
+kFifthWeaponSlot = 5
+kSixthWeaponSlot = 6
 
 // How long to display weapon picker after selecting weapons
-kDisplayWeaponTime = 1.5
-
-// If player bought Special Edition
-kSpecialEditionProductId = 4930
+kDisplayWeaponTime = 0.5
 
 // Death message indices 
-kDeathMessageIcon = enum( {'None', 'Rifle', 'RifleButt',
-                           'Pistol', 'Axe', 'Shotgun',
-                           'Flamethrower', 'Grenade', 'AntiMatterSword' } )
+kDeathMessageIcon = enum( { 'None', 
+                            'Rifle', 'RifleButt', 'Pistol', 'Axe', 'Shotgun',
+                            'Flamethrower', 'Grenade', 'GL', 
+                            } )
+
 // Bit mask table for non-stackable game effects. OnInfestation is set if we're on ANY infestation (regardless of team).
 // Always keep "Max" as last element.
-kGameEffect = CreateBitMask( {"NearDeath", "OnFire", "Max"} )
+kGameEffect = CreateBitMask( { "NearDeath", "OnFire" } )
 kGameEffectMax = bit.lshift( 1, GetBitMaskNumBits(kGameEffect) )
 
 kMaxEntityStringLength = 32
@@ -140,9 +154,6 @@ kPlayerMode = enum( {'Default', 'Taunt'} )
 
 // Team alert types
 kAlertType = enum( {'Attack', 'Info', 'Request'} )
-
-// Dynamic light modes for power grid
-kLightMode = enum( {'Normal', 'NoPower', 'LowPower', 'Damaged'} )
 
 // Game state
 kGameState = enum( {'NotStarted', 'PreGame', 'Countdown', 'Started', 'Team1Won', 'Team2Won', 'Draw'} )
@@ -157,7 +168,7 @@ kScoreboardUpdateInterval = 1
 kUpdatePingsIndividual = 3
 
 // How often to send ping updates to all players.
-kUpdatePingsAll = 10
+kUpdatePingsAll = 12
 
 // Bit masks for relevancy checking
 kRelevantToTeam1Unit        = 1
@@ -177,8 +188,14 @@ kFadeToBlackTime = 3
 // Constant to prevent z-fighting 
 kZFightingConstant = 0.1
 
-kCollisionGeometryGroupName     = "CollisionGeometry"
-kNonCollisionGeometryGroupName  = "NonCollisionGeometry"
+// invisible and blocks all movement
+kMovementCollisionGroupName = "MovementCollisionGeometry"
+// same as 'MovementCollisionGeometry'
+kCollisionGeometryGroupName = "CollisionGeometry"
+// invisible, blocks anything default geometry would block
+kInvisibleCollisionGroupName = "InvisibleGeometry"
+// visible and won't block anything
+kNonCollisionGeometryGroupName = "NonCollisionGeometry"
 
 // Max players allowed in game
 kMaxPlayers = 32
@@ -198,15 +215,20 @@ kInventoryIconTextureHeight = 64
 // Options keys
 kNicknameOptionsKey = "nickname"
 kVisualDetailOptionsKey = "visualDetail"
+kSoundInputDeviceOptionsKey = "sound/input-device"
+kSoundOutputDeviceOptionsKey = "sound/output-device"
 kSoundVolumeOptionsKey = "soundVolume"
 kMusicVolumeOptionsKey = "musicVolume"
 kVoiceVolumeOptionsKey = "voiceVolume"
+kDisplayOptionsKey = "graphics/display/display"
 kWindowModeOptionsKey = "graphics/display/window-mode"
 kDisplayQualityOptionsKey = "graphics/display/quality"
 kInvertedMouseOptionsKey = "input/mouse/invert"
 kLastServerConnected = "lastConnectedServer"
 kLastServerPassword  = "lastServerPassword"
+kLastServerMapName  = "lastServerMapName"
 
+kPhysicsGpuAccelerationKey = "physics/gpu-acceleration"
 kGraphicsXResolutionOptionsKey = "graphics/display/x-resolution"
 kGraphicsYResolutionOptionsKey = "graphics/display/y-resolution"
 kAntiAliasingOptionsKey = "graphics/display/anti-aliasing"
@@ -222,42 +244,119 @@ kMouseSensitivityScalar         = 50
 kPlayerUseRange = 2
 kMaxPitch = (math.pi / 2) - math.rad(3)
 
-// Pathing flags
-kPathingFlags = enum ({'UnBuildable', 'UnPathable', 'Blockable'})
-
-// How far from the order location must units be to complete it.
-kAIMoveOrderCompleteDistance = 0.01
-kPlayerMoveOrderCompleteDistance = 1.5
-
 // Statistics
-kStatisticsURL = "http://strong-ocean-7422.herokuapp.com"
+kStatisticsURL = "http://sponitor2.herokuapp.com/api/send"
 
 kCatalyzURL = "https://catalyz.herokuapp.com/v1"
 
-kResourceType = enum( {'Team', 'Personal', 'Energy', 'Ammo'} )
+kResourceType = enum( {'Energy', 'Ammo'} )
 
-kNameTagFontColors = { [kMarineTeamType] = kMarineFontColor,
-                       [kRedTeamType] = kAlienFontColor,
+kNameTagFontColors = { [kGreenTeamType] = kGreenFontColor,
+                       [kPurpleTeamType] = kPurpleFontColor,
                        [kNeutralTeamType] = kNeutralFontColor }
 
-kNameTagFontNames = { [kMarineTeamType] = kMarineFontName,
-                      [kRedTeamType] = kAlienFontName,
+kNameTagFontNames = { [kGreenTeamType] = kGreenFontName,
+                      [kPurpleTeamType] = kPurpleFontName,
                       [kNeutralTeamType] = kNeutralFontName }
 
-kHealthBarColors = { [kMarineTeamType] = Color(0.725, 0.921, 0.949, 1),
-                     [kRedTeamType] = Color(0.776, 0.364, 0.031, 1),
+kHealthBarColors = { [kGreenTeamType] = Color(0.725, 0.921, 0.949, 1),
+                     [kPurpleTeamType] = Color(0.776, 0.364, 0.031, 1),
                      [kNeutralTeamType] = Color(1, 1, 1, 1) }
                      
-kArmorBarColors = { [kMarineTeamType] = Color(0.078, 0.878, 0.984, 1),
-                    [kRedTeamType] = Color(0.576, 0.194, 0.011, 1),
-                    [kNeutralTeamType] = Color(0.5, 0.5, 0.5, 1) }
-
 // used for specific effects
 kUseInterval = 0.1
 
 kPlayerLOSDistance = 20
 kStructureLOSDistance = 3.5
 
-kGestateCameraDistance = 1.75
+// Rookie mode
+kRookieSaveInterval = 30 // seconds
+kRookieTimeThreshold = 4 * 60 * 60 // 4 hours
+kRookieNetworkCheckInterval = 2
+kRookieOptionsKey = "rookieMode"
+
 kMinFOVAdjustmentDegrees = 0
 kMaxFOVAdjustmentDegrees = 20
+
+kDamageEffectType = enum({ 'Blood', 'Sparks' })
+
+kIconColors = 
+{
+    [kGreenTeamType] = Color(0.8, 0.96, 1, 1),
+    [kPurpleTeamType] = Color(1, 0.9, 0.4, 1),
+    [kNeutralTeamType] = Color(1, 1, 1, 1),
+}
+
+//----------------------------------------
+//  DLC stuff
+//----------------------------------------
+
+function GetHasDLC(productId, client)
+
+    if productId == nil then
+        return true
+    end
+
+    if Client then    
+        assert( client == nil )
+        return Client.GetIsDlcAuthorized(productId)    
+    elseif Server and client then
+        assert( client ~= nil )
+        return Server.GetIsDlcAuthorized(client, productId)
+    else
+        return false
+    end
+
+end
+
+kSpecialEditionProductId = 4930
+kDeluxeEditionProductId = 4932
+kShoulderPadProductId = 250891
+kAssaultMarineProductId = 250892
+kShadowProductId = 250893
+
+// DLC player variants
+// "code" is the key
+
+// TODO we can really just get rid of the enum. use array-of-structures pattern, and use #kMarineVariants to network vars
+
+kAvatarVariant = enum({"green"/*, "special", "deluxe", "assault", "eliteassault"*/})
+kAvatarVariantData =
+{
+    [kAvatarVariant.green]        =  { productId = nil                      , displayName = "Green"         , modelFilePart = ""              , viewModelFilePart = ""              }  , 
+/*    [kAvatarVariant.special]      =  { productId = kSpecialEditionProductId , displayName = "Black"         , modelFilePart = "_special"      , viewModelFilePart = "_special"      }  , 
+    [kAvatarVariant.deluxe]       =  { productId = kDeluxeEditionProductId  , displayName = "Deluxe"        , modelFilePart = "_special_v1"   , viewModelFilePart = "_deluxe"       }  , 
+    [kAvatarVariant.assault]      =  { productId = kAssaultMarineProductId  , displayName = "Assault"       , modelFilePart = "_assault"      , viewModelFilePart = "_assault"      }  , 
+    [kAvatarVariant.eliteassault] =  { productId = kShadowProductId         , displayName = "Elite Assault" , modelFilePart = "_eliteassault" , viewModelFilePart = "_eliteassault" }  , 
+*/}
+
+kDefaultAvatarVariant = kAvatarVariant.green
+
+function FindVariant( data, displayName )
+
+        for var, data in pairs(data) do
+        if data.displayName == displayName then
+            return var
+        end
+    end
+    return nil
+
+end
+
+function GetVariantName( data, var )
+    return data[var].displayName
+end
+
+function GetHasVariant(data, var, client)
+    return true
+end
+
+kShoulderPad2ProductId =
+{
+    kShoulderPadProductId,
+    kShadowProductId,
+}
+function GetHasShoulderPad(index, client)
+    return GetHasDLC( kShoulderPad2ProductId[index], client )
+end
+

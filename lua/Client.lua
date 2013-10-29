@@ -9,17 +9,20 @@
 // Set the name of the VM for debugging
 decoda_name = "Client"
 
+Script.Load("lua/PreLoadMod.lua")
+
+Script.Load("lua/ClientResources.lua")
 Script.Load("lua/Shared.lua")
+Script.Load("lua/Effect.lua")
+Script.Load("lua/AmbientSound.lua")
+Script.Load("lua/GhostModelUI.lua")
 Script.Load("lua/Render.lua")
 Script.Load("lua/MapEntityLoader.lua")
-Script.Load("lua/Button.lua")
 Script.Load("lua/Chat.lua")
 Script.Load("lua/DeathMessage_Client.lua")
 Script.Load("lua/Notifications.lua")
 Script.Load("lua/Scoreboard.lua")
 Script.Load("lua/ScoreDisplay.lua")
-Script.Load("lua/AlienBuy_Client.lua")
-Script.Load("lua/MarineBuy_Client.lua")
 Script.Load("lua/Tracer_Client.lua")
 Script.Load("lua/GUIManager.lua")
 Script.Load("lua/GUIDebugText.lua")
@@ -28,8 +31,15 @@ Script.Load("lua/MenuManager.lua")
 Script.Load("lua/BindingsDialog.lua")
 Script.Load("lua/MainMenu.lua")
 Script.Load("lua/ConsoleBindings.lua")
-// Disabled for now.
 Script.Load("lua/ServerAdmin.lua")
+Script.Load("lua/ClientUI.lua")
+Script.Load("lua/Voting.lua")
+Script.Load("lua/VotingKickPlayer.lua")
+Script.Load("lua/VotingChangeMap.lua")
+Script.Load("lua/VotingResetGame.lua")
+Script.Load("lua/VotingRandomizeRR.lua")
+Script.Load("lua/Badges_Client.lua")
+Script.Load("lua/MaterialUtility.lua")
 
 Script.Load("lua/ConsoleCommands_Client.lua")
 Script.Load("lua/NetworkMessages_Client.lua")
@@ -39,12 +49,15 @@ Shared.PrecacheSurfaceShader("shaders/Model.surface_shader")
 Shared.PrecacheSurfaceShader("shaders/Emissive.surface_shader")
 Shared.PrecacheSurfaceShader("shaders/Model_emissive.surface_shader")
 Shared.PrecacheSurfaceShader("shaders/Model_alpha.surface_shader")
+Shared.PrecacheSurfaceShader("shaders/ViewModel.surface_shader")
+Shared.PrecacheSurfaceShader("shaders/ViewModel_emissive.surface_shader")
+Shared.PrecacheSurfaceShader("shaders/Decal.surface_shader")
+Shared.PrecacheSurfaceShader("shaders/Decal_emissive.surface_shader")
 
 Client.propList = { }
 Client.lightList = { }
 Client.skyBoxList = { }
 Client.ambientSoundList = { }
-Client.particlesList = { }
 Client.tracersList = { }
 Client.fogAreaModifierList = { }
 Client.rules = { }
@@ -53,13 +66,38 @@ Client.trailCinematics = { }
 // cinematics which are queued for destruction next frame
 Client.destroyTrailCinematics = { }
 Client.worldMessages = { }
+Client.timeLimitedDecals = { }
 
 Client.timeOfLastPowerPoints = nil
+
+Client.serverHidden = false
+function Client.GetServerIsHidden()
+    return Client.serverHidden
+end
+
+Client.localClientIndex = nil
+function Client.GetLocalClientIndex()
+    return Client.localClientIndex
+end
+
+/**
+ * This function will return the team number the local client is on
+ * regardless of any spectating the local client may be doing.
+ */
+Client.localClientTeamNumber = kTeamInvalid
+function Client.GetLocalClientTeamNumber()
+    return Client.localClientTeamNumber
+end
 
 // For logging total time played for rookie mode, even with map switch
 local timePlayed = nil
 local kTimePlayedOptionsKey = "timePlayedSeconds"
-            
+
+local function InitializeRenderCamera()
+    gRenderCamera = Client.CreateRenderCamera()
+    gRenderCamera:SetRenderSetup("renderer/Deferred.render_setup")
+end
+
 function GetRenderCameraCoords()
 
     if gRenderCamera then
@@ -70,19 +108,8 @@ function GetRenderCameraCoords()
     
 end
 
-// Displays the "F1 for feedback" text.
-GetGUIManager():CreateGUIScript("GUIFeedback")
-
-// Client tech tree
-local gTechTree = TechTree()
-gTechTree:Initialize() 
-
-function GetTechTree()
-    return gTechTree
-end
-
-function ClearTechTree()
-    gTechTree:Initialize()    
+function SetLocalPlayerIsOverhead(isOverhead)
+    
 end
 
 /**
@@ -115,31 +142,45 @@ function DestroyLevelObjects()
         end
         Client.billboardList = { }
     end
+    
+    // Remove the decals.  
+    if Client.decalList ~= nil then  
+        for index, decal in ipairs(Client.decalList) do
+            Client.DestroyRenderDecal(decal)
+        end
+        Client.decalList = { }
+    end
 
-    // Remove the reflection probes.      
-    if Client.reflectionProbeList ~= nil then  
+    // Remove the reflection probes.
+    if Client.reflectionProbeList ~= nil then
+    
         for index, reflectionProbe in ipairs(Client.reflectionProbeList) do
             Client.DestroyRenderReflectionProbe(reflectionProbe)
         end
         Client.reflectionProbeList = { }
-    end    
+        
+    end
     
     // Remove the cinematics.
     if Client.cinematics ~= nil then
+    
         for index, cinematic in ipairs(Client.cinematics) do
             Client.DestroyCinematic(cinematic)
         end
         Client.cinematics = { }
+        
     end
     
-    // Remove the skyboxes.    
+    // Remove the skyboxes.
     Client.skyBoxList = { }
     
-    Client.particlesList = {}
-    Client.tracersList = {}
-    Client.ambientSoundList = {}
-    Client.rules = {}
-
+    Client.tracersList = { }
+    for a = 1, #Client.ambientSoundList do
+        Client.ambientSoundList[a]:OnDestroy()
+    end
+    Client.ambientSoundList = { }
+    Client.rules = { }
+    
 end
 
 function ExitPressed()
@@ -198,17 +239,10 @@ function OnMapLoadEntity(className, groupName, values)
     
         assert(values.start_blend_radius > values.end_blend_radius, "Error: fog_area_modifier must have a larger start blend radius than end blend radius")
         table.insert(Client.fogAreaModifierList, values)
-        
-    elseif className == "minimap_extents" then
-    
-        if not Client.rules.numberMiniMapExtents then
-            Client.rules.numberMiniMapExtents = 0
-        end
-        Client.rules.numberMiniMapExtents = Client.rules.numberMiniMapExtents + 1
-        Client.minimapExtentScale = values.scale
-        Client.minimapExtentOrigin = values.origin
-        
-    elseif className == "skybox" or className == "cinematic" then
+             
+    // Only create the client side cinematic if it isn't waiting for a signal to start.
+    // Otherwise the server will create the cinematic.
+    elseif className == "skybox" or (className == "cinematic" and (values.startsOnMessage == "" or values.startsOnMessage == nil)) then
     
         local coords = values.angles:GetCoords(values.origin)
         
@@ -220,16 +254,19 @@ function OnMapLoadEntity(className, groupName, values)
         
         local cinematic = Client.CreateCinematic(zone)
         
-        cinematic:SetCinematic( values.cinematicName )
-        cinematic:SetCoords( coords )
+        cinematic:SetCinematic(values.cinematicName)
+        cinematic:SetCoords(coords)
         
         local repeatStyle = Cinematic.Repeat_None
         
-        if (values.repeatStyle == 0) then
-            repeatStyle = Cinematic.Repeat_None
-        elseif (values.repeatStyle == 1) then
+        -- 0 is Repeat_None but Repeat_None is not supported here because it would
+        -- cause the cinematic to kill itself but the cinematic would not be
+        -- removed from the Client.cinematics list which would cause errors.
+        if values.repeatStyle == 0 then
             repeatStyle = Cinematic.Repeat_Loop
-        elseif (values.repeatStyle == 2) then
+        elseif values.repeatStyle == 1 then
+            repeatStyle = Cinematic.Repeat_Loop
+        elseif values.repeatStyle == 2 then
             repeatStyle = Cinematic.Repeat_Endless
         end
         
@@ -244,38 +281,23 @@ function OnMapLoadEntity(className, groupName, values)
         end
         
         cinematic:SetRepeatStyle(repeatStyle)
+        
         table.insert(Client.cinematics, cinematic)
         
-    elseif className == AmbientSound.kMapName then
+    elseif className == "ambient_sound" then
     
         local entity = AmbientSound()
         LoadEntityFromValues(entity, values)
-        // Precache the ambient sound effects
-        Shared.PrecacheSound(entity.eventName)
+        Client.PrecacheLocalSound(entity.eventName)
         table.insert(Client.ambientSoundList, entity)
-        
-    elseif className == Particles.kMapName then
-    
-        local entity = Particles()
-        LoadEntityFromValues(entity, values)
-        table.insert(Client.particlesList, entity)
         
     elseif className == Reverb.kMapName then
     
         local entity = Reverb()
         LoadEntityFromValues(entity, values)
         entity:OnLoad()
-        
-    elseif className == "pathing_settings" then
-        ParsePathingSettings(values)
+
     else
-    
-        // $AS FIXME: We are special caasing techPoints for pathing right now :/ 
-        if (className == "tech_point") then
-            local coords = values.angles:GetCoords(values.origin)
-            Pathing.CreatePathingObject(TechPoint.kModelName, coords)
-            Pathing.AddFillPoint(values.origin)
-        end
         // Allow the MapEntityLoader to load it if all else fails.
         LoadMapEntity(className, groupName, values)
         
@@ -287,18 +309,10 @@ function UpdateAmbientSounds(deltaTime)
     
     PROFILE("Client:UpdateAmbientSounds")
 
-    for index, ambientSound in ipairs(Client.ambientSoundList) do
+    local ambientSoundList = Client.ambientSoundList
+    for index = 1,#ambientSoundList do
+        local ambientSound = ambientSoundList[index]
         ambientSound:OnUpdate(deltaTime)
-    end
-    
-end
-
-function UpdateParticles(deltaTime)
-
-    PROFILE("Client:UpdateParticles")
-
-    for index, particles in ipairs(Client.particlesList) do
-        particles:OnUpdate(deltaTime)
     end
     
 end
@@ -357,11 +371,54 @@ local function UpdateHelpAutoReset()
     
 end
 
+local function UpdateWorldMessages()
+
+    local removeEntries = { }
+    
+    for _, message in ipairs(Client.worldMessages) do
+    
+        if (Client.GetTime() - message.creationTime) >= message.lifeTime then
+            table.insert(removeEntries, message)
+        else
+            message.animationFraction = (Client.GetTime() - message.creationTime) / message.lifeTime
+        end
+        
+    end
+    
+    for _, removeMessage in ipairs(removeEntries) do
+        table.removevalue(Client.worldMessages, removeMessage)
+    end
+    
+end
+
+local function UpdateDecals(deltaTime)
+
+    local reUseDecals = { }
+
+    for i = 1, #Client.timeLimitedDecals do
+    
+        local decalEntry = Client.timeLimitedDecals[i]
+        if decalEntry[2] > Shared.GetTime() then
+            table.insert(reUseDecals, decalEntry)
+        else
+            Client.DestroyRenderDecal(decalEntry[1])
+        end
+    
+    end
+    
+    Client.timeLimitedDecals = reUseDecals
+
+
+end
+
+local optionsSent = false
+
 function OnUpdateClient(deltaTime)
 
     PROFILE("Client:OnUpdateClient")
     
-    UpdateTrailCinematics(deltaTime)
+    //UpdateTrailCinematics(deltaTime)
+    UpdateDecals(deltaTime)
     UpdateWorldMessages()
     
     local player = Client.GetLocalPlayer()
@@ -369,9 +426,9 @@ function OnUpdateClient(deltaTime)
     
         UpdateAmbientSounds(deltaTime)
         
-        UpdateParticles(deltaTime)
-        
         UpdateTracers(deltaTime)
+        
+        UpdateTimePlayed(deltaTime)
         
     end
     
@@ -383,15 +440,24 @@ function OnUpdateClient(deltaTime)
         UpdateHelpAutoReset()
     end
     
+    if not optionsSent then
+    
+        local avatarVariant = Client.GetOptionInteger("avatarVariant", kDefaultAvatarVariant)
+        local isMale = Client.GetOptionString("sexType", "Male") == "Male"
+        Client.SendNetworkMessage("ConnectMessage",
+                BuildConnectMessage(isMale, avatarVariant),
+                true)
+        optionsSent = true
+        
+    end
+    
 end
 
 function OnNotifyGUIItemDestroyed(destroyedItem)
-    
     GetGUIManager():NotifyGUIItemDestroyed(destroyedItem)
-
 end
 
-function CreateTracer(startPoint, endPoint, velocity, doer, effectName)
+function CreateTracer(startPoint, endPoint, velocity, doer, effectName, residueEffectName)
 
     if not Shared.GetIsRunningPrediction() then
 
@@ -404,8 +470,16 @@ function CreateTracer(startPoint, endPoint, velocity, doer, effectName)
             end
         
         end
+        
+        if not residueEffectName then
+            
+            if doer.GetTracerResidueEffectName then
+                residueEffectName = doer:GetTracerResidueEffectName()
+            end
+            
+        end
 
-        local tracer = BuildTracer(startPoint, endPoint, velocity, effectName)
+        local tracer = BuildTracer(startPoint, endPoint, velocity, effectName, residueEffectName)
         table.insert(Client.tracersList, tracer)
         
     end
@@ -430,6 +504,57 @@ function UpdateTracers(deltaTime)
 
 end
 
+// Update local time played in options file, so we can track "rookie" status
+function UpdateTimePlayed(deltaTime)
+
+    PROFILE("Client:UpdateTimePlayed")
+
+    local player = Client.GetLocalPlayer()
+    assert(player)
+
+    local teamNumber = player:GetTeamNumber()
+    if player:GetGameStarted() and (teamNumber == kGreenTeamType or teamNumber == kPurpleTeamType) then
+    
+        // Increment time
+        if timePlayed == nil then
+            timePlayed = 0
+        end
+        timePlayed = timePlayed + deltaTime
+        
+        if timePlayed > kRookieSaveInterval then
+        
+            SaveTimePlayed(kRookieSaveInterval)
+            timePlayed = 0
+            
+            // If we are a rookie and we just increased over the time threshold, set ourselves no longer as a rookie
+            if Client.GetOptionInteger(kTimePlayedOptionsKey, 0) > kRookieTimeThreshold and Client.GetOptionBoolean(kRookieOptionsKey, true ) then
+            
+                local minutesPlayed = math.round(Client.GetOptionInteger(kTimePlayedOptionsKey, 0)/60)
+                local displayMessage = string.format(Locale.ResolveString("ROOKIE_DONE"), minutesPlayed)
+                Print(displayMessage)
+                Client.SetOptionBoolean( kRookieOptionsKey, false )
+                    
+            end
+            
+        end
+        
+    end
+    
+end
+
+function SaveTimePlayed(additionalTimePlayed)
+
+    if additionalTimePlayed ~= nil then
+    
+        assert(additionalTimePlayed > 0)
+        
+        local newTimePlayed = Client.GetOptionInteger(kTimePlayedOptionsKey, 0) + additionalTimePlayed
+        Client.SetOptionInteger(kTimePlayedOptionsKey, newTimePlayed)
+        
+    end
+    
+end
+
 /**
  * Shows or hides the skybox(es) based on the specified state.
  */
@@ -442,43 +567,36 @@ function SetSkyboxDrawState(skyBoxVisible)
 end
 
 function OnMapPreLoad()
+
+    // Add our current time we played
+    SaveTimePlayed(timePlayed)
     
     // Clear our list of render objects, lights, props
-    Client.propList = {}
-    Client.lightList = {}
-    Client.skyBoxList = {}
-    Client.ambientSoundList = {}
-    Client.particlesList = {}
-    Client.tracersList = {}
+    Client.propList = { }
+    Client.lightList = { }
+    Client.skyBoxList = { }
+    Client.ambientSoundList = { }
+    Client.tracersList = { }
     
-    Client.rules = {}
+    Client.rules = { }
     Client.DestroyReverbs()
     Client.ResetSoundSystem()
     
     Shared.PreLoadSetGroupNeverVisible(kCollisionGeometryGroupName)   
+    Shared.PreLoadSetGroupNeverVisible(kMovementCollisionGroupName)   
+    Shared.PreLoadSetGroupNeverVisible(kInvisibleCollisionGroupName)
     Shared.PreLoadSetGroupPhysicsId(kNonCollisionGeometryGroupName, 0)
-   
-    // Don't have bullets collide with collision geometry
-    Shared.PreLoadSetGroupPhysicsId(kCollisionGeometryGroupName, PhysicsGroup.CollisionGeometryGroup)   
     
-end
-
-function ShowFeedbackPage()
-    Client.ShowWebpage(kFeedbackURL)
+    // Don't have bullets collide with collision geometry
+    Shared.PreLoadSetGroupPhysicsId(kCollisionGeometryGroupName, PhysicsGroup.CollisionGeometryGroup)
+    Shared.PreLoadSetGroupPhysicsId(kMovementCollisionGroupName, PhysicsGroup.CollisionGeometryGroup)
+    
 end
 
 local function CheckRules()
 
     //Client side check for game requirements (listen server)
     //Required to prevent scripting errors on the client that can lead to false positives
-    if Client.rules.numberMiniMapExtents == nil then
-        Shared.Message('ERROR: minimap_extent entity is missing from the level.')
-        Client.minimapExtentScale = Vector(100,100,100)
-        Client.minimapExtentOrigin = Vector(0,0,0)
-    elseif Client.rules.numberMiniMapExtents > 1 then
-        Shared.Message('WARNING: There are too many minimap_extents, There should only be one placed in the level.')
-    end
-
 end
 
 /**
@@ -488,12 +606,9 @@ local function OnMapPostLoad()
 
     // Set sound falloff defaults
     Client.SetMinMaxSoundDistance(7, 100)
-    
-    InitializePathing()
 
     Scoreboard_Clear()
-    
-    CheckRules()
+    //CheckRules()
     
 end
 
@@ -571,17 +686,51 @@ local function UpdateFogAreaModifiers(fromOrigin)
     
 end
 
+local gShowDebugTrace = false
+function SetShowDebugTrace(value)
+    gShowDebugTrace = value
+end
+
+local kDebugTraceGUISize = Vector(40, 40, 0)
+local function UpdateDebugTrace()
+
+    if not debugTraceGUI then
+    
+        debugTraceGUI = GUI.CreateItem()
+        debugTraceGUI:SetSize(kDebugTraceGUISize)
+        debugTraceGUI:SetAnchor(GUIItem.Middle, GUIItem.Center)
+        debugTraceGUI:SetPosition(-kDebugTraceGUISize * 0.5)
+        
+    end
+
+    debugTraceGUI:SetIsVisible(gShowDebugTrace)
+    if gShowDebugTrace then
+    
+        local player = Client.GetLocalPlayer()
+        if player then
+            
+            local viewCoords = player:GetViewCoords()
+            local normalTrace = Shared.TraceRay(viewCoords.origin, viewCoords.origin + viewCoords.zAxis * 100, CollisionRep.Default, PhysicsMask.CystBuild, EntityFilterAll())
+            
+            local color = normalTrace.fraction == 1 and Color(1, 0, 0, 0.5) or Color(1,1,1,0.5)
+            debugTraceGUI:SetColor(color)
+        
+        end
+    
+    end
+
+end
+
 /**
  * Called once per frame to setup the camera for rendering the scene.
  */
-function OnUpdateRender()
 
-    local player = Client.GetLocalPlayer()
+local function OnUpdateRender()
     
     local camera = Camera()
-    
     local cullingMode = RenderCamera.CullingMode_Occlusion
     
+    local player = Client.GetLocalPlayer()
     // If we have a player, use them to setup the camera. 
     if player ~= nil then
     
@@ -596,40 +745,40 @@ function OnUpdateRender()
 			(1-adjustValue)*kMinFOVAdjustmentDegrees + adjustValue*kMaxFOVAdjustmentDegrees)
 		
         camera:SetFov(player:GetRenderFov()+adjustRadians)
-               
+        
         local horizontalFov = GetScreenAdjustedFov( camera:GetFov(), 4 / 3 )
+        
+        local farPlane = player:GetCameraFarPlane()
+        
+        // Occlusion culling doesn't use the far plane, so switch to frustum culling
+        // with close far planes
+        if farPlane then
+            cullingMode = RenderCamera.CullingMode_Frustum
+        else
+            farPlane = 1000.0
+        end
         
         gRenderCamera:SetCoords(camera:GetCoords())
         gRenderCamera:SetFov(horizontalFov)
         gRenderCamera:SetNearPlane(0.03)
-        gRenderCamera:SetFarPlane(400.0)
+        gRenderCamera:SetFarPlane(farPlane)
         gRenderCamera:SetCullingMode(cullingMode)
         Client.SetRenderCamera(gRenderCamera)
-
+                
+        if player:GetShowAtmosphericLight() then
+            EnableAtmosphericDensity()
+        else
+            DisableAtmosphericDensity()
+        end
+        
     else
     
         Client.SetRenderCamera(nil)
         
     end
     
-end
-
-function UpdateWorldMessages()
-
-    local removeEntries = {}
+    UpdateDebugTrace()
     
-    for _, message in ipairs(Client.worldMessages) do
-    
-        if (Client.GetTime() - message.creationTime) >= kWorldMessageLifeTime then
-            table.insert(removeEntries, message)
-        end
-    
-    end
-    
-    for _, removeMessage in ipairs(removeEntries) do    
-        table.removevalue(Client.worldMessages, removeMessage)    
-    end
-
 end
 
 function Client.AddWorldMessage(messageType, message, position, entityId)
@@ -651,7 +800,7 @@ function Client.AddWorldMessage(messageType, message, position, entityId)
                     currentWorldMessage.creationTime = time
                     currentWorldMessage.position = position
                     currentWorldMessage.previousNumber = tonumber(currentWorldMessage.message)
-                    currentWorldMessage.message = tostring(tonumber(currentWorldMessage.message) + tonumber(message))
+                    currentWorldMessage.message = currentWorldMessage.message + message
                     currentWorldMessage.minimumAnimationFraction = kWorldDamageRepeatAnimationScalar
                     
                     updatedExisting = true
@@ -663,21 +812,6 @@ function Client.AddWorldMessage(messageType, message, position, entityId)
             
         end
         
-        if not updatedExisting then
-        
-            local worldMessage = {}
-            
-            worldMessage.messageType = messageType
-            worldMessage.message = message
-            worldMessage.position = position        
-            worldMessage.creationTime = time
-            worldMessage.entityId = entityId
-            worldMessage.animationFraction = 0
-            
-            table.insert(Client.worldMessages, worldMessage)
-            
-        end
-        
     end
     
 end
@@ -686,13 +820,13 @@ function Client.GetWorldMessages()
     return Client.worldMessages
 end
 
-
-
 function Client.CreateTrailCinematic(renderZone)
+
     local trailCinematic = TrailCinematic()
     trailCinematic:Initialize(renderZone)
     table.insert(Client.trailCinematics, trailCinematic)
     return trailCinematic
+    
 end
 
 function Client.ResetTrailCinematic(trailCinematic)
@@ -702,78 +836,152 @@ end
 function Client.DestroyTrailCinematic(trailCinematic, nextFrame)
 
     if nextFrame then
+    
         table.insert(Client.destroyTrailCinematics, trailCinematic)
         return true
+        
     end
-
+    
     local success = trailCinematic:Destroy()
     return success and table.removevalue(Client.trailCinematics, trailCinematic)
+    
 end
 
-function OnClientConnected()
+local function OnClientConnected()
 end
 
 /**
  * Called when the client is disconnected from the server.
  */
-function OnClientDisconnected(reason)
+local function OnClientDisconnected(reason)
 
     // Clean up the render objects we created during the level load.
     DestroyLevelObjects()
     
-    // Destroy all shared GUIs
-    GetGUIManager():DestroyGUIScriptSingle("GUICrosshair")
-    GetGUIManager():DestroyGUIScriptSingle("GUIScoreboard")
-    GetGUIManager():DestroyGUIScriptSingle("GUINotifications")
-    GetGUIManager():DestroyGUIScriptSingle("GUIRequests")
-    GetGUIManager():DestroyGUIScriptSingle("GUIDamageIndicators")
-    GetGUIManager():DestroyGUIScriptSingle("GUIDeathMessages")
-    GetGUIManager():DestroyGUIScriptSingle("GUIChat")
-    GetGUIManager():DestroyGUIScriptSingle("GUIVoiceChat")
-    GetGUIManager():DestroyGUIScriptSingle("GUIMapAnnotations")
-    GetGUIManager():DestroyGUIScriptSingle("GUIGameEnd")
-    GetGUIManager():DestroyGUIScriptSingle("GUIWorldText")
-	GetGUIManager():DestroyGUIScriptSingle("GUICommunicationStatusIcons")
+    ClientUI.DestroyUIScripts()
     
     // Destroy graphical debug text items
     for index, item in ipairs(gDebugTextList) do
         GetGUIManager():DestroyGUIScript(item)
     end
     
+    // Hack to avoid script error if load hasn't completed yet.
+    if Client.SetOptionString then
+        Client.SetOptionString("lastServerMapName", "")
+    end
+    
 end
 
-/**
- * UI scripts that need to precache assets are loaded here.
- * Not all GUI scripts need to be listed here.
- * They must be loaded after OnLoadComplete() below because they need functions
- * that are only available after the Client is fully loaded.
- */
-local function LoadGUIScripts()
-
-    Script.Load("lua/Hud/Marine/GUIAvatarHud.lua")
-    Script.Load("lua/GUIActionIcon.lua")
-    Script.Load("lua/GUIMarineTeamMessage.lua")
-    Script.Load("lua/GUINotifications.lua")
-    Script.Load("lua/Hud/GUINotificationItem.lua")
-    Script.Load("lua/Hud/Marine/GUIMarineStatus.lua")
-    Script.Load("lua/Hud/Marine/GUIMarineHUDStyle.lua")
-   
-end
-
-/**
- * Fade to black and show messages, global so transistion between classes is smooth.
- */
 local function OnLoadComplete()
-
-    gRenderCamera = Client.CreateRenderCamera()
-    gRenderCamera:SetRenderSetup("renderer/Deferred.render_setup")
     
     Render_SyncRenderOptions()
+    Input_SyncInputOptions()
+    OptionsDialogUI_SyncSoundVolumes()
     
-    GetGUIManager():CreateGUIScript("GUIDeathScreen")
-    LoadGUIScripts()
+    
+    // Set default player name to one set in Steam, or one we've used and saved previously
+    local playerName = Client.GetOptionString(kNicknameOptionsKey, Client.GetUserName())
+    Client.SendNetworkMessage("SetName", { name = playerName }, true)
+    
+    //----------------------------------------
+    //  Stuff for first-time optimization dialog
+    //----------------------------------------
+
+    // Remember the build number of when we last loaded a map
+    Client.SetOptionInteger("lastLoadedBuild", Shared.GetBuildNumber())
+
+    if Client.GetOptionBoolean("immediateDisconnect", false) then
+        Client.SetOptionBoolean("immediateDisconnect", false)
+        Shared.ConsoleCommand("disconnect")
+    end
+
+    //----------------------------------------
+    //  Stuff for sandbox mode
+    //----------------------------------------
+    if Client.GetOptionBoolean("sandboxMode", false) then
+        Client.SetOptionBoolean("sandboxMode", false)
+        Shared.ConsoleCommand("cheats 1")
+        Shared.ConsoleCommand("autobuild")
+        Shared.ConsoleCommand("alltech")
+        Shared.ConsoleCommand("allfree")
+        Shared.ConsoleCommand("sandbox")
+    end
     
 end
+
+local function TimeoutDecals(materialName, origin, distance)
+
+    local squaredDistance = distance * distance
+    for i = 1, #Client.timeLimitedDecals do
+    
+        local decalEntry = Client.timeLimitedDecals[i]
+        
+        if (decalEntry[1]:GetCoords().origin - origin):GetLengthSquared() < squaredDistance then
+            decalEntry[2] = Shared.GetTime() + 1
+            decalEntry[3]:SetParameter("endTime", Shared.GetTime() + 1)
+        end
+    
+    end
+
+end
+
+function Client.CreateTimeLimitedDecal(materialName, coords, scale, lifeTime)
+
+    if not lifeTime then
+        lifeTime = Client.GetOptionFloat("graphics/decallifetime", 0.2) * kDecalMaxLifetime
+    end
+        
+    if lifeTime ~= 0 then
+
+        // Create new decal
+        local decal = Client.CreateRenderDecal()
+        local material = Client.CreateRenderMaterial()
+        material:SetMaterial(materialName)            
+        decal:SetMaterial(material)
+        decal:SetCoords(coords)
+        
+        // Set uniform scale from parameter
+        decal:SetExtents( Vector(scale, scale, scale) )
+        material:SetParameter("scale", scale)
+        
+        local endTime = Shared.GetTime() + lifeTime
+        material:SetParameter("endTime", endTime)
+        
+        // timeout nearby decals using the same material, ignore too small decal
+        if scale > 0.3 then
+            TimeoutDecals(materialName, coords.origin, scale * 0.5)
+        end
+        
+        table.insert(Client.timeLimitedDecals, {decal, endTime, material, materialName})
+
+    end
+
+end
+
+local firstPersonSpectateUI = nil
+local function OnLocalPlayerChanged()
+
+    local player = Client.GetLocalPlayer()
+    // Show and hide UI elements based on the type of player passed in.
+    ClientUI.EvaluateUIVisibility(player)
+    
+    if player then
+    
+        player:OnInitLocalClient()
+        
+        if not Client.GetIsControllingPlayer() and not firstPersonSpectateUI then
+            firstPersonSpectateUI = GetGUIManager():CreateGUIScript("GUIFirstPersonSpectate")
+        elseif Client.GetIsControllingPlayer() and firstPersonSpectateUI then
+        
+            GetGUIManager():DestroyGUIScript(firstPersonSpectateUI)
+            firstPersonSpectateUI = nil
+            
+        end
+        
+    end
+    
+end
+Event.Hook("LocalPlayerChanged", OnLocalPlayerChanged)
 
 Event.Hook("ClientDisconnected", OnClientDisconnected)
 Event.Hook("ClientConnected", OnClientConnected)
@@ -784,3 +992,18 @@ Event.Hook("MapPostLoad", OnMapPostLoad)
 Event.Hook("UpdateClient", OnUpdateClient)
 Event.Hook("NotifyGUIItemDestroyed", OnNotifyGUIItemDestroyed)
 Event.Hook("LoadComplete", OnLoadComplete)
+
+Event.Hook("DebugState",
+function()
+	// Leaving this here for future debugging convenience.
+    local player = Client.GetLocalPlayer()
+    if player then
+        DebugPrint("active weapon id = %d", player.activeWeaponId )
+    end
+end)
+
+Script.Load("lua/PostLoadMod.lua")
+
+// Initialize the camera at load time, so that the render setup will be
+// properly precached during the loading screen.
+InitializeRenderCamera()

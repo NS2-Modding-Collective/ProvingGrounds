@@ -31,8 +31,8 @@ function GUIShotgunDisplay:Initialize()
     self.background:SetPosition( Vector(0, 0, 0))    
     self.background:SetTexture("ui/ShotgunDisplay.dds")
     
-    self.clipText, self.clipTextBg = self:CreateItem(128, 66)
-       
+    self.clipText, self.clipTextBg = self:CreateItem(104, 66)
+   
     self.flashInOverlay = GUIManager:CreateGraphicItem()
     self.flashInOverlay:SetSize( Vector(256, 128, 0) )
     self.flashInOverlay:SetPosition( Vector(0, 0, 0))    

@@ -8,6 +8,14 @@
 
 kGeneralEffectData = 
 {  
+    spawn_weapon =
+    {
+        spawnWeaponEffects =
+        {
+            {cinematic = "cinematics/marine/spawn_item.cinematic", done = true},    
+        }
+    },
+    
     spawn =
     {
         spawnEffects =
@@ -16,7 +24,7 @@ kGeneralEffectData =
             {cinematic = "", classname = "WeaponAmmoPack", done = true},            
             {cinematic = "cinematics/marine/spawn_item.cinematic", classname = "AmmoPack", done = true},
             {cinematic = "cinematics/marine/spawn_item.cinematic", classname = "MedPack", done = true},
-            {cinematic = "cinematics/marine/spawn_item.cinematic", classname = "Mine", done = true},
+            {cinematic = "cinematics/marine/spawn_item.cinematic", classname = "CatPack", done = true},
             
         },
         
@@ -26,7 +34,9 @@ kGeneralEffectData =
             {sound = "", classname = "WeaponAmmoPack", done = true},
             {sound = "sound/NS2.fev/marine/structures/generic_spawn", classname = "AmmoPack", done = true},
             {sound = "sound/NS2.fev/marine/structures/generic_spawn", classname = "MedPack", done = true},
-                       
+            {sound = "sound/NS2.fev/marine/structures/generic_spawn", classname = "CatPack", done = true},
+            
+            
             // common
             {sound = "sound/NS2.fev/common/connect", classname = "ReadyRoomPlayer", done = true},
         }
@@ -42,20 +52,15 @@ kGeneralEffectData =
         },
     },
     
-    idle =
+    catalyst =
     {
-        idleSounds =
-        {            
-            {sound = "sound/NS2.fev/marine/flamethrower/idle", classname = "Flamethrower", done = true},
+        catalystEffects =
+        {
+            // TODO: adjust sound effects (those are triggered multiple times during catalyst effect)
+            {sound = "sound/NS2.fev/marine/common/catalyst", isalien = false},
+            
         },
     },
-    
-    idle_stop =
-    {
-        idleStopSounds =
-        {            
-        }        
-    },    
     
     // Called whenever the object is destroyed (this will happen after death, but also when an entity is deleted
     // due to a round reset. Called only on the server.
@@ -64,7 +69,7 @@ kGeneralEffectData =
         destroySoundEffects = 
         {
             // Delete all parented or looping sounds and effects associated with this object
-            {stop_effects = "", classname = "Actor"},
+            {stop_effects = "", classname = "Entity"},
         },
     },
     
@@ -75,7 +80,6 @@ kGeneralEffectData =
         // Otherwise, effects are responsible for setting ragdoll/death time.
         generalDeathCinematicEffects =
         {
-            {cinematic = "cinematics/marine/exo/explosion.cinematic", classname = "Exo", done = true},
             // TODO: Substitute material properties?
             {cinematic = "cinematics/materials/%s/grenade_explosion.cinematic", classname = "Grenade", done = true},
         },
@@ -83,38 +87,10 @@ kGeneralEffectData =
         // Play world sound instead of parented sound as entity is going away?
         deathSoundEffects = 
         {
-            {sound = "sound/NS2.fev/marine/structures/generic_death", classname = "Exo", done = true},
-            
-            {sound = "sound/NS2.fev/marine/common/death", classname = "Marine", done = true},
-            {sound = "sound/NS2.fev/marine/structures/extractor_death", classname = "Extractor", done = true},
-            {sound = "sound/NS2.fev/marine/structures/arc/death", classname = "ARC", done = true},
+            {sound = "sound/NS2.fev/marine/common/death_female", classname = "Avatar", sex = "female", done = true},
+            {sound = "sound/NS2.fev/marine/common/death", classname = "Avatar", done = true},
         },
         
-    },
-    
-    // Unit catches on fire. Called on server only.
-    fire_start =
-    {
-        fireStartEffects =
-        {
-            {parented_sound = "sound/NS2.fev/common/fire_small"},
-        },
-    },
-    
-    fire_stop =
-    {
-        fireStopEffects =
-        {
-            {stop_sound = "sound/NS2.fev/common/fire_small"},
-        },
-    },
-       
-    complete_order =
-    {
-        completeOrderSound =
-        {
-            {sound = "sound/NS2.fev/marine/voiceovers/complete"},
-        }
     },
             
 }

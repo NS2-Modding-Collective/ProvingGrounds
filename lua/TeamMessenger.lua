@@ -6,11 +6,12 @@
 //    
 // ========= For more information, visit us at http://www.unknownworlds.com =====================
 
-kTeamMessageTypes = enum({ 'GameStarted', 'Spawning'})
+kTeamMessageTypes = enum({ 'GameStarted', 'TeamsUnbalanced',
+                           'TeamsBalanced' })
 
 local kTeamMessages = { }
 
-kTeamMessages[kTeamMessageTypes.GameStarted] = { text = { [kMarineTeamType] = "MARINE_TEAM_GAME_STARTED", [kRedTeamType] = "ALIEN_TEAM_GAME_STARTED" } }
+kTeamMessages[kTeamMessageTypes.GameStarted] = { text = { [kGreenTeamType] = "MARINE_TEAM_GAME_STARTED", [kPurpleTeamType] = "ALIEN_TEAM_GAME_STARTED" } }
 
 // This function will generate the string to display based on a location Id.
 local locationStringGen = function(locationId, messageString) return string.format(Locale.ResolveString(messageString), Shared.GetString(locationId)) end
@@ -18,8 +19,9 @@ local locationStringGen = function(locationId, messageString) return string.form
 // Thos function will generate the string to display based on a research Id.
 local researchStringGen = function(researchId, messageString) return string.format(Locale.ResolveString(messageString), GetDisplayNameForTechId(researchId)) end
 
-kTeamMessages[kTeamMessageTypes.Spawning] = { text = { [kMarineTeamType] = "SPAWNING", [kRedTeamType] = "SPAWNING" } }
+kTeamMessages[kTeamMessageTypes.TeamsUnbalanced] = { text = { [kGreenTeamType] = "TEAMS_UNBALANCED", [kPurpleTeamType] = "TEAMS_UNBALANCED" } }
 
+kTeamMessages[kTeamMessageTypes.TeamsBalanced] = { text = { [kGreenTeamType] = "TEAMS_BALANCED", [kPurpleTeamType] = "TEAMS_BALANCED" } }
 
 // Silly name but it fits the convention.
 local kTeamMessageMessage =
@@ -53,15 +55,11 @@ if Server then
      */
     function SendTeamMessage(team, messageType, optionalData)
     
-        if GetGamerules():GetGameStarted() then
-        
-            local function SendToPlayer(player)
-                Server.SendNetworkMessage(player, "TeamMessage", { type = messageType, data = optionalData or 0 }, true)
-            end
-            
-            team:ForEachPlayer(SendToPlayer)
-            
+        local function SendToPlayer(player)
+            Server.SendNetworkMessage(player, "TeamMessage", { type = messageType, data = optionalData or 0 }, true)
         end
+        
+        team:ForEachPlayer(SendToPlayer)
         
     end
     
@@ -78,19 +76,7 @@ if Server then
             
         end
         
-    end
-    
-    local function TestTeamMessage(client)
-    
-        local player = client:GetControllingPlayer()
-        if player then
-            SendPlayersMessage({ player }, kTeamMessageTypes.NoCommander)
-        end
-        
-    end
-    
-    Event.Hook("Console_ttm", TestTeamMessage)
-    
+    end    
 end
 
 if Client then

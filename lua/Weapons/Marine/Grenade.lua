@@ -1,27 +1,31 @@
-//=============================================================================
+// ======= Copyright (c) 2003-2013, Unknown Worlds Entertainment, Inc. All rights reserved. =======
 //
 // lua\Weapons\Marine\Grenade.lua
 //
-// Created by Charlie Cleveland (charlie@unknownworlds.com)
-// Copyright (c) 2011, Unknown Worlds Entertainment, Inc.
+//    Created by:   Andreas Urwalek (andi@unknownworlds.com)
 //
-//=============================================================================
+// ========= For more information, visit us at http://www.unknownworlds.com =====================
 
 Script.Load("lua/Weapons/Projectile.lua")
 Script.Load("lua/Mixins/ModelMixin.lua")
 Script.Load("lua/TeamMixin.lua")
 Script.Load("lua/DamageMixin.lua")
 Script.Load("lua/VortexAbleMixin.lua")
+Script.Load("lua/Weapons/PredictedProjectile.lua")
 
-class 'Grenade' (Projectile)
+class 'Grenade' (PredictedProjectile)
 
 Grenade.kMapName = "grenade"
 Grenade.kModelName = PrecacheAsset("models/marine/rifle/rifle_grenade.model")
 
-local kMinLifeTime = .2
+Grenade.kRadius = 0.17
+Grenade.kMinLifeTime = 0.15
+Grenade.kClearOnImpact = false
+Grenade.kClearOnEnemyImpact = true
 
-// prevents collision with friendly players in range to spawnpoint
-Grenade.kDisableCollisionRange = 10
+local kGrenadeCameraShakeDistance = 15
+local kGrenadeMinShakeIntensity = 0.02
+local kGrenadeMaxShakeIntensity = 0.13
 
 local networkVars = { }
 
@@ -32,23 +36,24 @@ AddMixinNetworkVars(VortexAbleMixin, networkVars)
 
 function Grenade:OnCreate()
 
-    Projectile.OnCreate(self)
+    PredictedProjectile.OnCreate(self)
     
     InitMixin(self, BaseModelMixin)
     InitMixin(self, ModelMixin)
     InitMixin(self, TeamMixin)
     InitMixin(self, DamageMixin)
     InitMixin(self, VortexAbleMixin)
-    
-    // don't start our lifetime from here, start it from the first actual tick the grenade exists.
-    self:SetNextThink(0.01)
-    self.endOfLife = nil
+
+    if Server then    
+        self:AddTimedCallback(Grenade.Detonate, kGrenadeLifetime)        
+    end
     
 end
 
 function Grenade:GetProjectileModel()
     return Grenade.kModelName
-end 
+end
+
 function Grenade:GetDeathIconIndex()
     return kDeathMessageIcon.Grenade
 end
@@ -57,103 +62,67 @@ function Grenade:GetDamageType()
     return kGrenadeLauncherGrenadeDamageType
 end
 
-if Server then
+function Grenade:GetIsAffectedByWeaponUpgrades()
+    return false
+end
 
-    function Grenade:ProcessHit(targetHit, surface)
-        if targetHit and (HasMixin(targetHit, "Live") and GetGamerules():CanEntityDoDamageTo(self, targetHit)) and self:GetOwner() ~= targetHit then
-            self:Detonate(targetHit)            
+function Grenade:ProcessHit(targetHit, surface)
+
+    if targetHit and GetAreEnemies(self, targetHit) then
+    
+        if Server then
+            self:Detonate(targetHit)
         else
-            if self:GetVelocity():GetLength() > 2 then
-                self:TriggerEffects("grenade_bounce")
-            end
-        end
-        
+            return true
+        end    
+    
     end
 
-    // Blow up after a time
-    function Grenade:OnThink()
+    if Server then
     
-        // Grenades are created in predict movement, so in order to get the correct
-        // lifetime, we start counting our lifetime from the first OnThink rather than when
-        // we were created
-        if not self.endOfLife then
-            self.endOfLife = Shared.GetTime() + kGrenadeLifetime
-        end
-    
-        local delta = self.endOfLife - Shared.GetTime()
-        if delta > 0 then
-            self:SetNextThink(delta)
-         else
-            self:Detonate(nil)
+        if self:GetVelocity():GetLength() > 2 then
+            self:TriggerEffects("grenade_bounce")
         end
         
     end
+    
+    return false
+    
+end
+
+if Server then
     
     function Grenade:Detonate(targetHit)
     
         // Do damage to nearby targets.
-        local hitEntities = GetEntitiesWithMixinForTeamWithinRange("Live", GetEnemyTeamNumber(self:GetTeamNumber()), self:GetOrigin(), kGrenadeLauncherGrenadeDamageRadius)
+        local hitEntities = GetEntitiesWithMixinWithinRange("Live", self:GetOrigin(), kGrenadeLauncherGrenadeDamageRadius)
         
         // Remove grenade and add firing player.
         table.removevalue(hitEntities, self)
-        local owner = self:GetOwner()
-        // It is possible this grenade does not have an owner.
-        if owner then
-            table.insertunique(hitEntities, owner)
-        end
         
+        // full damage on direct impact
+        if targetHit then
+            table.removevalue(hitEntities, targetHit)
+            self:DoDamage(kGrenadeLauncherGrenadeDamage, targetHit, targetHit:GetOrigin(), GetNormalizedVector(targetHit:GetOrigin() - self:GetOrigin()), "none")
+        end
+
         RadiusDamage(hitEntities, self:GetOrigin(), kGrenadeLauncherGrenadeDamageRadius, kGrenadeLauncherGrenadeDamage, self)
         
         // TODO: use what is defined in the material file
         local surface = GetSurfaceFromEntity(targetHit)
-        
-        if GetIsVortexed(self) then
-            surface = "ethereal"
-        end    
-        
-        local params = {surface = surface}
-        if not targetHit then
-            params[kEffectHostCoords] = Coords.GetLookIn( self:GetOrigin(), self:GetCoords().zAxis )
-        end
+                
+        local params = { surface = surface }
+        params[kEffectHostCoords] = Coords.GetLookIn( self:GetOrigin(), self:GetCoords().zAxis)
         
         self:TriggerEffects("grenade_explode", params)
+        
+        CreateExplosionDecals(self)
+        TriggerCameraShake(self, kGrenadeMinShakeIntensity, kGrenadeMaxShakeIntensity, kGrenadeCameraShakeDistance)
         
         DestroyEntity(self)
         
     end
     
-    function Grenade:GetCanDetonate()
-        if self.creationTime then
-            return self.creationTime + kMinLifeTime < Shared.GetTime()
-        end
-        return false
-    end
-    
-    function Grenade:SetVelocity(velocity)
-    
-        Projectile.SetVelocity(self, velocity)
-        
-        if Grenade.kDisableCollisionRange > 0 then
-        
-            if self.physicsBody and not self.collisionDisabled then
-            
-                // exclude all nearby friendly players from collision
-                for index, player in ipairs(GetEntitiesForTeamWithinRange("Player", self:GetTeamNumber(), self:GetOrigin(), Grenade.kDisableCollisionRange)) do
-                    
-                    if player:GetController() then
-                        Shared.SetPhysicsObjectCollisionsEnabled(self.physicsBody, player:GetController(), false)
-                    end
-                
-                end
-
-                self.collisionDisabled = true
-
-            end
-        
-        end
-        
-    end  
-
 end
 
 Shared.LinkClassToMap("Grenade", Grenade.kMapName, networkVars)

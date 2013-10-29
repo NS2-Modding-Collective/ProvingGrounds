@@ -9,6 +9,8 @@
 //
 // ========= For more information, visit us at http://www.unknownworlds.com =====================
 
+Script.Load("lua/InsightNetworkMessages_Client.lua")
+
 function OnCommandPing(pingTable)
 
     local playerId, ping = ParsePingMessage(pingTable)    
@@ -18,61 +20,17 @@ end
 
 function OnCommandHitEffect(hitEffectTable)
 
-    local position, doer, surface, target, showtracer, altMode = ParseHitEffectMessage(hitEffectTable)
-
-    local tableParams = {}
-    tableParams[kEffectHostCoords] = Coords.GetTranslation(position)
-    if doer then
-        tableParams[kEffectFilterDoerName] = doer:GetClassName()
-    end
-    tableParams[kEffectSurface] = surface
-    tableParams[kEffectFilterInAltMode] = altMode
+    local position, doer, surface, target, showtracer, altMode, damage, direction = ParseHitEffectMessage(hitEffectTable)
+    HandleHitEffect(position, doer, surface, target, showtracer, altMode, damage, direction)
     
-    if target then
-    
-        tableParams[kEffectFilterClassName] = target:GetClassName()
-        
-        if target.GetTeamType then
-            tableParams[kEffectFilterIsMarine] = target:GetTeamType() == kMarineTeamType
-            tableParams[kEffectFilterIsAlien] = target:GetTeamType() == kAlienTeamType
-        end
-        
-    else
-            tableParams[kEffectFilterIsMarine] = false
-            tableParams[kEffectFilterIsAlien] = false
-    end
-    
-    // don't play the hit cinematic, those are made for third person
-    if target ~= Client.GetLocalPlayer() then
-        GetEffectManager():TriggerEffects("damage", tableParams)
-    end
-    
-    // always play sound effect
-    GetEffectManager():TriggerEffects("damage_sound", tableParams)
-    
-    if showtracer == true and doer then
-    
-        
-        local tracerStart = (doer.GetBarrelPoint and doer:GetBarrelPoint()) or (doer.GetEyePos and doer:GetEyePos()) or doer:GetOrigin()
-    
-        local tracerVelocity = GetNormalizedVector(position - tracerStart) * kTracerSpeed
-        CreateTracer(tracerStart, position, tracerVelocity, doer)
-    
-    end
-    
-    if target and target.OnTakeDamageClient then
-        // Damage not available here
-        target:OnTakeDamageClient(nil, doer, position)
-    end
-
 end
 
-// Show damage numbers for players
+// Show damage numbers for players.
 function OnCommandDamage(damageTable)
 
     local target, amount, hitpos = ParseDamageMessage(damageTable)
     if target then
-        Client.AddWorldMessage(kWorldTextMessageType.Damage, ToString(math.round(amount)), hitpos, target:GetId())
+        Client.AddWorldMessage(kWorldTextMessageType.Damage, amount, hitpos, target:GetId())
     end
     
 end
@@ -84,18 +42,6 @@ function OnCommandScores(scoreTable)
         status = "-"
     elseif scoreTable.status == kPlayerStatus.Dead then
         status = Locale.ResolveString("STATUS_DEAD")
-    elseif scoreTable.status == kPlayerStatus.GrenadeLauncher then
-        status = Locale.ResolveString("STATUS_GRENADE_LAUNCHER")
-    elseif scoreTable.status == kPlayerStatus.RocketLauncher then
-        status = Locale.ResolveString("STATUS_ROCKET_LAUNCHER")
-    elseif scoreTable.status == kPlayerStatus.Rifle then
-        status = Locale.ResolveString("STATUS_RIFLE")
-    elseif scoreTable.status == kPlayerStatus.Shotgun then
-        status = Locale.ResolveString("STATUS_SHOTGUN")
-    elseif scoreTable.status == kPlayerStatus.Flamethrower then
-        status = Locale.ResolveString("STATUS_FLAMETHROWER")
-    elseif scoreTable.status == kPlayerStatus.AntiMatterSword then
-        status = Locale.ResolveString("STATUS_ANTI-MATTER_SWORD")
     elseif scoreTable.status == kPlayerStatus.Void then
         status = Locale.ResolveString("STATUS_VOID")
     elseif scoreTable.status == kPlayerStatus.Spectator then
@@ -103,27 +49,8 @@ function OnCommandScores(scoreTable)
     end
     
     Scoreboard_SetPlayerData(scoreTable.clientId, scoreTable.entityId, scoreTable.playerName, scoreTable.teamNumber, scoreTable.score,
-                             scoreTable.kills, scoreTable.deaths, scoreTable.streak,
-                             status, scoreTable.isSpectator)
-    
-end
-
-function OnCommandClearTechTree()
-    ClearTechTree()
-end
-
-function OnCommandTechNodeBase(techNodeBaseTable)
-    GetTechTree():CreateTechNodeFromNetwork(techNodeBaseTable)
-end
-
-function OnCommandTechNodeUpdate(techNodeUpdateTable)
-    GetTechTree():UpdateTechNodeFromNetwork(techNodeUpdateTable)
-end
-
-function OnCommandResetMouse()
-
-    Client.SetYaw(0)
-    Client.SetPitch(0)
+                             scoreTable.kills, scoreTable.deaths, scoreTable.isRookie,
+                             status, scoreTable.isSpectator, scoreTable.assists)
     
 end
 
@@ -151,22 +78,98 @@ function OnCommandWorldText(message)
     
 end
 
-function OnCommandReset()
+function OnCommandJoinError(message)
+    ChatUI_AddSystemMessage( Locale.ResolveString("JOIN_ERROR_TOO_MANY") )
 end
+
+function OnVoteConcedeCast(message)
+
+    local text = string.format(Locale.ResolveString("VOTE_CONCEDE_BROADCAST"), message.voterName, message.votesMoreNeeded)
+    ChatUI_AddSystemMessage(text)
+    
+end
+
+function OnTeamConceded(message)
+
+    if message.teamNumber == kMarineTeamType then
+        ChatUI_AddSystemMessage(Locale.ResolveString("TEAM_MARINES_CONCEDED"))
+    else
+        ChatUI_AddSystemMessage(Locale.ResolveString("TEAM_ALIENS_CONCEDED"))
+    end
+    
+end
+
+local function OnCommandCreateDecal(message)
+    
+    local normal, position, materialName, scale = ParseCreateDecalMessage(message)
+    
+    local coords = Coords.GetTranslation(position)
+    coords.yAxis = normal
+    
+    local randomAxis = Vector(math.random() * 2 - 0.9, math.random() * 2 - 1.1, math.random() * 2 - 1)
+    randomAxis:Normalize()
+    
+    coords.zAxis = randomAxis
+    coords.xAxis = coords.yAxis:CrossProduct(coords.zAxis)
+    coords.zAxis = coords.xAxis:CrossProduct(coords.yAxis)
+    
+    coords.xAxis:Normalize()
+    coords.yAxis:Normalize()
+    
+    Shared.CreateTimeLimitedDecal(materialName, coords, scale)
+
+end
+Client.HookNetworkMessage("CreateDecal", OnCommandCreateDecal)
+
+local function OnSetClientIndex(message)
+    Client.localClientIndex = message.clientIndex
+end
+Client.HookNetworkMessage("SetClientIndex", OnSetClientIndex)
+
+local function OnSetServerHidden(message)
+    Client.serverHidden = message.hidden
+end
+Client.HookNetworkMessage("ServerHidden", OnSetServerHidden)
+
+local function OnSetClientTeamNumber(message)
+    Client.localClientTeamNumber = message.teamNumber
+end
+Client.HookNetworkMessage("SetClientTeamNumber", OnSetClientTeamNumber)
+
+local function OnMessageAutoConcedeWarning(message)
+
+    local warningText = StringReformat(Locale.ResolveString("AUTO_CONCEDE_WARNING"), { time = message.time, teamName = message.team1Conceding and "Marines" or "Aliens" })
+    ChatUI_AddSystemMessage(warningText)
+    
+end
+
+local function OnCommandCameraShake(message)
+
+    local intensity = ParseCameraShakeMessage(message)
+    
+    local player = Client.GetLocalPlayer()
+    if player and player.SetCameraShake then
+        player:SetCameraShake(intensity * 0.1, 5, 0.25)    
+    end
+
+end
+
+Client.HookNetworkMessage("AutoConcedeWarning", OnMessageAutoConcedeWarning)
 
 Client.HookNetworkMessage("Ping", OnCommandPing)
 Client.HookNetworkMessage("HitEffect", OnCommandHitEffect)
 Client.HookNetworkMessage("Damage", OnCommandDamage)
+Client.HookNetworkMessage("JoinError", OnCommandJoinError)
 Client.HookNetworkMessage("Scores", OnCommandScores)
 
-Client.HookNetworkMessage("ClearTechTree", OnCommandClearTechTree)
-Client.HookNetworkMessage("TechNodeBase", OnCommandTechNodeBase)
-
-Client.HookNetworkMessage("ResetMouse", OnCommandResetMouse)
 Client.HookNetworkMessage("ResetGame", OnCommandOnResetGame)
 
 Client.HookNetworkMessage("DebugLine", OnCommandDebugLine)
 Client.HookNetworkMessage("DebugCapsule", OnCommandDebugCapsule)
 
 Client.HookNetworkMessage("WorldText", OnCommandWorldText)
-Client.HookNetworkMessage("Reset", OnCommandReset)
+
+Client.HookNetworkMessage("VoteConcedeCast", OnVoteConcedeCast)
+Client.HookNetworkMessage("TeamConceded", OnTeamConceded)
+Client.HookNetworkMessage("CameraShake", OnCommandCameraShake)
+

@@ -9,7 +9,13 @@
 local kSubImageWidth = 128
 local kSubImageHeight = 64
 
-local queuedDeathMessages = {}
+local queuedDeathMessages = { }
+
+local resLostMarine = 0
+local resLostAlien = 0
+local rtsLostMarine = 0
+local rtsLostAlien = 0
+local resRecovered = 0
 
 // Can't have multi-dimensional arrays so return potentially very long array [color, name, color, name, doerid, ....]
 function DeathMsgUI_GetMessages()
@@ -59,48 +65,125 @@ function DeathMsgUI_GetTechHeight(doerId)
     return kSubImageHeight
 end
 
-function InitDeathMessages(player)
-
-    queuedDeathMessages = {}
-    
-end
-
-// Pass 1 for isPlayer if coming from a player (look it up from scoreboard data), otherwise it's a tech id
-function GetDeathMessageEntityName(isPlayer, clientIndex)
+-- Pass 1 for isPlayer if coming from a player (look it up from scoreboard data), otherwise it's a tech id
+local function GetDeathMessageEntityName(isPlayer, clientIndex)
 
     local name = ""
-
-    if isPlayer == 1 then
+    
+    if isPlayer then
         name = Scoreboard_GetPlayerData(clientIndex, "Name")
     elseif clientIndex ~= -1 then
         name = GetDisplayNameForTechId(clientIndex)
     end
     
-    if not name then
-        name = ""
-    end
-    
-    return name
+    return name or ""
     
 end
 
-// stored the name of the last killer
-local gKillerName = ""
-local gKillerWeaponIconIndex = 0
+-- Stored the name of the last killer.
+local gKillerName = nil
+local gKillerWeaponIconIndex = kDeathMessageIcon.None
 
+-- The killer name will clear when this is called.
 function GetKillerNameAndWeaponIcon()
-    return gKillerName, gKillerWeaponIconIndex
+
+    local killerName = gKillerName
+    gKillerName = nil
+    return killerName, gKillerWeaponIconIndex
+    
 end
 
-function AddDeathMessage(killerIsPlayer, killerIndex, killerTeamNumber, iconIndex, targetIsPlayer, targetIndex, targetTeamNumber)
+function DeathMsgUI_GetResLost(teamNumber)
+
+    if teamNumber == kTeam1Index then
+
+        return resLostMarine
+
+    elseif teamNumber == kTeam2Index then
+
+        return resLostAlien
+
+    end
+
+    return nil
+
+end
+
+function DeathMsgUI_GetRtsLost(teamNumber)
+
+    if teamNumber == kTeam1Index then
+
+        return rtsLostMarine
+
+    elseif teamNumber == kTeam2Index then
+
+        return rtsLostAlien
+
+    end
+
+    return nil
+
+end
+
+function DeathMsgUI_GetCystsLost()
+
+    return cystsLost
+
+end
+
+function DeathMsgUI_GetResRecovered()
+
+    return resRecovered
+
+end
+
+function DeathMsgUI_ResetStats()
+
+    resLostMarine = 0
+    resLostAlien = 0
+    rtsLostMarine = 0
+    rtsLostAlien = 0
+    resRecovered = 0
+    
+end
+
+function DeathMsgUI_AddResLost(teamNumber, res)
+
+    if teamNumber == kTeam1Index then
+        resLostMarine = resLostMarine + res
+    elseif teamNumber == kTeam2Index then
+        resLostAlien = resLostAlien + res
+    end
+
+end
+
+function DeathMsgUI_AddRtsLost(teamNumber, rts)
+
+    if teamNumber == kTeam1Index then
+        rtsLostMarine = rtsLostMarine + rts
+    elseif teamNumber == kTeam2Index then
+        rtsLostAlien = rtsLostAlien + rts
+    end
+
+end
+
+function DeathMsgUI_AddResRecovered(amount)
+
+    resRecovered = resRecovered + amount
+
+end
+
+local function AddDeathMessage(killerIsPlayer, killerIndex, killerTeamNumber, iconIndex, targetIsPlayer, targetIndex, targetTeamNumber)
 
     local killerName = GetDeathMessageEntityName(killerIsPlayer, killerIndex)
     local targetName = GetDeathMessageEntityName(targetIsPlayer, targetIndex)
     
+    Print("%s killed %s with %s", killerName, targetName, EnumToString(kDeathMessageIcon, iconIndex))
+    
     local killedSelf = killerIsPlayer and targetIsPlayer and killerIndex == targetIndex
     
     local deathMessage = { GetColorForTeamNumber(killerTeamNumber), killerName, GetColorForTeamNumber(targetTeamNumber), killedSelf and "" or targetName, iconIndex, targetIsPlayer }
-    table.insertunique(queuedDeathMessages, deathMessage)
+    table.insert(queuedDeathMessages, deathMessage)
     
     local player = Client.GetLocalPlayer()
     if player and player:GetName() == targetName then
@@ -111,3 +194,8 @@ function AddDeathMessage(killerIsPlayer, killerIndex, killerTeamNumber, iconInde
     end
     
 end
+
+local function OnDeathMessage(message)
+    AddDeathMessage(message.killerIsPlayer, message.killerId, message.killerTeamNumber, message.iconIndex, message.targetIsPlayer, message.targetId, message.targetTeamNumber)
+end
+Client.HookNetworkMessage("DeathMessage", OnDeathMessage)

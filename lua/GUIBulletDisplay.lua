@@ -16,7 +16,7 @@ class 'GUIBulletDisplay' (GUIScript)
 function GUIBulletDisplay:Initialize()
 
     self.weaponClip     = 0
-    self.weaponClipSize = 200
+    self.weaponClipSize = 50
     
     self.onDraw = 0
     self.onHolster = 0
@@ -24,27 +24,27 @@ function GUIBulletDisplay:Initialize()
     self.background = GUIManager:CreateGraphicItem()
     self.background:SetSize( Vector(256, 512, 0) )
     self.background:SetPosition( Vector(0, 0, 0))    
-    self.background:SetTexture("ui/RifleDisplay.dds")
+    self.background:SetTexture("ui/rifledisplay.dds")
     self.background:SetIsVisible(true)
 
     // Slightly larger copy of the text for a glow effect
     self.ammoTextBg = GUIManager:CreateTextItem()
     self.ammoTextBg:SetFontName("fonts/MicrogrammaDMedExt_large.fnt")
     self.ammoTextBg:SetFontIsBold(true)
-    self.ammoTextBg:SetFontSize(135)
+    self.ammoTextBg:SetFontSize(150)
     self.ammoTextBg:SetTextAlignmentX(GUIItem.Align_Center)
     self.ammoTextBg:SetTextAlignmentY(GUIItem.Align_Center)
-    self.ammoTextBg:SetPosition(Vector(135, 88, 0))
+    self.ammoTextBg:SetPosition(Vector(120, 120, 0))
     self.ammoTextBg:SetColor(Color(1, 1, 1, 0.25))
 
     // Text displaying the amount of ammo in the clip
     self.ammoText = GUIManager:CreateTextItem()
     self.ammoText:SetFontName("fonts/MicrogrammaDMedExt_large.fnt")
     self.ammoText:SetFontIsBold(true)
-    self.ammoText:SetFontSize(120)
+    self.ammoText:SetFontSize(135)
     self.ammoText:SetTextAlignmentX(GUIItem.Align_Center)
     self.ammoText:SetTextAlignmentY(GUIItem.Align_Center)
-    self.ammoText:SetPosition(Vector(135, 88, 0))
+    self.ammoText:SetPosition(Vector(120, 120, 0))
     
     self.flashInOverlay = GUIManager:CreateGraphicItem()
     self.flashInOverlay:SetSize( Vector(256, 512, 0) )
@@ -69,7 +69,7 @@ function GUIBulletDisplay:Update(deltaTime)
     local ammoFormat = string.format("%02d", self.weaponClip) 
     self.ammoText:SetText( ammoFormat )
     self.ammoTextBg:SetText( ammoFormat )
-    
+       
     local flashInAlpha = self.flashInOverlay:GetColor().a
     
     if flashInAlpha > 0 then
@@ -89,4 +89,3 @@ end
 function GUIBulletDisplay:SetClipSize(weaponClipSize)
     self.weaponClipSize = weaponClipSize
 end
-

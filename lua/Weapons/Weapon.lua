@@ -23,15 +23,16 @@ Weapon.kMeleeBaseHeight = .8
 
 if Server then
     Script.Load("lua/Weapons/Weapon_Server.lua")
-else
+elseif Client then
     Script.Load("lua/Weapons/Weapon_Client.lua")
 end
 
 local networkVars =
 {
     isHolstered = "boolean",
-    primaryAttacking = "boolean",
-    secondaryAttacking = "boolean"
+    primaryAttacking = "compensated boolean",
+    secondaryAttacking = "compensated boolean",
+    weaponWorldState = "boolean"
 }
 
 AddMixinNetworkVars(BaseModelMixin, networkVars)
@@ -65,12 +66,6 @@ function Weapon:OnCreate()
     
 end
 
-function Weapon:OnInitialized()
-
-    ScriptActor.OnInitialized(self)
-
-end
-
 function Weapon:OnDestroy()
 
     ScriptActor.OnDestroy(self)
@@ -78,6 +73,13 @@ function Weapon:OnDestroy()
     // Force end events just in case the weapon goes out of relevancy on the client for example.
     self:TriggerEffects(self:GetPrimaryAttackPrefix() .. "_attack_end")
     self:TriggerEffects(self:GetSecondaryAttackPrefix() .. "_alt_attack_end")
+    
+    if self.ammoDisplayUI then
+    
+        Client.DestroyGUIView(self.ammoDisplayUI)
+        self.ammoDisplayUI = nil
+        
+    end
 
 end
 
@@ -117,17 +119,11 @@ function Weapon:GetViewModelName()
 end
 
 function Weapon:GetRange()
-    return 8012
+    return 100
 end
 
 function Weapon:GetHasSecondary(player)
     return false
-end
-
-// Return 0-1 scalar approximation for weight. Owner of weapon will determine
-// what this means and how to use it.
-function Weapon:GetWeight()
-    return 0
 end
 
 function Weapon:SetCameraShake(amount, speed, time)
@@ -189,6 +185,10 @@ function Weapon:GetCanSkipPhysics()
     return self:GetParent() and self.isHolstered
 end
 
+function Weapon:GetIsAffectedByWeaponUpgrades()
+    return true
+end    
+
 function Weapon:OnHolster(player)
 
     self:OnPrimaryAttackEnd()
@@ -198,11 +198,6 @@ function Weapon:OnHolster(player)
     self.primaryAttacking = false
     self.secondaryAttacking = false
     
-    if Client then
-        local viewModel = player:GetViewModelEntity()
-        Client.DestroyAttachedCinematics(viewModel)
-    end
-
 end
 
 function Weapon:GetResetViewModelOnDraw()
@@ -218,7 +213,12 @@ function Weapon:OnDraw(player, previousWeaponMapName)
         player:SetViewModel(nil, nil)
     end
     
-    player:SetViewModel(self:GetViewModelName(), self)
+    // hacky..
+    if HasMixin(player, "AvatarVariant") then
+        player:SetViewModel(self:GetViewModelName(player:GetGenderString(), player:GetVariant()), self)
+    else
+        player:SetViewModel(self:GetViewModelName(), self)
+    end
     
     self:TriggerEffects("draw")
     
@@ -250,6 +250,8 @@ local function SharedUpdate(self)
     // Handle dropping on the client
     if Client then
         self:UpdateDropped()
+
+
     end
     
 end
@@ -265,6 +267,38 @@ function Weapon:ProcessMoveOnWeapon(player, input)
     SharedUpdate(self)
 end
 
+function Weapon:GetUIDisplaySettings()
+    return nil
+end
+
+function Weapon:OnUpdateRender()
+
+    local parent = self:GetParent()
+    local settings = self:GetUIDisplaySettings()
+    if parent and parent:GetIsLocalPlayer() and settings then
+    
+        local ammoDisplayUI = self.ammoDisplayUI
+        if not ammoDisplayUI then
+        
+            ammoDisplayUI = Client.CreateGUIView(settings.xSize, settings.ySize)
+            ammoDisplayUI:Load(settings.script)
+            ammoDisplayUI:SetTargetTexture("*ammo_display" .. (settings.textureNameOverride or self:GetMapName()))
+            self.ammoDisplayUI = ammoDisplayUI
+            
+        end
+        
+        ammoDisplayUI:SetGlobal("weaponClip", parent:GetWeaponClip())
+        ammoDisplayUI:SetGlobal("weaponAuxClip", parent:GetAuxWeaponClip())
+        
+    elseif self.ammoDisplayUI then
+    
+        Client.DestroyGUIView(self.ammoDisplayUI)
+        self.ammoDisplayUI = nil
+        
+    end
+    
+end
+
 function Weapon:GetIsActive()
     local parent = self:GetParent()
     return (parent ~= nil and (parent.GetActiveWeapon) and (parent:GetActiveWeapon() == self))
@@ -277,6 +311,22 @@ end
 
 function Weapon:GetSwingSensitivity()
     return .5
+end
+
+function Weapon:SetRelevancy(sighted)
+
+    local mask = bit.bor(kRelevantToTeam1Unit, kRelevantToTeam2Unit, kRelevantToReadyRoom)
+
+    
+    if self:GetTeamNumber() == 1 then
+        mask = bit.bor(mask, kRelevantToTeam1)
+    elseif self:GetTeamNumber() == 2 then
+        mask = bit.bor(mask, kRelevantToTeam2)
+    end
+
+    
+    self:SetExcludeRelevancyMask(mask)
+    
 end
 
 // this would cause the use button to appear on the hud, there is a separate functionality for picking up weapons

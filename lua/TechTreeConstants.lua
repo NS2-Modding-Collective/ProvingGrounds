@@ -6,17 +6,43 @@
 //
 // ========= For more information, visit us at http://www.unknownworlds.com =====================
 
-kTechId = enum({
+local gTechIdToString = {}
+
+local function createTechIdEnum(table)
+
+    for i = 1, #table do    
+        gTechIdToString[table[i]] = i  
+    end
+    
+    return enum(table)
+
+end
+
+kTechId = createTechIdEnum({
     
     'None', 
     
-   
-    'ReadyRoomPlayer', 'Player', 
-    'Avatar', 'Spectator', 'MarineSpectator', 'RedSpectator',
- 
+    'VoteConcedeRound',
+    
+
+    'ReadyRoomPlayer', 
+    
+    /////////////
+    // Avatars //
+    /////////////
+    
+    // Avatar classes + spectators
+    'Avatar', 'GreenAvatar', 'PurpleAvatar', 'Spectator', 'MarineSpectator',
+    
     // Weapons 
-    'Rifle', 'Pistol', 'Shotgun', 'Claw', 'Minigun', 'GrenadeLauncher', 'RocketLauncher', 'Flamethrower', 'Axe', 'AntiMatterSword',
-	'Blink',
+    'Rifle', 'Pistol', 'Shotgun', 'HeavyRifle', 'GrenadeLauncher', 'RocketLauncher', 'Flamethrower', 'Axe', 
+    
+    // Mapping Entities
+    
+    'JumpPadTrigger',
+    
+    'AmmoPack', 'MedPack', 'CatPack',
+  
     'GameStarted',
     
     'DeathTrigger',
@@ -25,9 +51,10 @@ kTechId = enum({
     'Max'
     
     })
+    
+function StringToTechId(string)
+    return gTechIdToString[string] or kTechId.None
+end    
 
 // Increase techNode network precision if more needed
 kTechIdMax  = kTechId.Max
-
-// Tech types
-kTechType = enum({ 'Invalid', 'Action', 'Activation', 'Special', 'Passive' })

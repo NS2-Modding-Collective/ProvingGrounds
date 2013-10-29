@@ -6,9 +6,7 @@
 //    
 // ========= For more information, visit us at http://www.unknownworlds.com =====================    
 
-Script.Load("lua/FunctionContracts.lua")
-
-LOSMixin = CreateMixin( LOSMixin )
+LOSMixin = CreateMixin(LOSMixin)
 
 LOSMixin.type = "LOS"
 
@@ -33,8 +31,36 @@ local kLOSTimeout = 1
 
 LOSMixin.networkVars =
 {
+    sighted = "boolean",
     visibleClient = "boolean"
 }
+
+local function UpdateLOS(self)
+
+    local mask = bit.bor(kRelevantToTeam1Unit, kRelevantToTeam2Unit, kRelevantToReadyRoom)
+    
+    if self.sighted then
+        mask = bit.bor(mask, kRelevantToTeam1, kRelevantToTeam2)
+    elseif self:GetTeamNumber() == 1 then
+        mask = bit.bor(mask, kRelevantToTeam1)
+    elseif self:GetTeamNumber() == 2 then
+        mask = bit.bor(mask, kRelevantToTeam2)
+    end
+    
+    self:SetExcludeRelevancyMask(mask)
+    self.visibleClient = self.sighted
+    
+    if self.lastSightedState ~= self.sighted then
+    
+        if self.OnSighted then
+            self:OnSighted(self.sighted)
+        end
+        
+        self.lastSightedState = self.sighted
+        
+    end
+    
+end
 
 function LOSMixin:__initmixin()
 
@@ -49,7 +75,7 @@ function LOSMixin:__initmixin()
         self.prevLOSorigin = Vector(0,0,0)
     
         self:SetIsSighted(false)
-        self:UpdateLOS()
+        UpdateLOS(self)
         self.oldSighted = true
         self.lastViewerId = Entity.invalidId
         
@@ -69,7 +95,7 @@ if Server then
      */
     function LOSMixin:OnTeamChange()
     
-        self:UpdateLOS()
+        UpdateLOS(self)
         self:SetIsSighted(false)
         
     end
@@ -89,6 +115,11 @@ if Server then
         // We don't care to sight dead things.
         local dead = HasMixin(entity, "Live") and not entity:GetIsAlive()
         if dead then
+            return false
+        end
+        
+        local viewerDead = HasMixin(viewer, "Live") and not viewer:GetIsAlive()
+        if viewerDead then
             return false
         end
         
@@ -166,10 +197,6 @@ if Server then
         // Soon make this something other Mixins can hook into instead of hardcoding GameEffects here.
         local seen = false
         
-        if HasMixin(self, "GameEffects") then
-            seen = GetIsParasited(self)
-        end
-        
         local lastViewer = self:GetLastViewer()
         
         if not seen and lastViewer then
@@ -180,24 +207,6 @@ if Server then
         end
         
         self:SetIsSighted(seen, lastViewer)
-        
-    end
-    
-    function LOSMixin:UpdateLOS()
-    
-        local mask = bit.bor(kRelevantToTeam1Unit, kRelevantToTeam2Unit, kRelevantToReadyRoom)
-        
-        self.visibleClient = self.sighted
-        
-        if self.lastSightedState ~= self.sighted then
-        
-            if self.OnSighted then
-                self:OnSighted(self.sighted)
-            end
-            
-            self.lastSightedState = self.sighted
-            
-        end
         
     end
     
@@ -243,7 +252,7 @@ if Server then
         
             if self.sighted then
             
-                self:UpdateLOS()
+                UpdateLOS(self)
                 self.timeUpdateLOS = nil
                 
             else
@@ -256,7 +265,7 @@ if Server then
         
         if self.timeUpdateLOS and self.timeUpdateLOS < Shared.GetTime() then
         
-            self:UpdateLOS()
+            UpdateLOS(self)
             self.timeUpdateLOS = nil
             
         end
@@ -271,6 +280,7 @@ if Server then
         SharedUpdate(self, input.time)
     end
     
+    // this causes an issue: when the distance is too big (going to ready room, moving through phase gate) MarkNearbyDirty(self) will miss previous revealed entities. 
     function LOSMixin:SetOrigin(origin)
     
         // matso: optimization; SetOrigin is called A LOT, so we just add us to an update-los queue when we move enough
@@ -315,7 +325,7 @@ if Server then
         if not self.dirtyLOS and self.prevViewLOSYaw ~= yaw then
         
             self.dirtyLOS = true
-            self.prevViewLOSYaw = newAngles
+            self.prevViewLOSYaw = yaw
             
         end
         
@@ -327,6 +337,10 @@ if Server then
             self.updateLOS = true
         end
         
+    end
+    
+    function LOSMixin:OnKill()
+        MarkNearbyDirty(self)
     end
     
     function LOSMixin:OnDestroy()

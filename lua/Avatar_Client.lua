@@ -1,92 +1,15 @@
-// ======= Copyright (c) 2003-2012, Unknown Worlds Entertainment, Inc. All rights reserved. =======
+// =========================================================================================
 //
 // lua\Avatar_Client.lua
 //
-//    Created by:   Charlie Cleveland (charlie@unknownworlds.com) and
-//                  Max McGuire (max@unknownworlds.com)
+//    Created by:   Andy 'Soul Rider' Wilson for Proving Grounds Mod
 //
-// ========= For more information, visit us at http://www.unknownworlds.com =====================
+// ================================================================================================
 
-Avatar.kInfestationFootstepCinematic = PrecacheAsset("cinematics/marine/infestation_footstep.cinematic")
+Avatar.k2DHUDFlash = "ui/marine_hud_2d.swf"
 
-local kSensorBlipSize = 25
-
-local kMarineHealthbarOffset = Vector(0, 1.2, 0)
 function Avatar:GetHealthbarOffset()
-    return kMarineHealthbarOffset
-end
-
-function Avatar:OnInitLocalClient()
-
-    Player.OnInitLocalClient(self)
-    
-    self.notifications = {}
-    
-    if self:GetTeamNumber() ~= kTeamReadyRoom then
-
-        if self.avatarHUD == nil then
-            self.avatarHUD = GetGUIManager():CreateGUIScript("Hud/Marine/GUIAvatarHUD")
-        end
-        
-        if self.pickups == nil then
-            self.pickups = GetGUIManager():CreateGUIScript("GUIPickups")
-        end
-
-        if self.hints == nil then
-            //self.hints = GetGUIManager():CreateGUIScript("GUIHints")
-        end
-       
-        if self.unitStatusDisplay == nil then
-            self.unitStatusDisplay = GetGUIManager():CreateGUIScript("GUIUnitStatus")
-            self.unitStatusDisplay:EnableMarineStyle()
-        end 
-        
-    end
-    
-end
-
-// check if player aims at a Weldable unit and return it's percentage
-function Avatar:GetCurrentWeldPercentage()
-
-    local activeWeapon = self:GetActiveWeapon()
-    
-    if activeWeapon then
-    
-        local target = self:GetCrossHairTarget()
-        if target and GetAreFriends(self, target) then
-        
-            local weldPercentage = HasMixin(target, "Weldable") and target:GetWeldPercentage() or 1
-            local buildPercentage = HasMixin(target, "Construct") and target:GetBuiltFraction() or 1
-            
-            return ConditionalValue(weldPercentage > buildPercentage, buildPercentage, weldPercentage)
-        
-        end
-        
-    end
-    
-    return 0
-    
-end
-
-function Avatar:GetHudParams()
-
-    if self.hudParams == nil then
-    
-        self.hudParams = {}
-        self.hudParams.timeDamageTaken = nil
-        // scalar 0-1        
-        self.hudParams.damageIntensity = 0
-        // boolean to check if a hud cinematic should be played,  init with true so respawning / ejecting from CS / joining team will trigger it
-        self.hudParams.initProjectingCinematic = true
-    
-    end
-    
-    return self.hudParams
-
-end
-
-function Avatar:SetHudParams(hudParams)
-    self.hudParams = hudParams
+    return 1.2
 end
 
 function Avatar:UpdateClientEffects(deltaTime, isLocal)
@@ -95,15 +18,14 @@ function Avatar:UpdateClientEffects(deltaTime, isLocal)
     
     if isLocal then
         
-        self:UpdateGhostModel()
-        
-        if self.avatarHUD then
-            self.avatarHUD:SetIsVisible(self:GetIsAlive())
+        local avatarHUD = ClientUI.GetScript("Hud/Marine/GUIMarineHUD")
+        if avatarHUD then
+            avatarHUD:SetIsVisible(self:GetIsAlive())
         end
 
-        local blurEnabled = false
+        local blurEnabled = self.buyMenu ~= nil
         self:SetBlurEnabled(blurEnabled)
-                
+    
     end
     
 end
@@ -113,22 +35,9 @@ function Avatar:OnUpdateRender()
     PROFILE("Avatar:OnUpdateRender")
     
     Player.OnUpdateRender(self)
-      
-end
-
-function Avatar:CloseMenu()
-
-    if self.buyMenu then
     
-        GetGUIManager():DestroyGUIScript(self.buyMenu)
-        self.buyMenu = nil
-        MouseTracker_SetIsVisible(false)
-        return true
-        
-    end
-   
-    return false
-    
+    local model = self:GetRenderModel()
+
 end
 
 function Avatar:AddNotification(locationId, techId)
@@ -162,46 +71,6 @@ end
 function Avatar:TriggerFootstep()
 
     Player.TriggerFootstep(self)
-
-end
-
-gCurrentHostStructureId = Entity.invalidId
-
-function AvatarUI_SetHostStructure(structure)
-
-    if structure then
-        gCurrentHostStructureId = structure:GetId()
-    end    
-
-end
-
-function AvatarUI_GetCurrentHostStructure()
-
-    if gCurrentHostStructureId and gCurrentHostStructureId ~= Entity.invalidId then
-        return Shared.GetEntity(gCurrentHostStructureId)
-    end
-
-    return nil    
-
-end
-
-// Bring up buy menu
-function Avatar:BuyMenu(structure)
-    
-    // Don't allow display in the ready room
-    if self:GetTeamNumber() ~= 0 and Client.GetLocalPlayer() == self then
-    
-        if not self.buyMenu then
-            self.buyMenu = GetGUIManager():CreateGUIScript("GUIMarineBuyMenu")
-            
-            AvatarUI_SetHostStructure(structure)
-            
-            if structure then
-                self.buyMenu:SetHostStructure(structure)
-            end
-        end
-        
-    end
     
 end
 
@@ -209,92 +78,95 @@ function Avatar:UpdateMisc(input)
 
     Player.UpdateMisc(self, input)
     
-    if not Shared.GetIsRunningPrediction() then
+end
 
-        if input.move.x ~= 0 or input.move.z ~= 0 then
+// Give dynamic camera motion to the player
+/*
+function Avatar:PlayerCameraCoordsAdjustment(cameraCoords) 
 
-            self:CloseMenu()
-            
-        end
+    if self:GetIsFirstPerson() then
         
+        if self:GetIsStunned() then
+            local attachPointOffset = self:GetAttachPointOrigin("Head") - cameraCoords.origin
+            attachPointOffset.x = attachPointOffset.x * .5
+            attachPointOffset.z = attachPointOffset.z * .5
+            cameraCoords.origin = cameraCoords.origin + attachPointOffset
+        end
+    
     end
     
-end
+    return cameraCoords
+
+end*/
 
 function Avatar:OnCountDown()
 
     Player.OnCountDown(self)
     
-    if self.avatarHUD then
-        self.avatarHUD:SetIsVisible(false)
+    local script = ClientUI.GetScript("Hud/Marine/GUIMarineHUD")
+    if script then
+        script:SetIsVisible(false)
     end
-
+    
 end
 
 function Avatar:OnCountDownEnd()
 
     Player.OnCountDownEnd(self)
     
-    if self.avatarHUD then
-        self.avatarHUD:SetIsVisible(true)
+    local script = ClientUI.GetScript("Hud/Marine/GUIMarineHUD")
+    if script then
+    
+        script:SetIsVisible(true)
+        script:TriggerInitAnimations()
+        
+    end
+    
+end
+
+function Avatar:CreateTrailCinematic()
+
+    local options = {
+            numSegments = 2,
+            collidesWithWorld = false,
+            visibilityChangeDuration = 0.2,
+            fadeOutCinematics = true,
+            stretchTrail = false,
+            trailLength = 1,
+            minHardening = 0.01,
+            maxHardening = 0.2,
+            hardeningModifier = 0.8,
+            trailWeight = 0
+        }
+
+    self.trailCinematic = Client.CreateTrailCinematic(RenderScene.Zone_Default)
+    self.trailCinematic:SetCinematicNames(kFadeTrailDark)    
+    self.trailCinematic:AttachToFunc(self, TRAIL_ALIGN_MOVE, Vector(0, 1.3, 0.2) )                
+    self.trailCinematic:SetRepeatStyle(Cinematic.Repeat_Endless)
+    self.trailCinematic:SetOptions(options)
+
+    self.scanTrailCinematic = Client.CreateTrailCinematic(RenderScene.Zone_Default)
+    self.scanTrailCinematic:SetCinematicNames(kFadeTrailGlow)    
+    self.scanTrailCinematic:AttachToFunc(self, TRAIL_ALIGN_MOVE, Vector(0, 1.3, 0.2) )                
+    self.scanTrailCinematic:SetRepeatStyle(Cinematic.Repeat_Endless)
+    self.scanTrailCinematic:SetOptions(options)
+
+end
+
+function Avatar:DestroyTrailCinematic()
+
+    if self.trailCinematic then
+    
+        Client.DestroyTrailCinematic(self.trailCinematic)
+        self.trailCinematic = nil
+    
+    end
+    
+    if self.scanTrailCinematic then
+    
+        Client.DestroyTrailCinematic(self.scanTrailCinematic)
+        self.scanTrailCinematic = nil
+    
     end
 
-end
-
-function Avatar:GetSpeedDebugSpecial()
-    return self:GetSprintTime() / SprintMixin.kMaxSprintTime
-end
-
-function Avatar:OnUpdateSprint()
-
-    /*if self.loopingSprintSoundEntId ~= Entity.invalidId then
-    
-        local soundEnt = Shared.GetEntity(self.loopingSprintSoundEntId)
-        if soundEnt then
-        
-            // Note: This line is resulting in console spam:
-            // SoundEventInstance::SetParameter(marine/common/sprint_loop, tired = 0.998213, 1): getValue():
-            // Do not check in unless this is resolved. This method is not ideal in any case.
-            soundEnt:SetParameter("tired", self:GetTiredScalar(), 1)
-            
-        end 
-        
-    end*/
-    
-end
-
-function Avatar:UpdateGhostModel()
-
-    self.currentTechId = nil
-    self.ghostStructureCoords = nil
-    self.ghostStructureValid = false
-    self.showGhostModel = false
-    
-    local weapon = self:GetActiveWeapon()
-
-    if weapon and weapon:isa("LayMines") then
-    
-        self.currentTechId = kTechId.Mine
-        self.ghostStructureCoords = weapon:GetGhostModelCoords()
-        self.ghostStructureValid = weapon:GetIsPlacementValid()
-        self.showGhostModel = weapon:GetShowGhostModel()
-    
-    end
-
-end
-
-function Avatar:GetShowGhostModel()
-    return self.showGhostModel
-end    
-
-function Avatar:GetGhostModelTechId()
-    return self.currentTechId
-end
-
-function Avatar:GetGhostModelCoords()
-    return self.ghostStructureCoords
-end
-
-function Avatar:GetIsPlacementValid()
-    return self.ghostStructureValid
 end

@@ -2,26 +2,33 @@
 //
 // lua\Server.lua
 //
-//    Created by:   Charlie Cleveland (charlie@unknownworlds.com)
+//    Created by:   Andy Wilson for Proving Grounds
 //
 // ========= For more information, visit us at http://www.unknownworlds.com =====================
 
 // Set the name of the VM for debugging
 decoda_name = "Server"
 
+Script.Load("lua/PreLoadMod.lua")
+
 Script.Load("lua/Shared.lua")
 Script.Load("lua/MapEntityLoader.lua")
-Script.Load("lua/Button.lua")
 Script.Load("lua/TechData.lua")
 Script.Load("lua/TargetCache.lua")
 
-Script.Load("lua/MarineTeam.lua")
-Script.Load("lua/RedTeam.lua")
-Script.Load("lua/Bot.lua")
+Script.Load("lua/GreenTeam.lua")
+Script.Load("lua/PurpleTeam.lua")
 Script.Load("lua/VoteManager.lua")
+Script.Load("lua/Voting.lua")
+Script.Load("lua/VotingKickPlayer.lua")
+Script.Load("lua/VotingChangeMap.lua")
+Script.Load("lua/VotingResetGame.lua")
+Script.Load("lua/VotingRandomizeRR.lua")
+Script.Load("lua/Badges_Server.lua")
 
 Script.Load("lua/ServerConfig.lua")
 Script.Load("lua/ServerAdmin.lua")
+Script.Load("lua/TournamentMode.lua")
 Script.Load("lua/ServerAdminCommands.lua")
 Script.Load("lua/ServerWebInterface.lua")
 Script.Load("lua/MapCycle.lua")
@@ -32,14 +39,14 @@ Script.Load("lua/NetworkMessages_Server.lua")
 
 Script.Load("lua/dkjson.lua")
 
-Script.Load("lua/InfestationMap.lua")
-
 Script.Load("lua/NetworkDebug.lua")
 
 Server.readyRoomSpawnList = table.array(32)
 
 Server.team1SpawnList = table.array(16)
 Server.team2SpawnList = table.array(16)
+
+Server.spawnItem1List = table.array(32)
 
 // map name, group name and values keys for all map entities loaded to
 // be created on game reset
@@ -56,6 +63,11 @@ Server.mapPostLoadEntities = table.array(32)
 // Recent chat messages are stored on the server.
 Server.recentChatMessages = CreateRingBuffer(20)
 local chatMessageCount = 0
+
+local reservedSlots = Server.GetConfigSetting("reserved_slots")
+if reservedSlots and reservedSlots.amount > 0 then
+    SetReservedSlotAmount(reservedSlots.amount)
+end
 
 function Server.AddChatToHistory(message, playerName, steamId, teamNumber, teamOnly)
 
@@ -83,10 +95,12 @@ local function GetMapEntityLoadPriority(mapName)
 end
 
 // filter the entities which are explore mode only
+// MUST BE GLOBAL - overridden by mods
 function GetLoadEntity(mapName, groupName, values)
     return values.onlyexplore ~= true
 end
 
+// MUST BE GLOBAL - overridden by mods
 function GetCreateEntityOnStart(mapName, groupName, values)
 
     return mapName ~= "prop_static"
@@ -96,17 +110,18 @@ function GetCreateEntityOnStart(mapName, groupName, values)
        and mapName ~= "color_grading"
        and mapName ~= "cinematic"
        and mapName ~= "skybox"
-       and mapName ~= "pathing_settings"
        and mapName ~= ReadyRoomSpawn.kMapName
-       and mapName ~= AmbientSound.kMapName
+       and mapName ~= "ambient_sound"
        and mapName ~= Reverb.kMapName
-       and mapName ~= Particles.kMapName
+       and mapName ~= "spawn_selection_override"
+    
 end
 
+// MUST BE GLOBAL - overridden by mods
 function GetLoadSpecial(mapName, groupName, values)
 
     local success = false
-
+    
     if mapName == ReadyRoomSpawn.kMapName then
     
         local entity = ReadyRoomSpawn()
@@ -114,8 +129,8 @@ function GetLoadSpecial(mapName, groupName, values)
         LoadEntityFromValues(entity, values)
         table.insert(Server.readyRoomSpawnList, entity)
         success = true
-        
-	elseif mapName == TeamSpawn.kMapName then
+    
+    elseif mapName == TeamSpawn.kMapName then
     
         local entity = TeamSpawn()
         entity:OnCreate()
@@ -126,24 +141,39 @@ function GetLoadSpecial(mapName, groupName, values)
         if entity.teamNumber == kTeam2Index then
             table.insert(Server.team2SpawnList, entity)
         end
-
-    elseif (mapName == AmbientSound.kMapName) then
+        
+    elseif mapName == ItemSpawn.kMapName then
+        
+        local entity = ItemSpawn()
+        entity:OnCreate()
+        LoadEntityFromvalues(entity, values)
+        if entity.itemName == kSpawnItem1 then
+            table.insert(Server.spawnItem1List, entity)
+        end
+  
+    elseif mapName == "cinematic" then
     
-        // Make sure sound index is precached but only create ambient sound object on client
-        Shared.PrecacheSound(values.eventName)
+        success = values.startsOnMessage ~= nil and values.startsOnMessage ~= ""
+        if success then
+        
+            PrecacheAsset(values.cinematicName)
+            local entity = Server.CreateEntity(ServerParticleEmitter.kMapName, values)
+            if entity then
+                entity:SetMapEntity()
+            end
+            
+        end
+        
+    elseif mapName == "spawn_selection_override" then
+    
+        Server.spawnSelectionOverrides = Server.spawnSelectionOverrides or { }
+        table.insert(Server.spawnSelectionOverrides, { alienSpawn = string.lower(values.alienSpawn), marineSpawn = string.lower(values.marineSpawn) })
         success = true
         
-    elseif mapName == Particles.kMapName then
-        Shared.PrecacheCinematic(values.cinematicName)
-        success = true
-
-    elseif mapName == "pathing_settings" then
-        ParsePathingSettings(values)
-        success = true
     end
-
-    return success    
-
+    
+    return success
+    
 end
 
 local function DumpServerEntity(mapName, groupName, values)
@@ -183,13 +213,10 @@ local function LoadServerMapEntity(mapName, groupName, values)
                 table.insert(Server.mapLiveEntities, entity:GetId())
                 
             end
-                       
+            
         end
-        
-        //DumpServerEntity(mapName, groupName, values)
-        
-    end  
-        
+    end
+    
     if not GetLoadSpecial(mapName, groupName, values) then
     
         // Allow the MapEntityLoader to load it if all else fails.
@@ -208,6 +235,7 @@ function OnMapLoadEntity(mapName, groupName, values)
     if Server.mapPostLoadEntities[priority] == nil then
         Server.mapPostLoadEntities[priority] = { }
     end
+
     table.insert(Server.mapPostLoadEntities[priority], { MapName = mapName, GroupName = groupName, Values = values })
 
 end
@@ -215,15 +243,20 @@ end
 function OnMapPreLoad()
 
     Shared.PreLoadSetGroupNeverVisible(kCollisionGeometryGroupName)
+    Shared.PreLoadSetGroupNeverVisible(kMovementCollisionGroupName)
+    Shared.PreLoadSetGroupNeverVisible(kInvisibleCollisionGroupName)
     Shared.PreLoadSetGroupPhysicsId(kNonCollisionGeometryGroupName, 0)
     
     // Don't have bullets collide with collision geometry
     Shared.PreLoadSetGroupPhysicsId(kCollisionGeometryGroupName, PhysicsGroup.CollisionGeometryGroup)
+    Shared.PreLoadSetGroupPhysicsId(kMovementCollisionGroupName, PhysicsGroup.CollisionGeometryGroup)
+    
     
     // Clear spawn points
     Server.readyRoomSpawnList = {}
     Server.team1SpawnList = {}
     Server.team2SpawnList = {}
+    Server.spawnItem1List = {}
     
     Server.mapLoadLiveEntityValues = {}
     Server.mapLiveEntities = {}
@@ -308,25 +341,9 @@ local function OnMapPostLoad()
     
     Server.mapPostLoadEntities = { }
     
-    InitializePathing()
     CheckForDuplicateLocations()
     
     GetGamerules():OnMapPostLoad()
-    
-end
-
-function GetTechTree(teamNumber)
-
-    if GetGamerules() then
-    
-        local team = GetGamerules():GetTeam(teamNumber)
-        if team and team.GetTechTree then
-            return team:GetTechTree()
-        end
-        
-    end
-    
-    return nil
     
 end
 
@@ -338,7 +355,45 @@ local function OnCanPlayerHearPlayer(listener, speaker)
     return GetGamerules():GetCanPlayerHearPlayer(listener, speaker)
 end
 
+/**
+ * The reserved slot system allows players marked as reserved players to join while
+ * all non-reserved slots are taken and the server is not full.
+ */
+local function OnCheckConnectionAllowed(userId)
+
+    local reservedSlots = Server.GetConfigSetting("reserved_slots")
+    
+    if not reservedSlots or not reservedSlots.amount or not reservedSlots.ids then
+        return true
+    end
+    
+    local newPlayerIsReserved = false
+    for name, id in pairs(reservedSlots.ids) do
+    
+        if id == userId then
+        
+            newPlayerIsReserved = true
+            break
+            
+        end
+        
+    end
+    
+    local numPlayers = Server.GetNumPlayers()
+    local maxPlayers = Server.GetMaxPlayers()
+    
+    if (numPlayers < (maxPlayers - reservedSlots.amount)) or (newPlayerIsReserved and (numPlayers < maxPlayers)) then
+        return true
+    end
+    
+    return false
+    
+end
+Event.Hook("CheckConnectionAllowed", OnCheckConnectionAllowed)
+
 Event.Hook("MapPreLoad", OnMapPreLoad)
 Event.Hook("MapPostLoad", OnMapPostLoad)
 Event.Hook("MapLoadEntity", OnMapLoadEntity)
 Event.Hook("CanPlayerHearPlayer", OnCanPlayerHearPlayer)
+
+Script.Load("lua/PostLoadMod.lua")

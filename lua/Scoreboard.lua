@@ -6,12 +6,29 @@
 // Copyright 2011, Unknown Worlds Entertainment
 //
 //=============================================================================
+Script.Load("lua/Insight.lua")
 
 local playerData = { }
+
+function Insight_SetPlayerHealth(clientIndex, health, maxHealth)
+    
+    for i = 1, table.maxn(playerData) do
+    
+        local playerRecord = playerData[i]
+        if playerRecord.ClientIndex == clientIndex then
+            playerRecord.Health = health
+            playerRecord.MaxHealth = maxHealth
+
+        end
+        
+    end
+    
+end
 
 function Scoreboard_Clear()
 
     playerData = { }
+    Insight_Clear()
     
 end
 
@@ -24,18 +41,9 @@ function Scoreboard_Sort()
         
             if player1.Kills == player2.Kills then
             
-                if player1.Deaths == player2.Deaths then
-
-                    if player1.Streak == player2.Streak then    
-                
-      
-                        // Somewhat arbitrary but keeps more coherence and adds players to bottom in case of ties
-                        return player1.ClientIndex > player2.ClientIndex
-                        
-                    else
-                        return player1.Streak < player2.Streak
-                    end
-                    
+                if player1.Deaths == player2.Deaths then    
+                    // Somewhat arbitrary but keeps more coherence and adds players to bottom in case of ties
+                    return player1.ClientIndex > player2.ClientIndex                    
                 else
                     return player1.Deaths < player2.Deaths
                 end
@@ -67,8 +75,8 @@ function Scoreboard_OnResetGame()
         playerRecord.EntityTeamNumber = 0
         playerRecord.Score = 0
         playerRecord.Kills = 0
-        playerRecord.Streak = 0
         playerRecord.Deaths = 0
+        playerRecord.IsRookie = false
         playerRecord.Status = ""
         playerRecord.IsSpectator = false
         
@@ -83,7 +91,7 @@ function Scoreboard_OnClientDisconnect(clientIndex)
     
 end
 
-function Scoreboard_SetPlayerData(clientIndex, entityId, playerName, teamNumber, score, kills, deaths, streak, status, isSpectator)
+function Scoreboard_SetPlayerData(clientIndex, entityId, playerName, teamNumber, score, kills, deaths, isRookie, status, isSpectator, assists )
 
     // Lookup record for player and update it
     for i = 1, table.maxn(playerData) do
@@ -98,8 +106,9 @@ function Scoreboard_SetPlayerData(clientIndex, entityId, playerName, teamNumber,
             playerRecord.EntityTeamNumber = teamNumber
             playerRecord.Score = score
             playerRecord.Kills = kills
-            playerRecord.Streak = streak
+            playerRecord.Assists = assists
             playerRecord.Deaths = deaths
+            playerRecord.IsRookie = isRookie
             playerRecord.Status = status
             playerRecord.IsSpectator = isSpectator
             
@@ -119,8 +128,9 @@ function Scoreboard_SetPlayerData(clientIndex, entityId, playerName, teamNumber,
     playerRecord.EntityTeamNumber = teamNumber
     playerRecord.Score = score
     playerRecord.Kills = kills
-    playerRecord.Streak = streak
+    playerRecord.Assists = assists
     playerRecord.Deaths = deaths
+    playerRecord.IsRookie = isRookie
     playerRecord.Ping = 0
     playerRecord.Status = status
     playerRecord.IsSpectator = isSpectator
@@ -147,6 +157,20 @@ function Scoreboard_SetPing(clientIndex, ping)
     
 end
 
+function Scoreboard_SetRookieMode(playerName, rookieMode)
+
+    for i = 1, table.maxn(playerData) do
+    
+        local playerRecord = playerData[i]
+        
+        if playerRecord.Name == playerName then
+            playerRecord.IsRookie = rookieMode
+        end
+        
+    end
+    
+end
+
 // Set local data for player so scoreboard updates instantly
 function Scoreboard_SetLocalPlayerData(playerName, index, data)
     
@@ -166,7 +190,7 @@ function Scoreboard_SetLocalPlayerData(playerName, index, data)
     
 end
 
-function Scoreboard_GetPlayerData(clientIndex, dataType)
+function Scoreboard_GetPlayerRecord(clientIndex)
 
     for i = 1, table.maxn(playerData) do
     
@@ -174,7 +198,7 @@ function Scoreboard_GetPlayerData(clientIndex, dataType)
         
         if playerRecord.ClientIndex == clientIndex then
 
-            return playerRecord[dataType]
+            return playerRecord
             
         end
 
@@ -184,12 +208,39 @@ function Scoreboard_GetPlayerData(clientIndex, dataType)
     
 end
 
-/**
- * Determine if scoreboard is visible
- */
-function ScoreboardUI_GetVisible()
-    local player = Client.GetLocalPlayer()
-    return (player ~= nil) and player.showScoreboard
+function Scoreboard_GetPlayerName(clientIndex)
+
+    local record = Scoreboard_GetPlayerRecord(clientIndex)
+    return record and record.Name
+    
+end
+
+function Scoreboard_GetPlayerList()
+
+    local playerList = { }
+    for p = 1, #playerData do
+    
+        local playerRecord = playerData[p]
+        table.insert(playerList, { name = playerRecord.Name, client_index = playerRecord.ClientIndex })
+        
+    end
+    
+    return playerList
+    
+end
+
+function Scoreboard_GetPlayerData(clientIndex, dataType)
+
+    local playerRecord = Scoreboard_GetPlayerRecord(clientIndex)
+    
+    if playerRecord then
+    
+        return playerRecord[dataType]
+        
+    end
+    
+    return nil    
+    
 end
 
 /**
@@ -198,31 +249,30 @@ end
 function GetScoreData(teamNumberTable)
 
     local scoreData = { }
-    local commanders = { }
     
     for index, playerRecord in ipairs(playerData) do
         if table.find(teamNumberTable, playerRecord.EntityTeamNumber) then
         
-            table.insert(scoreData, playerRecord)    
-                
+            table.insert(scoreData, playerRecord)
+               
         end
     end
-    
+        
     return scoreData
     
 end
 
 /**
- * Get score data for the blue team
+ * Get score data for the green team
  */
-function ScoreboardUI_GetBlueScores()
+function ScoreboardUI_GetGreenScores()
     return GetScoreData({ kTeam1Index })
 end
 
 /**
- * Get score data for the red team
+ * Get score data for the purple team
  */
-function ScoreboardUI_GetRedScores()
+function ScoreboardUI_GetPurpleScores()
     return GetScoreData({ kTeam2Index })
 end
 
@@ -240,14 +290,14 @@ end
 /**
  * Get the name of the blue team
  */
-function ScoreboardUI_GetBlueTeamName()
+function ScoreboardUI_GetGreenTeamName()
     return kTeam1Name
 end
 
 /**
  * Get the name of the red team
  */
-function ScoreboardUI_GetRedTeamName()
+function ScoreboardUI_GetPurpleTeamName()
     return kTeam2Name
 end
 
@@ -280,6 +330,36 @@ function ScoreboardUI_IsPlayerLocal(playerName)
         end    
         
     end
+    
+    return false
+    
+end
+
+function ScoreboardUI_IsPlayerRookie(playerName)
+
+    for i = 1, table.maxn(playerData) do
+
+        local playerRecord = playerData[i]        
+        if playerRecord.Name == playerName then
+            return playerRecord.IsRookie
+        end
+        
+    end  
+    
+    return false
+    
+end
+
+function ScoreboardUI_GetDrawRookie(playerName, forPlayer)
+
+    for i = 1, table.maxn(playerData) do
+
+        local playerRecord = playerData[i]        
+        if playerRecord.Name == playerName then
+            return playerRecord.IsRookie and ((forPlayer:GetTeamNumber() == playerRecord.EntityTeamNumber) or (forPlayer:GetTeamNumber() == kSpectatorIndex))
+        end
+        
+    end  
     
     return false
     

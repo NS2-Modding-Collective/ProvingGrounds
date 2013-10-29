@@ -24,15 +24,11 @@ kLoopingCinematicType              = "looping_cinematic"        // Looping clien
 kStopCinematicType                 = "stop_cinematic"           // Stops a world cinematic
 kStopViewModelCinematicType        = "stop_viewmodel_cinematic" // Stops a cinematic attached to a view model
 
-kAnimationType                     = "animation"                // Optional blend time, animation speed
-kViewModelAnimationType            = "viewmodel_animation"      // Optional blend time, animation speed, Plays on parent's view model if supported. TODO: add "blocking" for reload?. 
-kOverlayAnimationType              = "overlay_animation"        // Optional blend time, animation speed not supported. Plays on parent if supported by default (useful for weapons).
-
 kSoundType                         = "sound"                    // Server-side world sound
 kParentedSoundType                 = "parented_sound"           // For looping entity sounds, you'll want to use parented_sound so they are stopped when entity goes away
-kLoopingSoundType                  = "looping_sound"            // TODO: Change name to one_sound? This currently plays relative to player.
 kPrivateSoundType                  = "private_sound"            // TODO: Change name to one_sound? This currently plays relative to player.
 kStopSoundType                     = "stop_sound"              
+kPlayerSoundType                   = "player_sound"             // won't be send to triggering player
 
 kStopEffectsType                   = "stop_effects"             // Stops all looping or parented sounds and particles for this object (pass "")
 
@@ -44,8 +40,7 @@ kRagdollType                       = "ragdoll"                  // Turns the mod
 kEffectTypes =
 {
     kCinematicType, kWeaponCinematicType, kViewModelCinematicType, kPlayerCinematicType, kParentedCinematicType, kLoopingCinematicType, kStopCinematicType, 
-    kAnimationType, kViewModelAnimationType, kOverlayAnimationType,
-    kSoundType, kParentedSoundType, kLoopingSoundType, kPrivateSoundType, kStopSoundType, 
+    kSoundType, kParentedSoundType, kPrivateSoundType, kStopSoundType, kPlayerSoundType,
     kStopEffectsType, kStopViewModelCinematicType,
     kDecalType,
     kRagdollType,
@@ -69,48 +64,39 @@ kEffectParamScale                   = "scale"           // Scale for decals (def
 kEffectSoundParameter               = "sound_param"     // Not working yet
 kEffectParamDone                    = "done"
 kEffectParamWorldSpace              = "world_space"     // If true, the cinematic will emit particles into world space.
-kEffectParamWorldSpaceExceptPlayer  = "world_space_except_player" // Emit into world space but don't send to the triggering player.
 
 // General effects. Chooses one effect from each block. Name of block is unused except for debugging/clarity. Add to InternalGetEffectMatches().
 kEffectFilterClassName              = "classname"
 kEffectFilterDoerName               = "doer"
 kEffectFilterDamageType             = "damagetype"
-kEffectFilterIsAlien                = "isalien"
-kEffectFilterIsMarine               = "ismarine"
-kEffectFilterBuilt                  = "built"
-kEffectFilterFlinchSevere           = "flinch_severe"
+kEffectFilterIsPurple               = "ispurple"
+kEffectFilterIsGreen                = "isgreen"
 kEffectFilterInAltMode              = "alt_mode"
-kEffectFilterOccupied               = "occupied"
 kEffectFilterEmpty                  = "empty"
 kEffectFilterVariant                = "variant"
 kEffectFilterFrom                   = "from"
 kEffectFilterFromAnimation          = "from_animation"      // The current animation, or the animation just finished during animation_complete
 kEffectFilterFrom                   = "upgraded"
 kEffectFilterLeft                   = "left"
-kEffectFilterSprinting              = "sprinting"
 kEffectFilterForward                = "forward"
 kEffectFilterActive                 = "active"              // Generic "active" tag to denote change of state. Used for infantry portal spinning effects.
 kEffectFilterHitSurface             = "surface"             // Set in events that hit something
-kEffectFilterDeployed               = "deployed"            // When entity is in a deployed state
-kEffectFilterCloaked                = "cloaked"
 kEffectFilterEnemy                  = "enemy"
-kEffectFilterSilenceUpgrade         = "silenceupgrade"
+kEffectFilterSex                    = "sex"
 
 kEffectFilters =
 {
-    kEffectFilterClassName, kEffectFilterDoerName, kEffectFilterDamageType, kEffectFilterIsAlien, kEffectFilterIsMarine, kEffectFilterBuilt, kEffectFilterFlinchSevere,
-    kEffectFilterInAltMode, kEffectFilterOccupied, kEffectFilterEmpty, kEffectFilterVariant, kEffectFilterFrom, kEffectFilterFromAnimation, 
-    kEffectFilterFrom, kEffectFilterLeft, kEffectFilterSprinting, kEffectFilterForward, kEffectFilterActive, kEffectFilterHitSurface,
-    kEffectFilterDeployed, kEffectFilterCloaked, kEffectFilterEnemy, kEffectFilterSilenceUpgrade
+    kEffectFilterClassName, kEffectFilterDoerName, kEffectFilterDamageType, kEffectFilterIsPurple, kEffectFilterIsGreen, 
+    kEffectFilterInAltMode, kEffectFilterEmpty, kEffectFilterVariant, kEffectFilterFrom, kEffectFilterFromAnimation, 
+    kEffectFilterFrom, kEffectFilterLeft, kEffectFilterForward, kEffectFilterActive, kEffectFilterHitSurface,
+    kEffectFilterEnemy, kEffectFilterSex
 }
 
 // Load effect data, adding to effect manager
 Script.Load("lua/GeneralEffects.lua")
-Script.Load("lua/ClientEffects.lua")
 Script.Load("lua/PlayerEffects.lua")
 Script.Load("lua/DamageEffects.lua")
 Script.Load("lua/MarineWeaponEffects.lua")
-
 
 
 // Pre-cache effect assets

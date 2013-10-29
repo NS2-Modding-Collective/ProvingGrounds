@@ -1,20 +1,25 @@
-// ======= Copyright (c) 2003-2012, Unknown Worlds Entertainment, Inc. All rights reserved. =======
+// =========================================================================================
 //
 // lua\Avatar.lua
 //
-//    Created by:   Andy 'Soul Rider' Wilson for Proving Grounds
+//    Created by:   Andy 'Soul Rider' Wilson for Proving Grounds Mod
 //
-// ========= For more information, visit us at http://www.unknownworlds.com =====================
+// ================================================================================================
 
 Script.Load("lua/Player.lua")
 Script.Load("lua/Mixins/BaseMoveMixin.lua")
 Script.Load("lua/Mixins/GroundMoveMixin.lua")
+Script.Load("lua/Mixins/JumpMoveMixin.lua")
 Script.Load("lua/Mixins/CameraHolderMixin.lua")
-Script.Load("lua/MarineActionFinderMixin.lua")
 Script.Load("lua/ScoringMixin.lua")
 Script.Load("lua/UnitStatusMixin.lua")
+Script.Load("lua/DissolveMixin.lua")
 Script.Load("lua/LOSMixin.lua")
 Script.Load("lua/CombatMixin.lua")
+Script.Load("lua/RagdollMixin.lua")
+Script.Load("lua/Weapons/PredictedProjectile.lua")
+Script.Load("lua/AvatarVariantMixin.lua")
+
 
 if Client then
     Script.Load("lua/TeamMessageMixin.lua")
@@ -26,114 +31,100 @@ Avatar.kMapName = "avatar"
 
 if Server then
     Script.Load("lua/Avatar_Server.lua")
-else
+elseif Client then
     Script.Load("lua/Avatar_Client.lua")
+    Script.Load("lua/ColoredSkinsMixin.lua")
 end
 
 Shared.PrecacheSurfaceShader("models/marine/marine.surface_shader")
 Shared.PrecacheSurfaceShader("models/marine/marine_noemissive.surface_shader")
 
-Avatar.kModelName = PrecacheAsset("models/marine/male/male.model")
-Avatar.kSpecialModelName = PrecacheAsset("models/marine/male/male_special.model")
-Avatar.kAvatarAnimationGraph = PrecacheAsset("models/marine/male/male.animation_graph")
-
-Avatar.kDieSoundName = PrecacheAsset("sound/NS2.fev/marine/common/death")
 Avatar.kChatSound = PrecacheAsset("sound/NS2.fev/marine/common/chat")
-Avatar.kSoldierLostAlertSound = PrecacheAsset("sound/NS2.fev/marine/voiceovers/soldier_lost")
-
-Avatar.kFlinchEffect = PrecacheAsset("cinematics/marine/hit.cinematic")
-Avatar.kFlinchBigEffect = PrecacheAsset("cinematics/marine/hit_big.cinematic")
 
 Avatar.kEffectNode = "fxnode_playereffect"
-Avatar.kHealth = kMarineHealth
-Avatar.kBaseArmor = kMarineArmor
-Avatar.kMaxSprintFov = 95
+
+Avatar.kHealth = kAvatarHealth
+
+Avatar.kMaxSpeed = 8                // Four miles an hour = 6,437 meters/hour = 1.8 meters/second (increase for FPS tastes)
+Avatar.kWalkBackwardSpeedScalar = 1
+Avatar.kAcceleration = 100
+Avatar.kGroundFrictionForce = 10
+Avatar.kAirStrafeWeight = 4
 
 // tracked per techId
 Avatar.kAvatarAlertTimeout = 4
 
-Avatar.kAcceleration = 100
-
-Avatar.kAirStrafeWeight = 1
-
-//Added for Proving Grounds
-Avatar.kShadowStepCooldown = 1.5
-Avatar.kShadowStepJumpDelay = 0.25
-Avatar.kShadowStepForce = 30
-Avatar.kShadowStepAirForce = 15
-Avatar.kShadowStepDuration = 0.15
-
-// when using shadow step before 1.4 seconds passed it decreases in effectiveness
-Avatar.kShadowStepSoftCooldDown = 1.4
+//Dodge Variables for Proving Grounds AW
+local kDodgeCooldown = 1.5
+local kDodgeForce = 4
+local kDodgeSpeed = 30
+local kDodgeJumpDelay = 0.5
 
 local networkVars =
 {      
-
+    //Dodge Local Network Variables for Proving Grounds AW
+    dodging = "boolean",
+    timeDodge = "private compensated time",
+    dodgeDirection = "private vector",
+    dodgeSpeed = "private compensated interpolated float",
+    
     catpackboost = "private boolean",
-    //Added for Proving Grounds
-    shadowStepping = "boolean",
-    timeShadowStep = "private time",
-    shadowStepDirection = "private vector",
-    hasDoubleJumped = "private compensated boolean", 
-    movementModiferState = "boolean"
+    timeCatpackboost = "private time",
+        
+    hasDoubleJumped = "private compensated boolean",
+    
 }
+
+
 
 AddMixinNetworkVars(BaseMoveMixin, networkVars)
 AddMixinNetworkVars(GroundMoveMixin, networkVars)
+AddMixinNetworkVars(JumpMoveMixin, networkVars)
 AddMixinNetworkVars(CameraHolderMixin, networkVars)
-
+AddMixinNetworkVars(DissolveMixin, networkVars)
 AddMixinNetworkVars(LOSMixin, networkVars)
 AddMixinNetworkVars(CombatMixin, networkVars)
+AddMixinNetworkVars(ScoringMixin, networkVars)
+AddMixinNetworkVars(AvatarVariantMixin, networkVars)
 
 function Avatar:OnCreate()
 
     InitMixin(self, BaseMoveMixin, { kGravity = Player.kGravity })
     InitMixin(self, GroundMoveMixin)
+    InitMixin(self, JumpMoveMixin)
     InitMixin(self, CameraHolderMixin, { kFov = kDefaultFov })
-    InitMixin(self, MarineActionFinderMixin)
     InitMixin(self, ScoringMixin, { kMaxScore = kMaxScore })
     InitMixin(self, CombatMixin)
-
     
     Player.OnCreate(self)
-
-    InitMixin(self, EntityChangeMixin)
+    
+    InitMixin(self, DissolveMixin)
     InitMixin(self, LOSMixin)
+    InitMixin(self, RagdollMixin)
+    InitMixin(self, PredictedProjectileShooterMixin)
+    InitMixin(self, AvatarVariantMixin)
+    if Client then
+        InitMixin(self, ColoredSkinsMixin) //Client only
+    end
     
-    //self.loopingSprintSoundEntId = Entity.invalidId
-    
+    self.dodgeDirection = Vector()
+    self.hasDoubleJumped = false
+
     if Server then
-
-        //Added for Proving Grounds
-        self.timeShadowStep = 0
-        self.shadowStepping = false
-        self.hasDoubleJumped = false
-        
-    elseif Client then
-
-        InitMixin(self, TeamMessageMixin, { kGUIScriptName = "GUIMarineTeamMessage" })
-        
+        self.timeDodge = 0
+        self.dodging = false
     end
     
 end
 
 function Avatar:OnInitialized()
-    
+
     // SetModel must be called before Player.OnInitialized is called so the attach points in
     // the Marine are valid to attach weapons to. This is far too subtle...
-    self:SetModel(Avatar.kModelName, Avatar.kAvatarAnimationGraph)
+    self:SetModel(self:GetVariantModel(), AvatarVariantMixin.kMarineAnimationGraph)
     
     Player.OnInitialized(self)
-    
-    // Calculate max and starting armor differently
-    self.armor = 0
-    
-    if Server then
-    
-        self.armor = self:GetArmorAmount()
-        self.maxArmor = self.armor
-    end
-    
+            
     local viewAngles = self:GetViewAngles()
     self.lastYaw = viewAngles.yaw
     self.lastPitch = viewAngles.pitch
@@ -153,111 +144,112 @@ if Server then
     Event.Hook("Console_blockblackarmor", function() if Shared.GetCheatsEnabled() then blockBlackArmor = not blockBlackArmor end end)
 end
 
-function Avatar:GetArmorLevel()
-
-    local armorLevel = 0
-    return armorLevel
-
-end
-
-function Avatar:GetWeaponLevel()
-
-    local weaponLevel = 0
-    return weaponLevel
-
-end
-
-function Avatar:MakeSpecialEdition()
-
-    if not blockBlackArmor then
-        self:SetModel(Avatar.kSpecialModelName, Avatar.kAvatarAnimationGraph)
-    end
-    
-end
-
-function Avatar:GetArmorAmount()
-    return Avatar.kBaseArmor  
+function Avatar:GetSlowOnLand()
+    return false
 end
 
 function Avatar:OnDestroy()
 
     Player.OnDestroy(self)
-        
-    if Client then
-        
-        
-        if self.avatarHUD then
-        
-            GetGUIManager():DestroyGUIScript(self.avatarHUD)
-            self.avatarHUD = nil
-            
-        end
-        
-    end
     
-end
-
-function Avatar:GetGroundFrictionForce()
-    return ConditionalValue(self:GetIsShadowStepping(), 0, 9)
 end
 
 function Avatar:HandleButtons(input)
 
     PROFILE("Avatar:HandleButtons")
     
-    Player.HandleButtons(self, input)
+    local movementSpecialPressed = bit.band(input.commands, Move.MovementModifier) ~= 0
     
-    if self:GetCanControl() then
-    
-        // Update sprinting state
-        local newMovementState = bit.band(input.commands, Move.MovementModifier) ~= 0
-        if newMovementState ~= self.movementModiferState and self.movementModiferState ~= nil then
-            self:MovementModifierChanged(newMovementState, input)
-        end
-    
-        self.movementModiferState = newMovementState
-        
+    if movementSpecialPressed then
+        self:TriggerDodge(input.move)
     end
     
+    Player.HandleButtons(self, input)
+    
 end
 
-function Avatar:GetOnGroundRecently()
-    return (self.timeLastOnGround ~= nil and Shared.GetTime() < self.timeLastOnGround + 0.4) 
+function Avatar:ModifyGroundFraction(groundFraction)
+    return groundFraction > 0 and 1 or 0
 end
 
-function Avatar:OnClampSpeed(input, velocity)
+function Avatar:ModifyGravityForce(gravityTable)
+
+    if self:GetIsOnGround() then
+        gravityTable.gravity = 0
+    end
+
+end
+
+function Avatar:GetIsDodging()
+    return self.dodging
+end
+
+function Avatar:GetMaxSpeed(possible)
+
+    if possible then
+        return Avatar.kMaxSpeed
+    end
+    
+    local maxSpeed = Avatar.kMaxSpeed
+    
+    if self.catpackboost then
+        maxSpeed = maxSpeed + kCatPackMoveAddSpeed
+    end
+    
+    return maxSpeed 
+    
 end
 
 function Avatar:GetFootstepSpeedScalar()
-    return Clamp(self:GetVelocityLength() / (Avatar.kWalkMaxSpeed * self:GetCatalystMoveSpeedModifier()), 0, 1)
+    return Clamp(self:GetVelocityLength() / (Avatar.kMaxSpeed * self:GetCatalystMoveSpeedModifier()), 0, 1)
 end
 
-function Avatar:GetAirMoveScalar()
-    return 0.5
+// Maximum speed a player can move backwards
+function Avatar:GetMaxBackwardSpeedScalar()
+    return Avatar.kWalkBackwardSpeedScalar
 end
 
-function Avatar:GetAirFrictionForce()
-    return 0
+function Avatar:GetPlayerControllersGroup()
+    return PhysicsGroup.BigPlayerControllersGroup
 end
 
 function Avatar:GetJumpHeight()
     return Player.kJumpHeight
 end
 
-function Avatar:GetCanBeWeldedOverride()
-    return self:GetArmor() < self:GetMaxArmor(), false
+function Avatar:GetAirControl()
+    return 100
+end 
+
+function Avatar:GetHasDodgeCooldown()
+    return self.timeDodge + kDodgeCooldown > Shared.GetTime()
 end
 
-function Avatar:GetAcceleration()
+function Avatar:GetCollisionSlowdownFraction()
+    return 0.05
+end
 
-    if self:GetIsShadowStepping() then
-        return 0
+function Avatar:TriggerDodge(direction)
+
+    if direction.x ~= 0 then
+    
+        local movementDirection = self:GetViewCoords():TransformVector(direction)    
+        movementDirection:Normalize()
+
+        if not self:GetHasDodgeCooldown() then
+    
+            // add small force in the direction we are dodging
+            local currentSpeed = movementDirection:DotProduct(self:GetVelocity())
+            local dodgeStrength = math.max(currentSpeed, 11) + 0.5
+            self:SetVelocity(movementDirection * dodgeStrength)
+        
+            self.timeDodge = Shared.GetTime()
+            self.dodgeSpeed = kDodgeSpeed
+            self.dodging = true
+            self.dodgeDirection = Vector(movementDirection)
+                
+        end
     end
-
-    local acceleration = Avatar.kAcceleration 
-
-    return acceleration * self:GetCatalystMoveSpeedModifier()
-
 end
 
 // Returns -1 to 1
@@ -265,37 +257,8 @@ function Avatar:GetWeaponSwing()
     return self.horizontalSwing
 end
 
-function Avatar:GetCatalystFireModifier()
-    return ConditionalValue(self:GetHasCatpackBoost(), CatPack.kAttackSpeedModifier, 1)
-end
-
-function Avatar:GetCatalystMoveSpeedModifier()
-    return ConditionalValue(self:GetHasCatpackBoost(), CatPack.kMoveSpeedScalar, 1)
-end
-
-function Avatar:GetHasSayings()
-    return true
-end
-
-// Other
-function Avatar:GetSayings()
-
-    if(self.showSayings) then
-    
-        if(self.showSayingsMenu == 1) then
-            return marineRequestSayingsText
-        end
-        if(self.showSayingsMenu == 2) then
-            return marineGroupSayingsText
-        end
-        if(self.showSayingsMenu == 3) then
-            return GetVoteActionsText(self:GetTeamNumber())
-        end
-        
-    end
-    
-    return nil
-    
+function Avatar:GetWeaponDropTime()
+    return self.weaponDropTime
 end
 
 function Avatar:GetChatSound()
@@ -315,42 +278,19 @@ function Avatar:GetPlayerStatusDesc()
         return kPlayerStatus.Dead
     end
     
-    local weapon = self:GetWeaponInHUDSlot(1)
-    if (weapon) then
-        if (weapon:isa("GrenadeLauncher")) then
-            return kPlayerStatus.GrenadeLauncher
-        elseif (weapon:isa("Rifle")) then
-            return kPlayerStatus.Rifle
-        elseif (weapon:isa("Shotgun")) then
-            return kPlayerStatus.Shotgun
-        elseif (weapon:isa("Flamethrower")) then
-            return kPlayerStatus.Flamethrower
-        end
-    end
-    
     return status
 end
 
 function Avatar:GetCanDropWeapon(weapon, ignoreDropTimeLimit)
-
+   
     return false
     
 end
 
+function Avatar:GetCanUseCatPack()
 
-
-function Avatar:GetWeldPercentageOverride()
-    return self:GetArmor() / self:GetMaxArmor()
-end
-
-function Avatar:OnWeldOverride(doer, elapsedTime)
-
-    if self:GetArmor() < self:GetMaxArmor() then
-    
-        local addArmor = Avatar.kArmorWeldRate * elapsedTime
-        self:SetArmor(self:GetArmor() + addArmor)
-        
-    end
+    local enoughTimePassed = self.timeCatpackboost + 6 < Shared.GetTime()
+    return not self.catpackboost or enoughTimePassed
     
 end
 
@@ -358,63 +298,107 @@ function Avatar:GetCanChangeViewAngles()
     return true
 end    
 
-function Avatar:GetPlayFootsteps()
+function Avatar:OnUseTarget(target)
 
-    return self:GetVelocityLength() > .75 and self:GetIsOnGround()
-    
+end
+
+function Avatar:OnUseEnd() 
+
 end
 
 function Avatar:OnUpdateAnimationInput(modelMixin)
 
     PROFILE("Avatar:OnUpdateAnimationInput")
     
-    Player.OnUpdateAnimationInput(self, modelMixin) 
+    Player.OnUpdateAnimationInput(self, modelMixin)
+        
+    local catalystSpeed = 1
+    if self.catpackboost then
+        catalystSpeed = kCatPackWeaponSpeed
+    end
 
-   /* if self:GetIsDiving() then
-        modelMixin:SetAnimationInput("move", "toss") 
-    end*/
-    modelMixin:SetAnimationInput("attack_speed", self:GetCatalystFireModifier())
+    modelMixin:SetAnimationInput("catalyst_speed", catalystSpeed)
     
 end
 
-function Avatar:ModifyVelocity(input, velocity)
+function Avatar:GetDeflectMove()
+    return true
+end 
 
-    Player.ModifyVelocity(self, input, velocity)
+function Avatar:GetCanJump()
+    return not self.hasDoubleJumped and self.timeDodge + kDodgeJumpDelay < Shared.GetTime()
+end
+
+function Avatar:ModifyJump(input, velocity, jumpVelocity)
+
+    jumpVelocity.y = jumpVelocity.y * 1.6
+
+end
+
+function Avatar:OnJump()
+
+    if not self:GetIsOnGround() then
+        self.hasDoubleJumped = true           
+    end
     
-    if not self:GetIsOnGround() and input.move:GetLength() ~= 0 then
+    self:TriggerEffects("jump", {surface = self:GetMaterialBelowPlayer()})
     
-        local moveLengthXZ = velocity:GetLengthXZ()
-        local previousY = velocity.y
-        local adjustedZ = false
-        local viewCoords = self:GetViewCoords()
+end    
+
+function Avatar:OnProcessMove(input)
+
+    if self.catpackboost then
+        self.catpackboost = Shared.GetTime() - self.timeCatpackboost < kCatPackDuration
+    end
+   
+    Player.OnProcessMove(self, input)
+    
+    // move without manipulating velocity
+    if self:GetIsDodging() then
+    
+        self.dodgeSpeed = math.max(0, self.dodgeSpeed - input.time * 90)
+        local completedMove, hitEntities, averageSurfaceNormal = self:PerformMovement(self.dodgeDirection * self.dodgeSpeed * input.time, 3)
+        local breakDodge = false
         
-        if input.move.x ~= 0  then
+        //stop when colliding with an enemy player
+        if hitEntities then
         
-            local redirectedVelocityX = GetNormalizedVectorXZ(self:GetViewCoords().xAxis) * input.move.x
-            redirectedVelocityX = redirectedVelocityX * input.time * Avatar.kAirStrafeWeight + GetNormalizedVectorXZ(velocity)
+            for _, entity in ipairs(hitEntities) do
             
-            redirectedVelocityX:Normalize()            
-            redirectedVelocityX:Scale(moveLengthXZ)
-            redirectedVelocityX.y = previousY            
-            VectorCopy(redirectedVelocityX,  velocity)
+                if entity:isa("Player") and GetAreEnemies(self, entity) then
+                
+                    breakDodge = true
+                    break
+                    
+                end
+            
+            end
+            
+        end
+        
+        local enemyTeamNumber = GetEnemyTeamNumber(self:GetTeamNumber())
+        
+        local function FilterFriendAndDead(entity)
+            return HasMixin(entity, "Team") and entity:GetTeamNumber() == enemyTeamNumber and HasMixin(entity, "Live") and entity:GetIsAlive()
+        end        
+        
+        // trigger break when enemy player is nearby
+        if not breakDodge and self.dodgeSpeed < 35 then
+            breakDodge = #Shared.GetEntitiesWithTagInRange("class:Player", self:GetOrigin(), 1.8, FilterFriendAndDead) > 0
+        end
+        
+        if breakDodge then
+        
+            self.dodging = false
+            self.dodgeSpeed = 0
+            local velocity = self:GetVelocity()
+            velocity.x = 0
+            velocity.z = 0
+            self:SetVelocity(velocity)
             
         end
         
     end
-    
-end
-
-function Avatar:OnProcessMove(input)
-
-    if Server then
-    
-        self.catpackboost = Shared.GetTime() - self.timeCatpackboost < CatPack.kDuration
-        
-       
-        
-    end
-    
-    Player.OnProcessMove(self, input)
     
 end
 
@@ -422,116 +406,15 @@ function Avatar:GetHasCatpackBoost()
     return self.catpackboost
 end
 
-//Proving Grounds New Functions
+function Avatar:PostUpdateMove(input, runningPrediction)
 
-function Avatar:MovementModifierChanged(newMovementModifierState, input)
-
-    if newMovementModifierState then
-        self:TriggerShadowStep(input.move)
-    end
-
-end
-
-function Avatar:TriggerShadowStep(direction)
-
-    if direction:GetLength() == 0 then
-        return
-    end   
-
-    direction:Normalize() 
-
-    local movementDirection = self:GetViewCoords():TransformVector( direction )
-
-    local canShadowStep = true
-    
-    if canShadowStep and not self:GetRecentlyJumped() and not self:GetHasShadowStepCooldown() then
-
-        local velocity = self:GetVelocity()
-        
-        local shadowStepStrength = ConditionalValue(self:GetIsOnGround(), Avatar.kShadowStepForce, Avatar.kShadowStepAirForce)
-        self:SetVelocity(velocity * 0.5 + movementDirection * shadowStepStrength)
-        
-        self.timeShadowStep = Shared.GetTime()
-        self.shadowStepping = true
-        self.shadowStepDirection = direction
-        
-        self:TriggerEffects("shadow_step", {effecthostcoords = Coords.GetLookIn(self:GetOrigin(), movementDirection)})
-        
-        /*
-        if Client and Client.GetLocalPlayer() == self then
-            self:TriggerFirstPersonMiniBlinkEffect(direction)
-        end
-        */
-    
-    end
-
-end
-
-function Avatar:GetHasShadowStepCooldown()
-    return self.timeShadowStep + Avatar.kShadowStepCooldown > Shared.GetTime()
-end
-
-function Avatar:GetCanJump()
-    return not self.hasDoubleJumped and self.timeShadowStep + Avatar.kShadowStepJumpDelay < Shared.GetTime()
-end
-
-function Avatar:GetIsShadowStepping()
-    return self.shadowStepping
-end
-
-function Avatar:GetMoveDirection(moveVelocity)
-
-    if self:GetIsShadowStepping() then
-        
-        local direction = GetNormalizedVector(moveVelocity)
-        
-        // check if we attempt to blink into the ground
-        // TODO: get rid of this hack here once UpdatePosition is adjusted for blink
-        if direction.y < 0 then
-        
-            local trace = Shared.TraceRay(self:GetOrigin() + kBlinkTraceOffset, self:GetOrigin() + kBlinkTraceOffset + direction * 1.7, CollisionRep.Move, PhysicsMask.Movement, EntityFilterAll())
-            if trace.fraction ~= 1 then
-                direction.y = 0.1
-            end
-            
-        end
-        
-        return direction
-        
-    end
-
-    return Player.GetMoveDirection(self, moveVelocity)    
-
-end
-
-
-function Avatar:OverrideInput(input)
-
-    Player.OverrideInput(self, input)
-    
-    if self:GetIsShadowStepping() then
-        input.move = self.shadowStepDirection
+    if self.dodgeSpeed == 0 then
+        self.dodging = false
     end
     
-    return input
-    
+    if self:GetIsOnGround() then
+        self.hasDoubleJumped = false
+    end
 end
 
-function Avatar:PreUpdateMove(input, runningPrediction)
-    self.shadowStepping = self.timeShadowStep + Avatar.kShadowStepDuration > Shared.GetTime()
-end
-
-function Avatar:GetRecentlyJumped()
-    return self.timeOfLastJump ~= nil and self.timeOfLastJump + 0.15 > Shared.GetTime()
-end
-
-function Avatar:OnJumpLand(landIntensity, slowDown)
-    Player.OnJumpLand(self, landIntensity, slowDown)
-    self.hasDoubleJumped = false    
-end
-function Avatar:OnJump()
-    if not self:GetIsOnGround() then
-        self.hasDoubleJumped = true
-    end    
-end
-Shared.LinkClassToMap("Avatar", Avatar.kMapName, networkVars)
+Shared.LinkClassToMap("Avatar", Avatar.kMapName, networkVars, true)

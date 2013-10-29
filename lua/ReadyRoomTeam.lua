@@ -8,6 +8,7 @@
 // This class is used for the team that is for players that are in the ready room.
 //
 // ========= For more information, visit us at http://www.unknownworlds.com =====================
+
 Script.Load("lua/Team.lua")
 Script.Load("lua/TeamDeathMessageMixin.lua")
 
@@ -29,6 +30,14 @@ function ReadyRoomTeam:GetRespawnMapName(player)
         mapName = ReadyRoomPlayer.kMapName
     end
     
+    // Use previous life form if dead or in commander chair
+    if (mapName == Spectator.kMapName) 
+       or (mapName ==  MarineSpectator.kMapName) then 
+    
+        mapName = player:GetPreviousMapName()
+        
+    end
+
     return mapName
     
 end
@@ -39,10 +48,11 @@ end
 function ReadyRoomTeam:ReplaceRespawnPlayer(player, origin, angles)
 
     local mapName = self:GetRespawnMapName(player)
+    
     local newPlayer = player:Replace(mapName, self:GetTeamNumber(), false, origin)
        
     self:RespawnPlayer(newPlayer, origin, angles)
-
+    
     newPlayer:ClearGameEffects()
     
     return (newPlayer ~= nil), newPlayer

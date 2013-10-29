@@ -12,7 +12,7 @@ class 'GUIDeathMessages' (GUIScript)
 
 local kBackgroundHeight = 32
 local kBackgroundColor = Color(0, 0, 0, 0)
-local kFontNames = { marine = "fonts/AgencyFB_small.fnt", alien = "fonts/AgencyFB_small.fnt" }
+local kFontNames = { greenavatar = "fonts/AgencyFB_small.fnt", purpleavatar = "fonts/AgencyFB_small.fnt" }
 local kScreenOffset = 40
 
 local kSustainTime = 4
@@ -68,7 +68,7 @@ function GUIDeathMessages:Update(deltaTime)
     
         local currentPosition = Vector(message["Background"]:GetPosition())
         currentPosition.y = GUIScale(kScreenOffset) + (kBackgroundHeight * (i - 1))
-        currentPosition.x = message["BackgroundXOffset"] 
+        currentPosition.x = message["BackgroundXOffset"] - ((message["BackgroundWidth"]) or 0)
         message["Background"]:SetPosition(currentPosition)
         message["Time"] = message["Time"] + deltaTime
         if message["Time"] >= message.sustainTime then
@@ -106,7 +106,7 @@ end
 
 function GUIDeathMessages:AddMessage(killerColor, killerName, targetColor, targetName, iconIndex, targetIsPlayer)
 
-    local style = PlayerUI_IsOnMarineTeam() and "marine" or "alien"
+    local style = PlayerUI_IsOnGreenTeam() and "greenavatar" or "purpleavatar"
     local xOffset = DeathMsgUI_GetTechOffsetX(0)
     local yOffset = DeathMsgUI_GetTechOffsetY(iconIndex)
     local iconWidth = DeathMsgUI_GetTechWidth(0)

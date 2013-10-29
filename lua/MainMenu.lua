@@ -14,38 +14,37 @@ Script.Load("lua/OptionsDialog.lua")
 Script.Load("lua/BindingsDialog.lua")
 Script.Load("lua/Update.lua")
 Script.Load("lua/MenuManager.lua")
+Script.Load("lua/SoundEffect.lua")
+
+// Change this to false if loading the main menu is slowing down debugging too much
+local kAllowDebuggingMainMenu = true
 
 local mainMenuMusic = nil
 local mainMenuAlertMessage  = nil
 
 mods = { "pg" }
-mapnames = { }
-maps = { }
+mapnames, maps = GetInstalledMapList()
 
 local loadLuaMenu = true
 local gMainMenu = nil
 
-local matchingFiles = { }
-Shared.GetMatchingFileNames("maps/*.level", false, matchingFiles)
-
-for _, mapFile in pairs(matchingFiles) do
-
-    local _, _, filename = string.find(mapFile, "maps/(.*).level")
-    local mapname = string.gsub(filename, 'pg_', '', 1):gsub("^%l", string.upper)
-    local tagged,_ = string.match(filename, "pg_", 1)
-    if tagged ~= nil then
-    
-        table.insert(mapnames, mapname)
-        table.insert(maps, {["name"] = mapname, ["fileName"] = filename})
-        
-    end
-    
-end
-
 function MainMenu_GetIsOpened()
 
-    // Don't load or open main menu while debugging (too slow)
-    if not GetIsDebugging() then
+    local deactivatedMods = false
+    for s = 1, Client.GetNumMods() do
+       if Client.GetIsModActive(s) and Client.GetModTitle(s) ~= "pg" then
+            Client.SetModActive(s, false)
+            deactivatedMods = true
+       end
+    end
+
+    if deactivatedMods then
+        // restart so no mods are loaded
+       Client.RestartMain()
+    end
+
+    // Don't load or open main menu while debugging (too slow).
+    if not GetIsDebugging() or kAllowDebuggingMainMenu then
     
         if loadLuaMenu then
         
@@ -58,17 +57,16 @@ function MainMenu_GetIsOpened()
         else
             return MenuManager.GetMenu() ~= nil
         end
-
-    else
-//        Print("Skipping MainMenu_GetIsOpened() while debugging. Pass map map_name on command line.")
+        
     end
     
-    return false    
+    return false
+    
 end
 
 function LeaveMenu()
 
-    MainMenu_OnCloseMenu()    
+    MainMenu_OnCloseMenu()
     
     if gMainMenu then
         gMainMenu:SetIsVisible(false)
@@ -115,12 +113,21 @@ function MainMenu_HostGame(mapFileName, modName)
     
 end
 
-function MainMenu_SelectServer(serverNum)
+function MainMenu_SelectServer(serverNum, serverData)
     gSelectedServerNum = serverNum
+    gSelectedServerData = serverData
+end
+
+function MainMenu_SelectServerAddress(address)
+    gSelectedServerAddress = address
 end
 
 function MainMenu_GetSelectedServer()
     return gSelectedServerNum
+end
+
+function MainMenu_GetSelectedServerData()
+    return gSelectedServerData
 end
 
 function MainMenu_SetSelectedServerPassword(password)
@@ -129,8 +136,8 @@ end
 
 function MainMenu_GetSelectedRequiresPassword()
 
-    if gSelectedServerNum then
-        return Client.GetServerRequiresPassword(gSelectedServerNum)
+    if gSelectedServerNum and gSelectedServerData then
+        return gSelectedServerData.requiresPassword
     end
     
     return false
@@ -153,9 +160,33 @@ function MainMenu_GetSelectedServerName()
     
 end
 
-
 function MainMenu_JoinSelected()
-    MainMenu_SBJoinServer( Client.GetServerAddress(gSelectedServerNum), gPassword )
+
+    local address = nil
+    local mapName = nil
+    local entry = nil
+    
+    if gSelectedServerNum >= 0 then
+    
+        address = Client.GetServerAddress(gSelectedServerNum)
+        mapName = Client.GetServerMapName(gSelectedServerNum)
+        entry = BuildServerEntry(gSelectedServerNum)
+        
+    else
+    
+        local storedServers = GetStoredServers()
+    
+        address = storedServers[-gSelectedServerNum].address
+        entry = storedServers[-gSelectedServerNum]
+
+    end
+    
+    if entry then
+        AddServerToHistory(entry)
+    end
+    
+    MainMenu_SBJoinServer(address, gPassword, mapName)
+    
 end
 
 function GetModName(mapFileName)
@@ -187,9 +218,6 @@ function MainMenu_ReturnToGame()
     LeaveMenu()
 end
 
-function MainMenu_Loaded()   
-end
-
 /**
  * Set a message that will be displayed in window in the main menu the next time
  * it's updated.
@@ -212,17 +240,10 @@ function MainMenu_GetAlertMessage()
     
 end
 
-/**
- * Called when the user selects the "Quit" button in the main menu.
- */
-function MainMenu_Quit()
-    Client.Exit()
-end
-
 function MainMenu_Open()
 
-    // Don't load or open main menu while debugging (too slow)
-    if not GetIsDebugging() then
+    // Don't load or open main menu while debugging (too slow).
+    if not GetIsDebugging() or kAllowDebuggingMainMenu then
     
         // Load and set default sound levels
         OptionsDialogUI_OnInit()
@@ -236,30 +257,14 @@ function MainMenu_Open()
             
         else
         
-            MenuManager.SetMenu( kMainMenuFlash )
+            MenuManager.SetMenu(kMainMenuFlash)
             MouseTracker_SetIsVisible(true, "ui/Cursor_MenuDefault.dds", false)
             
         end
         
         MainMenu_OnOpenMenu()
-
-    else
-        Print("Skipping MainMenu_Open() while debugging. Pass map name on command line.")        
-    end
-    
-end
-
-function MainMenu_GetDLCs()
-
-    local dlcs = {}
-    for i = 1, 4 do
-    
-        local enabled = "disabled"
-        table.insert(dlcs, string.format("dlc_%d_%s", i, enabled)  )
         
     end
-    
-    return dlcs
     
 end
 
@@ -267,11 +272,21 @@ function MainMenu_GetMapNameList()
     return mapnames
 end
 
+function MainMenu_OnServerRefreshed(serverIndex)
+    gMainMenu:OnServerRefreshed(serverIndex)
+end
+
 /**
  * Called when the user types the "map" command at the console.
  */
-local function OnCommandMap(mapFileName)    
+local function OnCommandMap(mapFileName)
+
     MainMenu_HostGame(mapFileName)
+    
+    if Client then
+        Client.SetOptionString("lastServerMapName", mapFileName)
+    end
+    
 end
 
 /**
@@ -294,7 +309,7 @@ end
  */
 local kMouseInSound = "sound/NS2.fev/common/hovar"
 local kMouseOutSound = "sound/NS2.fev/common/tooltip"
-local kClickSound = "sound/NS2.fev/common/button_press"
+local kClickSound = "sound/NS2.fev/common/button_click"
 local kCheckboxOnSound = "sound/NS2.fev/common/checkbox_on"
 local kCheckboxOffSound = "sound/NS2.fev/common/checkbox_off"
 local kCheckboxOffSound = "sound/NS2.fev/common/checkbox_off"
@@ -316,44 +331,47 @@ Client.PrecacheLocalSound(kLoopingMenuSound)
 Client.PrecacheLocalSound(kWindowOpenSound)
 
 function MainMenu_OnMouseIn()
-    Shared.PlaySound(nil, kMouseInSound)
+    StartSoundEffect(kMouseInSound)
 end
 
 function MainMenu_OnMouseOut()
-    //Shared.PlaySound(nil, kMouseOutSound)
+    //StartSoundEffect(kMouseOutSound)
 end
 
 function MainMenu_OnMouseClick()
-    Shared.PlaySound(nil, kClickSound)
+    StartSoundEffect(kClickSound)
 end
 
 function MainMenu_OnWindowOpen()
-    Shared.PlaySound(nil, kWindowOpenSound)
+    StartSoundEffect(kWindowOpenSound)
 end
 
 function MainMenu_OnCheckboxOn()
-    Shared.PlaySound(nil, kCheckboxOnSound)
+    StartSoundEffect(kCheckboxOnSound)
 end
 
 function MainMenu_OnCheckboxOff()
-    Shared.PlaySound(nil, kCheckboxOffSound)
+    StartSoundEffect(kCheckboxOffSound)
 end
 
 function MainMenu_OnConnect()
-    Shared.PlaySound(nil, kConnectSound)
+    StartSoundEffect(kConnectSound)
 end
 
 function MainMenu_OnOpenMenu()
-
-    Shared.PlaySound(nil, kOpenMenuSound)
-    Shared.PlaySound(nil, kLoopingMenuSound)
-    
+    StartSoundEffect(kLoopingMenuSound)    
 end
 
 function MainMenu_OnCloseMenu()
+    StartSoundEffect(kLoopingMenuSound)    
+end
 
-    Shared.PlaySound(nil, kCloseMenuSound)
-    Shared.StopSound(nil, kLoopingMenuSound)
+function MainMenu_LoadNewsURL(url)
+
+    if gMainMenu.newsScript then
+        gMainMenu.newsScript:LoadURL(url)
+    end
+    
 end
 
 local function OnClientDisconnected()
@@ -362,5 +380,6 @@ end
 
 Event.Hook("ClientDisconnected", OnClientDisconnected)
 Event.Hook("ConnectRequested", OnConnectRequested)
+
 Event.Hook("Console_connect",  OnCommandConnect)
 Event.Hook("Console_map",  OnCommandMap)

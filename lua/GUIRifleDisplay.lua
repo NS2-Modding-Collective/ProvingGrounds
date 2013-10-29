@@ -9,9 +9,11 @@
 // ========= For more information, visit us at http://www.unknownworlds.com =====================
 
 Script.Load("lua/GUIBulletDisplay.lua")
+Script.Load("lua/GUIGrenadeDisplay.lua")
 
 // Global state that can be externally set to adjust the display.
 weaponClip     = 0
+weaponAuxClip  = 0
 
 bulletDisplay  = nil
 grenadeDisplay = nil
@@ -26,6 +28,9 @@ function Update(deltaTime)
     bulletDisplay:SetClip(weaponClip)
     bulletDisplay:Update(deltaTime)
     
+    grenadeDisplay:SetNumGrenades(weaponAuxClip)
+    grenadeDisplay:Update(deltaTime)
+    
 end
 
 /**
@@ -33,11 +38,14 @@ end
  */
 function Initialize()
 
-    GUI.SetSize( 256, 417 )
+    GUI.SetSize(256, 417)
 
     bulletDisplay = GUIBulletDisplay()
     bulletDisplay:Initialize()
     bulletDisplay:SetClipSize(50)
+
+    grenadeDisplay = GUIGrenadeDisplay()
+    grenadeDisplay:Initialize()
 
 end
 

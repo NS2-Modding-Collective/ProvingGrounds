@@ -1,34 +1,33 @@
-// ======= Copyright (c) 2003-2012, Unknown Worlds Entertainment, Inc. All rights reserved. =======
+// ========================================================================================
 //
 // lua\PGGamerules.lua
 //
-//    Created by:   Charlie Cleveland (charlie@unknownworlds.com) and
-//                  Max McGuire (max@unknownworlds.com)
+//    Created by:   Andy Wilson for Proving Grounds Mod
 //
-// ========= For more information, visit us at http://www.unknownworlds.com =====================
+// =========================================================================================
 
 Script.Load("lua/Gamerules.lua")
 Script.Load("lua/dkjson.lua")
+Script.Load("lua/ServerSponitor.lua")
+Script.Load("lua/PlayerRanking.lua")
 
 if Client then
     Script.Load("lua/NS2ConsoleCommands_Client.lua")
 else
     Script.Load("lua/NS2ConsoleCommands_Server.lua")
-    Script.Load("lua/MapCycle.lua")
 end
 
 class 'PGGamerules' (Gamerules)
 
 PGGamerules.kMapName = "pg_gamerules"
 
-PGGamerules.kGamerulesThinkInterval = .5
-PGGamerules.kGameEndCheckInterval = .75
-PGGamerules.kPregameLength = 15
-PGGamerules.kCountDownLength = kCountDownLength
-PGGamerules.kTimeToReadyRoom = 8
-PGGamerules.kPauseToSocializeBeforeMapcycle = 40
-
-// Find team start with team 0 or for specified team. Remove it from the list so other teams don't start there. Return nil if there are none.
+local kGameEndCheckInterval = 2
+local kPregameLength = 3
+local kTimeToReadyRoom = 8
+local kPauseToSocializeBeforeMapcycle = 30
+local kGameStartMessageInterval = 10
+local kGameLength = 600 //Round time in seconds
+local kGameStartTime = 0
 
 ////////////
 // Server //
@@ -41,8 +40,8 @@ if Server then
     Script.Load("lua/GameViz.lua")
     Script.Load("lua/ObstacleMixin.lua")
 
-    PGGamerules.kMarineStartSound = PrecacheAsset("sound/NS2.fev/marine/voiceovers/game_start")
-    PGGamerules.kAlienStartSound = PrecacheAsset("sound/NS2.fev/alien/voiceovers/game_start")
+    PGGamerules.kGreenStartSound = PrecacheAsset("sound/NS2.fev/marine/voiceovers/game_start")
+    PGGamerules.kPurpleStartSound = PrecacheAsset("sound/NS2.fev/alien/voiceovers/game_start")
     PGGamerules.kCountdownSound = PrecacheAsset("sound/NS2.fev/common/countdown")
 
     // Allow players to spawn in for free (not using IP or eggs) for this many seconds after the game starts
@@ -50,16 +49,16 @@ if Server then
 
     function PGGamerules:BuildTeam(teamType)
 
-        if teamType == kRedTeamType then
-            return RedTeam()
+        if teamType == kPurpleTeamType then
+            return PurpleTeam()
         end
         
-        return MarineTeam()
+        return GreenTeam()
         
     end
 
     function PGGamerules:SetGameState(state)
-
+    
         if state ~= self.gameState then
         
             self.gameState = state
@@ -75,6 +74,7 @@ if Server then
             
                 PostGameViz("Game started")
                 self.gameStartTime = Shared.GetTime()
+                kGameStartTime = self.gameStartTime
                 
                 self.gameInfo:SetStartTime(self.gameStartTime)
                 
@@ -87,7 +87,7 @@ if Server then
             if state == kGameState.Team1Won or state == kGameState.Team2Won then
             
                 if MapCycle_TestCycleMap() then
-                    self.timeToCycleMap = Shared.GetTime() + PGGamerules.kPauseToSocializeBeforeMapcycle
+                    self.timeToCycleMap = Shared.GetTime() + kPauseToSocializeBeforeMapcycle
                 else
                     self.timeToCycleMap = nil
                 end
@@ -110,16 +110,20 @@ if Server then
 
         // Calls SetGamerules()
         Gamerules.OnCreate(self)
+
+        self.sponitor = ServerSponitor()
+        self.sponitor:Initialize(self)
         
-        self.techPointRandomizer = Randomizer()
-        self.techPointRandomizer:randomseed(Shared.GetSystemTime())
+        self.playerRanking = PlayerRanking()
         
         // Create team objects
         self.team1 = self:BuildTeam(kTeam1Type)
         self.team1:Initialize(kTeam1Name, kTeam1Index)
+        self.sponitor:ListenToTeam(self.team1)
         
         self.team2 = self:BuildTeam(kTeam2Type)
         self.team2:Initialize(kTeam2Name, kTeam2Index)
+        self.sponitor:ListenToTeam(self.team2)
         
         self.worldTeam = ReadyRoomTeam()
         self.worldTeam:Initialize("World", kTeamReadyRoom)
@@ -134,10 +138,12 @@ if Server then
         self.allTech = false
         self.orderSelf = false
         self.autobuild = false
+        self.teamsReady = false
+        self.tournamentMode = false
         
         self:SetIsVisible(false)
         self:SetPropagate(Entity.Propagate_Never)
-        
+                
         self.justCreated = true
         
     end
@@ -156,33 +162,36 @@ if Server then
         Gamerules.OnDestroy(self)
 
     end
-
-
+    
     function PGGamerules:GetFriendlyFire()
         return false
     end
-
+    
     // All damage is routed through here.
     function PGGamerules:CanEntityDoDamageTo(attacker, target)
         return CanEntityDoDamageTo(attacker, target, Shared.GetCheatsEnabled(), Shared.GetDevMode(), self:GetFriendlyFire())
     end
-
+    
     function PGGamerules:OnClientDisconnect(client)
-
+    
         local player = client:GetControllingPlayer()
-
+        
         if player ~= nil then
+        
             // When a player disconnects remove them from their team
             local team = self:GetTeam(player:GetTeamNumber())
             if team then
                 team:RemovePlayer(player)
             end
+            
+            player:RemoveSpectators(nil)
+            
         end
         
         Gamerules.OnClientDisconnect(self, client)
         
     end
-
+    
     function PGGamerules:OnEntityCreate(entity)
 
         self:OnEntityChange(nil, entity:GetId())
@@ -197,12 +206,7 @@ if Server then
             
                     if team:AddPlayer(entity) then
 
-                        // Tell team to send entire tech tree on team change
-                        entity.sendTechTreeBase = true
 
-                        // Clear all hotkey groups on team change since old
-                        // hotkey groups will be invalid.
-                        entity:InitializeHotkeyGroups()                
                         
                     end
                    
@@ -277,80 +281,12 @@ if Server then
                 ent:OnEntityChange(oldId, newId)
             end
             
-        end   
-
-    end
-
-    local function PostKillStat(targetEntity, attacker, doer)
-
-        if not attacker or not targetEntity or not doer then
-            return
         end
-        
-        -- Send End Game statistics
-        local url = "/kill" 
-        local attackerOrigin = attacker:GetOrigin()
-        local targetWeapon = "None"
-        local targetOrigin = targetEntity:GetOrigin()
-        
-        if targetEntity.GetActiveWeapon and targetEntity:GetActiveWeapon() then
-            targetWeapon = targetEntity:GetActiveWeapon():GetClassName()
-        end
-
-        local params =
-        {
-            version               = ToString(Shared.GetBuildNumber()),
-            map                   = Shared.GetMapName(),
-            attacker_type         = attacker:GetClassName(),
-            attacker_team         = ((HasMixin(attacker, "Team") and attacker:GetTeamType()) or kNeutralTeamType),
-            attacker_weapon       = doer:GetClassName(),
-            attackerx             = string.format("%.2f", attackerOrigin.x),
-            attackery             = string.format("%.2f", attackerOrigin.y),
-            attackerz             = string.format("%.2f", attackerOrigin.z),
-            target_type           = targetEntity:GetClassName(),
-            target_team           = targetEntity:GetTeamType(),
-            target_weapon         = targetWeapon,
-            targetx               = string.format("%.2f", targetOrigin.x),
-            targety               = string.format("%.2f", targetOrigin.y),
-            targetz               = string.format("%.2f", targetOrigin.z),
-            target_lifetime       = string.format("%.2f", Shared.GetTime() - targetEntity:GetCreationTime())
-        }
-
-        if HasMixin(attacker, "Upgradable") then
-            params['attacker_upgrade'] = json.encode( attacker:GetUpgradeListName() )
-        elseif HasMixin(targetEntity, "Upgradable") then
-            params['target_upgrade'] = json.encode( targetEntity:GetUpgradeListName() )
-        end
-
-        if attacker:isa("Marine") then
-
-            params['attacker_weaponlevel'] = attacker:GetWeaponLevel()
-            params['attacker_armorlevel']  = attacker:GetArmorLevel()
-
-        elseif targetEntity:isa("Marine") then
-
-            params['target_weaponlevel'] = targetEntity:GetWeaponLevel()
-            params['target_armorlevel']  = targetEntity:GetArmorLevel()
-
-        end
-
-        Shared.SendHTTPRequest(kStatisticsURL .. url, "POST", params)
         
     end
-
-
 
     // Called whenever an entity is killed. Killer could be the same as targetEntity. Called before entity is destroyed.
     function PGGamerules:OnEntityKilled(targetEntity, attacker, doer, point, direction)
-    
-        // Limit how often we send up kill stats.
-        self.totalKills = (self.totalKills and self.totalKills + 1) or 1
-        if self.totalKills >= 5 then
-        
-            self.totalKills = 0
-            PostKillStat(targetEntity, attacker, doer)
-            
-        end
         
         // Also output to log if we're recording the game for playback in the game visualizer
         PostGameViz(string.format("%s killed %s", SafeClassName(doer), SafeClassName(targetEntity)), targetEntity)
@@ -359,15 +295,18 @@ if Server then
         self.team2:OnEntityKilled(targetEntity, attacker, doer, point, direction)
         self.worldTeam:OnEntityKilled(targetEntity, attacker, doer, point, direction)
         self.spectatorTeam:OnEntityKilled(targetEntity, attacker, doer, point, direction)
-        
+        self.sponitor:OnEntityKilled(targetEntity, attacker, doer)
+
     end
-   
+
     /**
      * Starts a new game by resetting the map and all of the players. Keep everyone on current teams (readyroom, playing teams, etc.) but 
      * respawn playing players.
      */
     function PGGamerules:ResetGame()
-        
+    
+        TournamentModeOnReset()
+          
         // Destroy any map entities that are still around
         DestroyLiveMapEntities()
         
@@ -394,7 +333,7 @@ if Server then
             // at the start of the next game, including the PGGamerules. This is how a map transition would have to work anyway.
             // Do not destroy any entity that has a parent. The entity will be destroyed when the parent is destroyed or
             // when the owner manually destroyes the entity.
-            local shieldTypes = { "TeamInfo", "GameInfo", "MapBlip", "PGGamerules" }
+            local shieldTypes = { "GameInfo", "PGGamerules" }
             local allowDestruction = true
             for i = 1, #shieldTypes do
                 allowDestruction = allowDestruction and not entity:isa(shieldTypes[i])
@@ -406,7 +345,7 @@ if Server then
                 local mapName = entity:GetMapName()
                 
                 // Reset all map entities and all player's that have a valid Client (not ragdolled players for example).
-                local resetEntity = entity:GetIsMapEntity() or (entity:isa("Player") and entity:GetClient() ~= nil)
+                local resetEntity = entity:isa("GreenTeamInfo") or entity:isa("PurpleTeamInfo") or entity:GetIsMapEntity() or (entity:isa("Player") and entity:GetClient() ~= nil)
                 if resetEntity then
                 
                     if entity.Reset then
@@ -420,17 +359,12 @@ if Server then
             end       
             
         end
-        
-        // Clear out obstacles from the navmesh before we start repopualating the scene
-        RemoveAllObstacles()
-        
-        // Reset teams (keep players on them)
+             
         self.team1:ResetPreservePlayers()
-        self.team1:ResetPreservePlayers()
-
-        
-        self.worldTeam:ResetPreservePlayers()
-        self.spectatorTeam:ResetPreservePlayers()    
+        self.team2:ResetPreservePlayers()
+               
+        self.worldTeam:ResetPreservePlayers(nil)
+        self.spectatorTeam:ResetPreservePlayers(nil)    
         
         // Replace players with their starting classes with default loadouts at spawn locations
         self.team1:ReplaceRespawnAllPlayers()
@@ -446,8 +380,6 @@ if Server then
         self.forceGameStart = false
         self.losingTeam = nil
         self.preventGameEnd = nil
-        // Reset banned players for new game
-        self.bannedPlayers = {}
         
         // Send scoreboard update, ignoring other scoreboard updates (clearscores resets everything)
         for index, player in ientitylist(Shared.GetEntitiesWithClassname("Player")) do
@@ -479,52 +411,8 @@ if Server then
     function PGGamerules:GetTeams()
         return { self.team1, self.team2, self.worldTeam, self.spectatorTeam }
     end
-      
-    // Returns bool for success and bool if we've played in the game already
-    function PGGamerules:GetUserPlayedInGame(player)
     
-        local success = false
-        local played = false
-        
-        ASSERT(player:isa("Player"))
-        if player:isa("Player") then
-        
-            local owner = Server.GetOwner(player)
-            if owner then
-            
-                local userId = tonumber(owner:GetUserId())
-                ASSERT(userId >= 0)    
-                
-                // Could be invalid if we're still connecting to Steam
-                played = table.find(self.userIdsInGame, userId) ~= nil
-                success = true
-                
-            end
-            
-        end
-        
-        return success, played
-        
-    end
     
-    function PGGamerules:SetUserPlayedInGame(player)
-
-        ASSERT(player:isa("Player"))
-        local owner = Server.GetOwner(player)
-        if owner then
-        
-            local userId = tonumber(owner:GetUserId())
-            ASSERT(userId >= 0)    
-            
-            // Could be invalid if we're still connecting to Steam
-            return table.insertunique(self.userIdsInGame, userId)
-            
-        end
-        
-        return false
-        
-    end
-
     function PGGamerules:UpdateScores()
 
         if (self.timeToSendScores == nil or Shared.GetTime() > self.timeToSendScores) then
@@ -580,11 +468,9 @@ if Server then
                     // Send player all scores
                     for index, fromPlayer in ientitylist(allPlayers) do
                     
-                        for index, sendToPlayer in ientitylist(allPlayers) do
-                            local scoresMessage = BuildScoresMessage(fromPlayer, sendToPlayer)
-                            Server.SendNetworkMessage(requestingPlayer, "Scores", scoresMessage, true)
-                        end
-                        
+                        local scoresMessage = BuildScoresMessage(fromPlayer, requestingPlayer)
+                        Server.SendNetworkMessage(requestingPlayer, "Scores", scoresMessage, true)
+   
                     end
                     
                     requestingPlayer:SetRequestsScores(false)
@@ -636,14 +522,17 @@ if Server then
         if self.timeToSendHealth == nil or Shared.GetTime() > self.timeToSendHealth then
         
             local spectators = Shared.GetEntitiesWithClassname("Spectator")
+            if spectators:GetSize() > 0 then
             
-            // Send spectator all health
-            for index, player in ientitylist(Shared.GetEntitiesWithClassname("Player")) do
-            
-                for index, spectator in ientitylist(spectators) do
-                    Server.SendNetworkMessage(spectator, "Health", BuildHealthMessage(player), false)
-                end
+                // Send spectator all health
+                for index, player in ientitylist(Shared.GetEntitiesWithClassname("Player")) do
                 
+                    for index, spectator in ientitylist(spectators) do
+                        Server.SendNetworkMessage(spectator, "Health", BuildHealthMessage(player), false)
+                    end
+                    
+                end
+            
             end
             self.timeToSendHealth = Shared.GetTime() + 0.25
             
@@ -652,7 +541,19 @@ if Server then
     end
       
     // Commander ejection functionality
-    function PGGamerules:CastVoteByPlayer( voteTechId, player )
+    function PGGamerules:CastVoteByPlayer(voteTechId, player)
+    
+        if voteTechId == kTechId.VoteConcedeRound then
+        
+            if self.timeSinceGameStateChanged > kMinTimeBeforeConcede and self:GetGameStarted() then
+            
+                local team = player:GetTeam()
+                if team.VoteToGiveUp then
+                    team:VoteToGiveUp(player)
+                end
+                
+            end
+        end        
     end
 
     function PGGamerules:OnMapPostLoad()
@@ -672,8 +573,8 @@ if Server then
         local state = self:GetGameState()
         if(state == kGameState.Team1Won or state == kGameState.Team2Won or state == kGameState.Draw) then
         
-            if self.timeSinceGameStateChanged >= PGGamerules.kTimeToReadyRoom then
-                   
+            if self.timeSinceGameStateChanged >= kTimeToReadyRoom then
+            
                 // Set all players to ready room team
                 local function SetReadyRoomTeam(player)
                     player:SetCameraDistance(0)
@@ -692,29 +593,135 @@ if Server then
     
     function PGGamerules:UpdateMapCycle()
     
-        local state = self:GetGameState()
+        if self.timeToCycleMap ~= nil and Shared.GetTime() >= self.timeToCycleMap then
 
-        if self.timeToCycleMap ~= nil and (state ~= kGameState.Started) then
-        
-            if Shared.GetTime() >= self.timeToCycleMap then                
-                
-                MapCycle_CycleMap()               
-                self.timeToCycleMap = nil
-                
-            end
+            MapCycle_CycleMap()               
+            self.timeToCycleMap = nil
             
         end
         
     end
-
+    
+    // Network variable type time has a maximum value it can contain, so reload the map if
+    // the age exceeds the limit and no game is going on.
+    local kMaxServerAgeBeforeMapChange = 36000
+    local function ServerAgeCheck(self)
+    
+        if self.gameState ~= kGameState.Started and Shared.GetTime() > kMaxServerAgeBeforeMapChange then
+            MapCycle_ChangeMap(Shared.GetMapName())
+        end
+        
+    end
+    
+    local function UpdateAutoTeamBalance(self, dt)
+    
+        local wasDisabled = false
+        
+        // Check if auto-team balance should be enabled or disabled.
+        local autoTeamBalance = Server.GetConfigSetting("auto_team_balance")
+        if autoTeamBalance then
+        
+            local enabledOnUnbalanceAmount = autoTeamBalance.enabled_on_unbalance_amount or 2
+            // Prevent the unbalance amount from being 0 or less.
+            enabledOnUnbalanceAmount = enabledOnUnbalanceAmount > 0 and enabledOnUnbalanceAmount or 2
+            local enabledAfterSeconds = autoTeamBalance.enabled_after_seconds or 10
+            
+            local team1Players = self.team1:GetNumPlayers()
+            local team2Players = self.team2:GetNumPlayers()
+            
+            local unbalancedAmount = math.abs(team1Players - team2Players)
+            if unbalancedAmount >= enabledOnUnbalanceAmount then
+            
+                if not self.autoTeamBalanceEnabled then
+                
+                    self.teamsUnbalancedTime = self.teamsUnbalancedTime or 0
+                    self.teamsUnbalancedTime = self.teamsUnbalancedTime + dt
+                    
+                    if self.teamsUnbalancedTime >= enabledAfterSeconds then
+                    
+                        self.autoTeamBalanceEnabled = true
+                        if team1Players > team2Players then
+                            self.team1:SetAutoTeamBalanceEnabled(true, unbalancedAmount)
+                        else
+                            self.team2:SetAutoTeamBalanceEnabled(true, unbalancedAmount)
+                        end
+                        
+                        SendTeamMessage(self.team1, kTeamMessageTypes.TeamsUnbalanced)
+                        SendTeamMessage(self.team2, kTeamMessageTypes.TeamsUnbalanced)
+                        Print("Auto-team balance enabled")
+                        
+                        TEST_EVENT("Auto-team balance enabled")
+                        
+                    end
+                    
+                end
+                
+            // The autobalance system itself has turned itself off.
+            elseif self.autoTeamBalanceEnabled then
+                wasDisabled = true
+            end
+            
+        // The autobalance system was turned off by the admin.
+        elseif self.autoTeamBalanceEnabled then
+            wasDisabled = true
+        end
+        
+        if wasDisabled then
+        
+            self.team1:SetAutoTeamBalanceEnabled(false)
+            self.team2:SetAutoTeamBalanceEnabled(false)
+            self.teamsUnbalancedTime = 0
+            self.autoTeamBalanceEnabled = false
+            SendTeamMessage(self.team1, kTeamMessageTypes.TeamsBalanced)
+            SendTeamMessage(self.team2, kTeamMessageTypes.TeamsBalanced)
+            Print("Auto-team balance disabled")
+            
+            TEST_EVENT("Auto-team balance disabled")
+            
+        end
+        
+    end
+        
+    local kPlayerSkillUpdateRate = 10
+    local function UpdatePlayerSkill(self)
+    
+        self.lastTimeUpdatedPlayerSkill = self.lastTimeUpdatedPlayerSkill or 0
+        if Shared.GetTime() - self.lastTimeUpdatedPlayerSkill > kPlayerSkillUpdateRate then
+        
+            self.lastTimeUpdatedPlayerSkill = Shared.GetTime()
+            
+            -- Remove the player skill old tag.
+            local tags = { }
+            Server.GetTags(tags)
+            for t = 1, #tags do
+            
+                if string.find(tags[t], "P_S") then
+                    Server.RemoveTag(tags[t])
+                end
+                
+            end
+            
+            local averageSkill, marineAverageSkill, alienAverageSKill = self.playerRanking:GetAveragePlayerSkill()
+            Server.AddTag("P_S" .. math.floor(averageSkill))
+            
+            self.gameInfo:SetAveragePlayerSkill(averageSkill)
+            
+        end
+        
+        self.playerRanking:OnUpdate()
+        
+    end
+    
     function PGGamerules:OnUpdate(timePassed)
-
+    
         PROFILE("PGGamerules:OnUpdate")
         
         GetEffectManager():OnUpdate(timePassed)
-
+        
+        UpdatePlayerSkill(self)
+        
         if Server then
-
+        
             if self.justCreated then
             
                 if not self.gameStarted then
@@ -722,17 +729,19 @@ if Server then
                 end
                 
                 self.justCreated = false
-
+                
             end
             
             if self:GetMapLoaded() then
             
                 self:CheckGameStart()
                 self:CheckGameEnd()
-
+                
                 self:UpdatePregame(timePassed)
                 self:UpdateToReadyRoom()
                 self:UpdateMapCycle()
+                ServerAgeCheck(self)
+                UpdateAutoTeamBalance(self, timePassed)
                 
                 self.timeSinceGameStateChanged = self.timeSinceGameStateChanged + timePassed
                 
@@ -747,18 +756,24 @@ if Server then
                 self:UpdateHealth()
                 
             end
-        
+
+            self.sponitor:Update(timePassed)
+            
         end
         
     end
-
+    
     /**
      * Ends the current game
      */
     function PGGamerules:EndGame(winningTeam)
-
+    
         if self:GetGameState() == kGameState.Started then
         
+            if self.autoTeamBalanceEnabled then
+                TEST_EVENT("Auto-team balance, game ended")
+            end
+            
             // Set losing team        
             local losingTeam = nil
             if winningTeam == self.team1 then
@@ -777,41 +792,34 @@ if Server then
             
             winningTeam:ForEachPlayer(function(player) Server.SendNetworkMessage(player, "GameEnd", { win = true }, true) end)
             losingTeam:ForEachPlayer(function(player) Server.SendNetworkMessage(player, "GameEnd", { win = false }, true) end)
-            self.spectatorTeam:ForEachPlayer(function(player) Server.SendNetworkMessage(player, "GameEnd", { win = losingTeam:GetTeamType() == kAlienTeamType }, true) end) //Tell spectator whether marines win or not
+            self.spectatorTeam:ForEachPlayer(function(player) Server.SendNetworkMessage(player, "GameEnd", { win = losingTeam:GetTeamType() == kPurpleTeamType }, true) end)
             
             self.losingTeam = losingTeam
             
             self.team1:ClearRespawnQueue()
             self.team2:ClearRespawnQueue()
             
-            -- Send End Game statistics
-            local initialHiveTechIdString = "None"
-            local url = "/endgame" 
-            
-            if self.initialHiveTechId then
-                initialHiveTechIdString = EnumToString(kTechId, self.initialHiveTechId)
-            end
-            
-            local params =
-            {
-                version = ToString(Shared.GetBuildNumber()),
-                winner = ToString(winningTeam:GetTeamType()),
-                length = string.format("%.2f", Shared.GetTime() - self.gameStartTime),
-                map = Shared.GetMapName(),
-                start_location1 = self.startingLocationNameTeam1,
-                start_location2 = self.startingLocationNameTeam2,
-                start_path_distance = self.startingLocationsPathDistance,
-                start_hive_tech = initialHiveTechIdString,
-            }
-            Shared.SendHTTPRequest(kStatisticsURL .. url, "POST", params)
-            
             // Automatically end any performance logging when the round has ended.
             Shared.ConsoleCommand("p_endlog")
-            
+
+            self.sponitor:OnEndMatch(winningTeam)
+            self.playerRanking:EndGame(winningTeam)
+            TournamentModeOnGameEnd()
+
         end
         
     end
-
+    
+    function PGGamerules:OnTournamentModeEnabled()
+        self.tournamentMode = true
+        self.sponitor.tournamentMode = true
+    end
+    
+    function PGGamerules:OnTournamentModeDisabled()
+        self.tournamentMode = false
+        self.sponitor.tournamentMode = false
+    end
+    
     function PGGamerules:DrawGame()
 
         if self:GetGameState() == kGameState.Started then
@@ -862,24 +870,68 @@ if Server then
         
     end
 
-    // Enforce balanced teams
+    -- No enforced balanced teams on join as the auto team balance system balances teams.
     function PGGamerules:GetCanJoinTeamNumber(teamNumber)
 
-        local team1Players = self.team1:GetNumPlayers()
-        local team2Players = self.team2:GetNumPlayers()
+        local forceEvenTeams = Server.GetConfigSetting("force_even_teams_on_join")
+        -- This option was added after shipping, so support older config files that don't include it.
+        -- Fallback to forcing even teams if they don't have this entry in the config file.
+        if not (forceEvenTeams == false) then
         
-        if (team1Players > team2Players) and (teamNumber == self.team1:GetTeamNumber()) then
-            return false
-        elseif (team2Players > team1Players) and (teamNumber == self.team2:GetTeamNumber()) then
-            return false
+            local team1Players = self.team1:GetNumPlayers()
+            local team2Players = self.team2:GetNumPlayers()
+            
+            if (team1Players > team2Players) and (teamNumber == self.team1:GetTeamNumber()) then
+                return false
+            elseif (team2Players > team1Players) and (teamNumber == self.team2:GetTeamNumber()) then
+                return false
+            end
+            
         end
         
         return true
-
+        
     end
     
     function PGGamerules:GetCanSpawnImmediately()
-        return not self:GetGameStarted() or Shared.GetCheatsEnabled() or (Shared.GetTime() < (self.gameStartTime + kFreeSpawnTime))
+        return true
+    end
+    
+    // Returns bool for success and bool if we've played in the game already.
+    local function GetUserPlayedInGame(self, player)
+    
+        local success = false
+        local played = false
+        
+        local owner = Server.GetOwner(player)
+        if owner then
+        
+            local userId = tonumber(owner:GetUserId())
+            
+            // Could be invalid if we're still connecting to Steam
+            played = table.find(self.userIdsInGame, userId) ~= nil
+            success = true
+            
+        end
+        
+        return success, played
+        
+    end
+    
+    local function SetUserPlayedInGame(self, player)
+    
+        local owner = Server.GetOwner(player)
+        if owner then
+        
+            local userId = tonumber(owner:GetUserId())
+            
+            // Could be invalid if we're still connecting to Steam.
+            return table.insertunique(self.userIdsInGame, userId)
+            
+        end
+        
+        return false
+        
     end
     
     /**
@@ -891,9 +943,20 @@ if Server then
     function PGGamerules:JoinTeam(player, newTeamNumber, force)
     
         local success = false
+        local oldPlayerWasSpectating = false
+        if player then
+        
+            local ownerClient = Server.GetOwner(player)
+            oldPlayerWasSpectating = ownerClient ~= nil and ownerClient:GetSpectatingPlayer() ~= nil
+            
+        end
         
         // Join new team
-        if player and player:GetTeamNumber() ~= newTeamNumber or force then
+        if player and player:GetTeamNumber() ~= newTeamNumber or force then               
+            
+            if not Shared.GetCheatsEnabled() and self:GetGameStarted() and newTeamNumber ~= kTeamReadyRoom then
+                player.spawnBlockTime = Shared.GetTime() + kSuicideDelay
+            end
         
             local team = self:GetTeam(newTeamNumber)
             local oldTeam = self:GetTeam(player:GetTeamNumber())
@@ -904,9 +967,20 @@ if Server then
             end
             
             // Spawn immediately if going to ready room, game hasn't started, cheats on, or game started recently
-            if newTeamNumber and self:GetCanSpawnImmediately() or force then
+            if newTeamNumber == kTeamReadyRoom or self:GetCanSpawnImmediately() or force then
             
                 success, newPlayer = team:ReplaceRespawnPlayer(player, nil, nil)
+                
+                                
+            else
+            
+                // Destroy the existing player and create a spectator in their place.
+                newPlayer = player:Replace(team:GetSpectatorMapName(), newTeamNumber)
+                
+                // Queue up the spectator for respawn.
+                team:PutPlayerInRespawnQueue(newPlayer)
+                
+                success = true
                 
             end
             
@@ -926,8 +1000,30 @@ if Server then
                 
             end
             
+            local newPlayerClient = Server.GetOwner(newPlayer)
+            local clientUserId = newPlayerClient and newPlayerClient:GetUserId() or 0
+            if self:GetGameStarted() then
+                SetUserPlayedInGame(self, newPlayer)
+            end
+            
             newPlayer:TriggerEffects("join_team")
             
+            if success then
+            
+                self.sponitor:OnJoinTeam(newPlayer, team)
+                
+                if oldPlayerWasSpectating then
+                    newPlayerClient:SetSpectatingPlayer(nil)
+                end
+                
+                if newPlayer.OnJoinTeam then
+                    newPlayer:OnJoinTeam()
+                end    
+                
+                Server.SendNetworkMessage(newPlayerClient, "SetClientTeamNumber", { teamNumber = newPlayer:GetTeamNumber() }, true)
+                
+            end
+
             return success, newPlayer
             
         end
@@ -948,80 +1044,192 @@ if Server then
     function PGGamerules:SetPreventGameEnd(state)
         self.preventGameEnd = state
     end
-
-    function PGGamerules:CheckGameStart()
-
-        if self:GetGameState() == kGameState.NotStarted or self:GetGameState() == kGameState.PreGame then
+    
+    function PGGamerules:SetTeamsReady(ready)
+    
+        self.teamsReady = ready
         
-            // Start pre-game when both teams have players or when once side does if cheats are enabled
+        // unstart the game without tracking statistics
+        if self.tournamentMode and not ready and self:GetGameStarted() then
+            self:ResetGame()
+        end
+        
+    end
+    
+    function PGGamerules:SetPaused()    
+    end
+    
+    function PGGamerules:DisablePause()
+    end
+    
+    function PGGamerules:CheckGameStart()
+    
+        if self:GetGameState() == kGameState.NotStarted or self:GetGameState() == kGameState.PreGame then
+            
             local team1Players = self.team1:GetNumPlayers()
             local team2Players = self.team2:GetNumPlayers()
-            
-            if (team1Players > 0 and team2Players > 0) or (Shared.GetCheatsEnabled() and (team1Players > 0 or team2Players > 0)) then
+           
+            if ((team1Players > 0 and team2Players > 0) or Shared.GetCheatsEnabled()) and (not self.tournamentMode or self.teamsReady) then
             
                 if self:GetGameState() == kGameState.NotStarted then
                     self:SetGameState(kGameState.PreGame)
                 end
                 
-            elseif self:GetGameState() == kGameState.PreGame then
-                self:SetGameState(kGameState.NotStarted)
+            else
+            
+                if self:GetGameState() == kGameState.PreGame then
+                    self:SetGameState(kGameState.NotStarted)
+                end               
             end
             
         end
         
     end
+    
+    local function CheckAutoConcede(self)
 
+        // This is an optional end condition based on the teams being unbalanced.
+        local endGameOnUnbalancedAmount = Server.GetConfigSetting("end_round_on_team_unbalance")
+        if endGameOnUnbalancedAmount and endGameOnUnbalancedAmount > 0 then
+
+            local gameLength = Shared.GetTime() - self:GetGameStartTime()
+            // Don't start checking for auto-concede until the game has started for some time.
+            local checkAutoConcedeAfterTime = Server.GetConfigSetting("end_round_on_team_unbalance_check_after_time") or 300
+            if gameLength > checkAutoConcedeAfterTime then
+
+                local team1Players = self.team1:GetNumPlayers()
+                local team2Players = self.team2:GetNumPlayers()
+                local totalCount = team1Players + team2Players
+                // Don't consider unbalanced game end until enough people are playing.
+
+                if totalCount > 6 then
+                
+                    local team1ShouldLose = false
+                    local team2ShouldLose = false
+                    
+                    if (1 - (team1Players / team2Players)) >= endGameOnUnbalancedAmount then
+
+                        team1ShouldLose = true
+                    elseif (1 - (team2Players / team1Players)) >= endGameOnUnbalancedAmount then
+
+                        team2ShouldLose = true
+                    end
+                    
+                    if team1ShouldLose or team2ShouldLose then
+                    
+                        // Send a warning before ending the game.
+                        local warningTime = Server.GetConfigSetting("end_round_on_team_unbalance_after_warning_time") or 30
+                        if self.sentAutoConcedeWarningAtTime and Shared.GetTime() - self.sentAutoConcedeWarningAtTime >= warningTime then
+                            return team1ShouldLose, team2ShouldLose
+                        elseif not self.sentAutoConcedeWarningAtTime then
+                        
+                            Shared.Message((team1ShouldLose and "Green" or "Purple") .. " team auto-concede in " .. warningTime .. " seconds")
+                            Server.SendNetworkMessage("AutoConcedeWarning", { time = warningTime, team1Conceding = team1ShouldLose }, true)
+                            self.sentAutoConcedeWarningAtTime = Shared.GetTime()
+                            
+                        end
+                        
+                    else
+                        self.sentAutoConcedeWarningAtTime = nil
+                    end
+                    
+                end
+                
+            else
+                self.sentAutoConcedeWarningAtTime = nil
+            end
+            
+        end
+        
+        return false, false
+        
+    end
+    
     function PGGamerules:CheckGameEnd()
+    
+        if self:GetGameStarted() and self.timeGameEnded == nil and not self.preventGameEnd and not Shared.GetCheatsEnabled() then
         
-        if(self:GetGameStarted() and self.timeGameEnded == nil and not Shared.GetCheatsEnabled() and not self.preventGameEnd) then
-        
-            if self.timeLastGameEndCheck == nil or (Shared.GetTime() > self.timeLastGameEndCheck + PGGamerules.kGameEndCheckInterval) then
+            if (self.timeLastGameEndCheck == nil or (Shared.GetTime() > self.timeLastGameEndCheck + kGameEndCheckInterval)) then
             
                 local team1Lost = self.team1:GetHasTeamLost()
                 local team2Lost = self.team2:GetHasTeamLost()
                 local team1Won = self.team1:GetHasTeamWon()
                 local team2Won = self.team2:GetHasTeamWon()
+                if self.GetRoundTimerExpired() then
+                    Team:GetHasTeamWon(self.team1, self.team2)
+                end
+                -- Check for auto-concede if neither team lost.
+                if not team1Lost and not team2Lost then
+                    team1Lost, team2Lost = CheckAutoConcede(self)
+                end
                 
-                if((team1Lost and team2Lost) or (team1Won and team2Won)) then
+                if (team1Lost and team2Lost) or (team1Won and team2Won) then
                     self:DrawGame()
-                elseif(team1Lost or team2Won) then
+                elseif team1Lost or team2Won then
                     self:EndGame(self.team2)
-                elseif(team2Lost or team1Won) then
+                elseif team2Lost or team1Won then
                     self:EndGame(self.team1)
                 end
                 
+                if self:GetRoundTimerExpired() then
+                    if  kTeamWin == "TheyDraw" then
+                        self:DrawGame()
+                    elseif kTeamWin == "Team2Win" then
+                        self:EndGame(self.team2)
+                    elseif kTeamWin == "Team1Win" then
+                        self:EndGame(self.team1)
+                    end                
+                end
                 self.timeLastGameEndCheck = Shared.GetTime()
                 
             end
-                    
+            
         end
         
     end
-
+    
     function PGGamerules:GetCountingDown()
         return self:GetGameState() == kGameState.Countdown
-    end    
-
+    end
+    
+    local function ResetPlayerScores()
+    
+        for _, player in ientitylist(Shared.GetEntitiesWithClassname("Player")) do            
+            if player.ResetScores then
+                player:ResetScores()
+            end            
+        end
+    
+    end
+    
     local function StartCountdown(self)
-
+    
         self:ResetGame()
         
         self:SetGameState(kGameState.Countdown)
-        
-        self.countdownTime = PGGamerules.kCountDownLength
+        ResetPlayerScores()
+        self.countdownTime = kCountDownLength
         
         self.lastCountdownPlayed = nil
         
     end
-
+    
+    function PGGamerules:GetPregameLength()
+    
+        local preGameTime = kPregameLength
+        if Shared.GetCheatsEnabled() then
+            preGameTime = 0
+        end
+        
+        return preGameTime
+        
+    end
+    
     function PGGamerules:UpdatePregame(timePassed)
 
         if self:GetGameState() == kGameState.PreGame then
         
-            local preGameTime = PGGamerules.kPregameLength
-            if Shared.GetCheatsEnabled() then
-                preGameTime = 0
-            end
+            local preGameTime = self:GetPregameLength()
             
             if self.timeSinceGameStateChanged > preGameTime then
             
@@ -1051,10 +1259,12 @@ if Server then
             
             if self.countdownTime <= 0 then
             
-                self.team1:PlayPrivateTeamSound(ConditionalValue(self.team1:GetTeamType() == kRedTeamType, PGGamerules.kAlienStartSound, PGGamerules.kMarineStartSound))
-                self.team2:PlayPrivateTeamSound(ConditionalValue(self.team2:GetTeamType() == kRedTeamType, PGGamerules.kAlienStartSound, PGGamerules.kMarineStartSound))
+                self.team1:PlayPrivateTeamSound(ConditionalValue(self.team1:GetTeamType() == kPurpleTeamType, PGGamerules.kPurpleStartSound, PGGamerules.kGreenStartSound))
+                self.team2:PlayPrivateTeamSound(ConditionalValue(self.team2:GetTeamType() == kPurpleTeamType, PGGamerules.kPurpleStartSound, PGGamerules.kGreenStartSound))
                 
                 self:SetGameState(kGameState.Started)
+                self.sponitor:OnStartMatch()
+                self.playerRanking:StartGame()
                 
             end
             
@@ -1068,19 +1278,6 @@ if Server then
 
     function PGGamerules:GetAllTech()
         return self.allTech
-    end
-
-    function PGGamerules:SetAllTech(state)
-
-        if state ~= self.allTech then
-        
-            self.allTech = state
-            
-            self.team1:GetTechTree():SetTechChanged()
-            self.team2:GetTechTree():SetTechChanged()
-            
-        end
-        
     end
 
     function PGGamerules:GetAutobuild()
@@ -1145,10 +1342,12 @@ if Server then
             canHear = true
         end
         
+        // NOTE: SCRIPT ERROR CAUSED IN THIS FUNCTION WHEN FP SPEC WAS ADDED.
+        // This functionality never really worked anyway.
         // If we're spectating a player, we can hear their team (but not in tournamentmode, once that's in)
-        if self:GetIsPlayerFollowingTeamNumber(listenerPlayer, speakerPlayer:GetTeamNumber()) then
-            canHear = true
-        end
+        //if self:GetIsPlayerFollowingTeamNumber(listenerPlayer, speakerPlayer:GetTeamNumber()) then
+        //    canHear = true
+        //end
         
         return canHear
         
@@ -1161,30 +1360,10 @@ if Server then
         
     end
 
-    // Add SteamId of player to list of players that can't command again until next game
-    function PGGamerules:BanPlayerFromCommand(playerId)
-        ASSERT(type(playerId) == "number")
-        table.insertunique(self.bannedPlayers, playerId)
-    end
-
-    function PGGamerules:GetPlayerBannedFromCommand(playerId)
-        ASSERT(type(playerId) == "number")
-        return (table.find(self.bannedPlayers, playerId) ~= nil)
-    end
-
 ////////////////    
 // End Server //
 ////////////////
 
-end
-
-////////////
-// Shared //
-////////////
-function PGGamerules:SetupConsoleCommands()
-
-    Gamerules.SetupConsoleCommands(self)    
-    
 end
 
 function PGGamerules:GetGameStartTime()
@@ -1193,6 +1372,15 @@ end
 
 function PGGamerules:GetGameStarted()
     return self.gameState == kGameState.Started
+end
+// PG function to confirm Round Timer has finished
+function PGGamerules:GetRoundTimerExpired()
+    local timeCheck = Shared.GetTime()
+
+    if (kGameStartTime + (kGameLength)) < timeCheck then
+        return true
+    end
+    return false
 end
 
 Shared.LinkClassToMap("PGGamerules", PGGamerules.kMapName, { })

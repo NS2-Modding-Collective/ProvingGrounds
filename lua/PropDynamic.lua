@@ -9,7 +9,6 @@
 Script.Load("lua/ScriptActor.lua")
 Script.Load("lua/Mixins/ModelMixin.lua")
 Script.Load("lua/Mixins/SignalEmitterMixin.lua")
-Script.Load("lua/PowerConsumerMixin.lua")
 
 class 'PropDynamic' (ScriptActor)
 
@@ -17,7 +16,6 @@ local networkVars = { }
 
 AddMixinNetworkVars(BaseModelMixin, networkVars)
 AddMixinNetworkVars(ModelMixin, networkVars)
-AddMixinNetworkVars(PowerConsumerMixin, networkVars)
 
 function PropDynamic:OnCreate()
 
@@ -26,14 +24,9 @@ function PropDynamic:OnCreate()
     InitMixin(self, BaseModelMixin)
     InitMixin(self, ModelMixin)
     InitMixin(self, SignalEmitterMixin)
-    InitMixin(self, PowerConsumerMixin)
     
     self.emitChannel = 0
     
-end
-
-function PropDynamic:GetRequiresPower()
-    return true
 end
 
 function PropDynamic:GetCanBeUsed(player, useSuccessTable)
@@ -60,10 +53,7 @@ if Server then
             self:SetAnimationInput("animation", self.animation)
             
         end
-        
-        // Don't collide when commanding if not full alpha
-        self.commAlpha = GetAndCheckValue(self.commAlpha, 0, 1, "commAlpha", 1, true)
-        
+                
         // Test against false so that the default is true
         if self.collidable ~= false then
             self:SetPhysicsType(PhysicsType.None)
@@ -74,11 +64,6 @@ if Server then
                 self:SetPhysicsGroup(PhysicsGroup.RagdollGroup)
             else
                 self:SetPhysicsType(PhysicsType.Kinematic)
-            end
-        
-            // Make it not block selection and structure placement (GetCommanderPickTarget)
-            if self.commAlpha < 1 then
-                self:SetPhysicsGroup(PhysicsGroup.CommanderPropsGroup)
             end
             
         end

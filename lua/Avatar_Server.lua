@@ -1,69 +1,30 @@
-// ======= Copyright (c) 2003-2012, Unknown Worlds Entertainment, Inc. All rights reserved. =======
+// =========================================================================================
 //
 // lua\Avatar_Server.lua
 //
-//    Created by:   Andy 'Soul Rider' Wilson for Proving Grounds
+//    Created by:   Andy 'Soul Rider' Wilson for Proving Grounds Mod
 //
-// ========= For more information, visit us at http://www.unknownworlds.com =====================
-
-local function GetCanTriggerAlert(self, techId, timeOut)
-
-    if not self.alertTimes then
-        self.alertTimes = {}
-    end
-    
-    return not self.alertTimes[techId] or self.alertTimes[techId] + timeOut < Shared.GetTime()
-
-end
-
-function Avatar:ExecuteSaying(index, menu)
-
-    if not Player.ExecuteSaying(self, index, menu) then
-
-        if Server then
-        
-            if menu == 3 and voteActionsActions[index] then
-                GetGamerules():CastVoteByPlayer(voteActionsActions[index], self)
-            else
-            
-                local sayings = marineRequestSayingsSounds
-                local sayingActions = marineRequestActions
-                
-                if menu == 2 then
-                
-                    sayings = marineGroupSayingsSounds
-                    sayingActions = marineGroupRequestActions
-                    
-                end
-                
-                if sayings[index] then
-                
-                    local techId = sayingActions[index]
-                    if techId ~= kTechId.None and GetCanTriggerAlert(self, techId, Avatar.kMarineAlertTimeout) then
-                    
-                        self:PlaySound(sayings[index])
-                        self:GetTeam():TriggerAlert(techId, self)
-                        self.alertTimes[techId] = Shared.GetTime()
-                        
-                    end
-                    
-                end
-                
-            end
-            
-        end
-        
-    end
-    
-end
+// ================================================================================================
 
 function Avatar:OnTakeDamage(damage, attacker, doer, point)
 
-    if damage > 50 and (not self.timeLastDamageKnockback or self.timeLastDamageKnockback + 1 < Shared.GetTime()) then    
+    if doer then
     
-        self:AddPushImpulse(GetNormalizedVectorXZ(self:GetOrigin() - point) * damage * 0.2)
-        self.timeLastDamageKnockback = Shared.GetTime()
+        if doer:isa("Grenade") and doer:GetOwner() == self then
         
+            self.onGround = false
+            local velocity = self:GetVelocity()
+            local fromGrenade = self:GetOrigin() - doer:GetOrigin()
+            local length = fromGrenade:Normalize()
+            local force = Clamp(1 - (length / 4), 0, 1)
+            
+            if force > 0 then
+                velocity:Add(force * fromGrenade)
+                self:SetVelocity(velocity)
+            end
+            
+        end
+   
     end
 
 end
@@ -78,54 +39,48 @@ end
 function Avatar:InitWeapons()
 
     Player.InitWeapons(self)
-
-    self:GiveItem(GrenadeLauncher.kMapName)
-    self:GiveItem(Rifle.kMapName)
-    self:GiveItem(RocketLauncher.kMapName)
-    self:GiveItem(AntiMatterSword.kMapName)
     
-    self:SetActiveWeapon(GrenadeLauncher.kMapName)
+    self:GiveItem(Axe.kMapName)
+    self:GiveItem(Pistol.kMapName)
+    self:GiveItem(Rifle.kMapName)
+    self:GiveItem(Shotgun.kMapName)
+    self:GiveItem(RocketLauncher.kMapName)
+    
+    
+    self:SetQuickSwitchTarget(Pistol.kMapName)
+    self:SetActiveWeapon(Axe.kMapName)
 
 end
 
-function Avatar:DropAllWeapons()
+function Avatar:GiveItem(itemMapName)
 
-    local weaponSpawnCoords = self:GetAttachPointCoords(Weapon.kHumanAttachPoint)
-    local weaponList = self:GetHUDOrderedWeaponList()
-    for w = 1, #weaponList do
-    
-        local weapon = weaponList[w]
-        if weapon:GetIsDroppable() and LookupTechData(weapon:GetTechId(), kTechDataCostKey, 0) > 0 then
-            self:Drop(weapon, true, true)
-        end
+    local newItem = nil
+
+    if itemMapName then
+
+        local setActive = true
+        return Player.GiveItem(self, itemMapName, setActive)
         
     end
+    
+    return newItem
     
 end
 
 function Avatar:OnKill(attacker, doer, point, direction)
-
-    // drop all weapons which cost resources
-    self:DropAllWeapons()
-
-    // destroy remaining weapons
+    
+    // Destroy remaining weapons
     self:DestroyWeapons()
     
     Player.OnKill(self, attacker, doer, point, direction)
-    self:PlaySound(Avatar.kDieSoundName)
-
+        
     self.originOnDeath = self:GetOrigin()
     
-end
-
-function Avatar:GetCanPhase()
-    return not GetIsVortexed(self) and self:GetIsAlive() and (not self.timeOfLastPhase or (Shared.GetTime() > (self.timeOfLastPhase + Marine.kPlayerPhaseDelay)))
-end
-
-function Avatar:SetTimeOfLastPhase(time)
-    self.timeOfLastPhase = time
 end
 
 function Avatar:GetOriginOnDeath()
     return self.originOnDeath
 end
+
+
+

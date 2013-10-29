@@ -18,89 +18,93 @@ kTechDataId                             = "id"
 kTechDataDisplayName                    = "displayname"
 kTechDataMapName                        = "mapname"
 kTechDataModel                          = "model"
-// TeamResources, resources or energy
-kTechDataCostKey                        = "costkey"
 kTechDataMaxHealth                      = "maxhealth"
-kTechDataMaxArmor                       = "maxarmor"
 kTechDataDamageType                     = "damagetype"
-// Class that structure must be placed on top of (resource towers on resource points)
-// If adding more attach classes, add them to GetIsAttachment(). When attaching entities
-// to this attach class, ignore class.
-kStructureAttachClass                   = "attachclass"
+
+// If specified, draw a range indicator for the commander when selected.
+kVisualRange                            = "visualrange"
 // set to true when attach structure is not required but optional
 kTechDataAttachOptional                   = "attachoptional"
-// the entity will be optionally attached if it passed the method check
-kTechDataOptionalAttachToMethod        = "optionalattach"
-// The tech id of the attach class 
-kStructureAttachId                      = "attachid"
+
 // If specified, object spawns this far off the ground
 kTechDataSpawnHeightOffset              = "spawnheight"
 // All player tech ids should have this, nothing else uses it. Pre-computed by looking at the min and max extents of the model, 
 // adding their absolute values together and dividing by 2. 
 kTechDataMaxExtents                     = "maxextents"
-// Menu priority. If more than one techId is specified for the same spot in a menu, use the one with the higher priority.
-// If a tech doesn't specify a priority, treat as 0. If all priorities are tied, show none of them. This is how Starcraft works (see siege behavior).
-kTechDataMenuPriority                   = "menupriority"
-// if an alert with higher priority is trigger the interval should be ignored
-kTechDataAlertPriority                  = "alertpriority"
+// Set true if entity should be rotated before being placed
+kTechDataSpecifyOrientation             = "specifyorientation"
 // manipulate build coords in a custom function
 kTechDataOverrideCoordsMethod           = "overridecoordsmethod"
 // Point value for killing structure
 kTechDataPointValue                     = "pointvalue"
 // Set to false if not yet implemented, for displaying differently for not enabling
 kTechDataImplemented                    = "implemented"
+// Set to localizable string that will be added to end of description indicating date it went in. 
+kTechDataNew                            = "new"
 // Alert sound name
 kTechDataAlertSound                     = "alertsound"
+// Alert text for commander HUD
+kTechDataAlertText                      = "alerttext"
+// Alert type. These are the types in CommanderUI_GetDynamicMapBlips. "Request" alert types count as player alert requests and show up on the commander HUD as such.
+kTechDataAlertType                      = "alerttype"
 // Alert scope
 kTechDataAlertTeam                      = "alertteam"
 // Alert should ignore distance for triggering
 kTechDataAlertIgnoreDistance            = "alertignoredistance"
 // Alert should also trigger a team message.
 kTechDataAlertSendTeamMessage           = "alertsendteammessage"
+// Don't send alert to originator of this alert 
+kTechDataAlertOthersOnly                = "alertothers"
 // Usage notes, caveats, etc. for use in commander tooltip (localizable)
 kTechDataTooltipInfo                    = "tooltipinfo"
 // Quite the same as tooltip, but shorter
 kTechDataHint                           = "hintinfo"
+// Indicate tech id that we're replicating
 // Engagement distance - how close can unit get to it before it can repair or build it
 kTechDataEngagementDistance             = "engagementdist"
+
 // Allows dropping onto other entities
 kTechDataAllowStacking                 = "allowstacking"
 // will ignore other entities when searching for spawn position
 kTechDataCollideWithWorldOnly          = "collidewithworldonly"
-// the entity will be optionally attached if it passed the method check
-kTechDataOptionalAttachToMethod        = "optionalattach"
 // only useable once every X seconds
 kTechDataCooldown = "coldownduration"
 // ignore any alert interval
 kTechDataAlertIgnoreInterval = "ignorealertinterval"
 
+kTechDataSupply = "supply"
+
 function BuildTechData()
     
     local techData = { 
+
         // Ready room player is the default player, hence the ReadyRoomPlayer.kMapName
-        { [kTechDataId] = kTechId.ReadyRoomPlayer,        [kTechDataDisplayName] = "READY_ROOM_PLAYER", [kTechDataMapName] = ReadyRoomPlayer.kMapName, [kTechDataModel] = Avatar.kModelName, [kTechDataMaxExtents] = Vector(Player.kXZExtents, Player.kYExtents, Player.kXZExtents) },
+        { [kTechDataId] = kTechId.ReadyRoomPlayer,        [kTechDataDisplayName] = "READY_ROOM_PLAYER", [kTechDataMapName] = ReadyRoomPlayer.kMapName, [kTechDataModel] = AvatarVariantMixin.kModelNames["male"]["green"], [kTechDataMaxExtents] = Vector(Player.kXZExtents, Player.kYExtents, Player.kXZExtents) },
         
         // Spectators classes.
         { [kTechDataId] = kTechId.Spectator,              [kTechDataModel] = "" },
-        { [kTechDataId] = kTechId.AlienSpectator,         [kTechDataModel] = "" },
+        { [kTechDataId] = kTechId.MarineSpectator,         [kTechDataModel] = "" },
         
-        // Marine classes
-        { [kTechDataId] = kTechId.Avatar,      [kTechDataDisplayName] = "AVATAR", [kTechDataMapName] = Avatar.kMapName, [kTechDataModel] = Avatar.kModelName, [kTechDataMaxExtents] = Vector(Player.kXZExtents, Player.kYExtents, Player.kXZExtents), [kTechDataMaxHealth] = Avatar.kHealth, [kTechDataEngagementDistance] = kPlayerEngagementDistance, [kTechDataPointValue] = kMarinePointValue},
-        { [kTechDataId] = kTechId.AmmoPack,              [kTechDataAllowStacking] = true, [kTechDataCollideWithWorldOnly] = true, [kTechDataOptionalAttachToMethod] = GetAttachToMarineRequiresAmmo, [kTechDataMapName] = AmmoPack.kMapName,                 [kTechDataDisplayName] = "AMMO_PACK",      [kTechDataCostKey] = kAmmoPackCost,            [kTechDataModel] = AmmoPack.kModelName, [kTechDataTooltipInfo] = "AMMO_PACK_TOOLTIP", [kTechDataSpawnHeightOffset] = kCommanderDropSpawnHeight },
-        { [kTechDataId] = kTechId.MedPack,               [kTechDataAllowStacking] = true, [kTechDataCollideWithWorldOnly] = true, [kTechDataOptionalAttachToMethod] = GetAttachToMarineRequiresHealth, [kTechDataMapName] = MedPack.kMapName,                  [kTechDataDisplayName] = "MED_PACK",     [kTechDataCostKey] = kMedPackCost,             [kTechDataModel] = MedPack.kModelName,  [kTechDataTooltipInfo] = "MED_PACK_TOOLTIP", [kTechDataSpawnHeightOffset] = kCommanderDropSpawnHeight},
-        { [kTechDataId] = kTechId.CatPack,               [kTechDataAllowStacking] = true, [kTechDataCollideWithWorldOnly] = true, [kTechDataOptionalAttachToMethod] = GetAttachToMarineNotCatalysted, [kTechDataMapName] = CatPack.kMapName,                  [kTechDataDisplayName] = "CAT_PACK",      [kTechDataCostKey] = kCatPackCost,             [kTechDataModel] = CatPack.kModelName,  [kTechDataTooltipInfo] = "CAT_PACK_TOOLTIP", [kTechDataSpawnHeightOffset] = kCommanderDropSpawnHeight},
-
-        { [kTechDataId] = kTechId.Rifle,      [kTechDataMaxHealth] = kRifleHealth, [kTechDataMaxArmor] = kRifleArmor,  [kTechDataPointValue] = kWeaponPointValue,    [kTechDataMapName] = Rifle.kMapName,                    [kTechDataDisplayName] = "RIFLE",         [kTechDataModel] = Rifle.kModelName, [kTechDataDamageType] = kRifleDamageType, [kTechDataCostKey] = kRifleCost, },
-        { [kTechDataId] = kTechId.Pistol,     [kTechDataMaxHealth] = kPistolHealth, [kTechDataMaxArmor] = kPistolArmor,  [kTechDataPointValue] = kWeaponPointValue,          [kTechDataMapName] = Pistol.kMapName,                   [kTechDataDisplayName] = "PISTOL",         [kTechDataModel] = Pistol.kModelName, [kTechDataDamageType] = kPistolDamageType, [kTechDataCostKey] = kPistolCost, },
-        { [kTechDataId] = kTechId.AntiMatterSword,        [kTechDataMapName] = AntiMatterSword.kMapName,   [kTechDataDisplayName] = "ANTI-MATTER_SWORD",         [kTechDataModel] = AntiMatterSword.kModelName, [kTechDataDamageType] = kAxeDamageType, [kTechDataCostKey] = kAxeCost, },
-        { [kTechDataId] = kTechId.Shotgun,     [kTechDataMaxHealth] = kShotgunHealth, [kTechDataMaxArmor] = kShotgunArmor,    [kTechDataPointValue] = kWeaponPointValue,      [kTechDataMapName] = Shotgun.kMapName,                  [kTechDataDisplayName] = "SHOTGUN",             [kTechDataTooltipInfo] =  "SHOTGUN_TOOLTIP", [kTechDataModel] = Shotgun.kModelName, [kTechDataDamageType] = kShotgunDamageType, [kTechDataCostKey] = kShotgunCost },
- 
-
-        { [kTechDataId] = kTechId.Flamethrower,     [kTechDataMaxHealth] = kFlamethrowerHealth, [kTechDataMaxArmor] = kFlamethrowerArmor,   [kTechDataPointValue] = kWeaponPointValue,  [kTechDataMapName] = Flamethrower.kMapName,             [kTechDataDisplayName] = "FLAMETHROWER", [kTechDataTooltipInfo] = "FLAMETHROWER_TOOLTIP", [kTechDataModel] = Flamethrower.kModelName,  [kTechDataDamageType] = kFlamethrowerDamageType, [kTechDataCostKey] = kFlamethrowerCost},
-        { [kTechDataId] = kTechId.GrenadeLauncher,    [kTechDataMaxHealth] = kGrenadeLauncherHealth, [kTechDataMaxArmor] = kGrenadeLauncherArmor,   [kTechDataMapName] = GrenadeLauncher.kMapName,          [kTechDataDisplayName] = "GRENADE_LAUNCHER",  [kTechDataTooltipInfo] = "GRENADE_LAUNCHER_TOOLTIP",   [kTechDataModel] = GrenadeLauncher.kModelName,   [kTechDataDamageType] = kGrenadeLauncherGrenadeDamageType,    [kTechDataCostKey] = kGrenadeLauncherCost},
-        { [kTechDataId] = kTechId.RocketLauncher,    [kTechDataMaxHealth] = kGrenadeLauncherHealth, [kTechDataMaxArmor] = kGrenadeLauncherArmor,   [kTechDataMapName] = RocketLauncher.kMapName,          [kTechDataDisplayName] = "ROCKET_LAUNCHER",  [kTechDataTooltipInfo] = "ROCKET_LAUNCHER_TOOLTIP",   [kTechDataModel] = RocketLauncher.kModelName,   [kTechDataDamageType] = kRocketLauncherRocketDamageType,    [kTechDataCostKey] = kGrenadeLauncherCost},
- 
+        // Player Classes
+        { [kTechDataId] = kTechId.Avatar,      [kTechDataDisplayName] = "Avatar", [kTechDataMapName] = Avatar.kMapName}, 
+        { [kTechDataId] = kTechId.GreenAvatar,      [kTechDataDisplayName] = "GreenAvatar", [kTechDataMapName] = GreenAvatar.kMapName, [kTechDataModel] = AvatarVariantMixin.kModelNames["male"]["green"], [kTechDataMaxExtents] = Vector(Player.kXZExtents, Player.kYExtents, Player.kXZExtents), [kTechDataMaxHealth] = Avatar.kHealth, [kTechDataEngagementDistance] = kPlayerEngagementDistance, [kTechDataPointValue] = kAvatarPointValue},
+        { [kTechDataId] = kTechId.PurpleAvatar,      [kTechDataDisplayName] = "PurpleAvatar", [kTechDataMapName] = PurpleAvatar.kMapName, [kTechDataModel] = AvatarVariantMixin.kModelNames["male"]["green"], [kTechDataMaxExtents] = Vector(Player.kXZExtents, Player.kYExtents, Player.kXZExtents), [kTechDataMaxHealth] = Avatar.kHealth, [kTechDataEngagementDistance] = kPlayerEngagementDistance, [kTechDataPointValue] = kAvatarPointValue},
         
+        // Weapon Classes
+        { [kTechDataId] = kTechId.Rifle,      [kTechDataMaxHealth] = kMarineWeaponHealth, [kTechDataTooltipInfo] = "RIFLE_TOOLTIP",    [kTechDataMapName] = Rifle.kMapName,                    [kTechDataDisplayName] = "RIFLE",         [kTechDataModel] = Rifle.kModelName, [kTechDataDamageType] = kRifleDamageType },
+        { [kTechDataId] = kTechId.Pistol,     [kTechDataMaxHealth] = kMarineWeaponHealth,       [kTechDataMapName] = Pistol.kMapName,                   [kTechDataDisplayName] = "PISTOL",         [kTechDataModel] = Pistol.kModelName, [kTechDataDamageType] = kPistolDamageType, [kTechDataTooltipInfo] = "PISTOL_TOOLTIP"},
+        { [kTechDataId] = kTechId.Axe,                   [kTechDataMapName] = Axe.kMapName,                      [kTechDataDisplayName] = "SWITCH_AX",         [kTechDataModel] = Axe.kModelName, [kTechDataDamageType] = kAxeDamageType},
+        { [kTechDataId] = kTechId.Shotgun,     [kTechDataMaxHealth] = kMarineWeaponHealth,    [kTechDataPointValue] = kShotgunPointValue,      [kTechDataMapName] = Shotgun.kMapName,                  [kTechDataDisplayName] = "SHOTGUN",             [kTechDataModel] = Shotgun.kModelName, [kTechDataDamageType] = kShotgunDamageType},
+        { [kTechDataId] = kTechId.Flamethrower,     [kTechDataMaxHealth] = kMarineWeaponHealth, [kTechDataPointValue] = kFlamethrowerPointValue,  [kTechDataMapName] = Flamethrower.kMapName,             [kTechDataDisplayName] = "FLAMETHROWER", [kTechDataModel] = Flamethrower.kModelName,  [kTechDataDamageType] = kFlamethrowerDamageType},
+        { [kTechDataId] = kTechId.RocketLauncher,    [kTechDataMaxHealth] = kMarineWeaponHealth,  [kTechDataPointValue] = kRocketLauncherPointValue, [kTechDataMapName] = RocketLauncher.kMapName,          [kTechDataDisplayName] = "ROCKET_LAUNCHER",  [kTechDataModel] = RocketLauncher.kModelName,   [kTechDataDamageType] = kRifleDamageType},
+        
+        // Interactive Entities
+        { [kTechDataId] = kTechId.JumpPadTrigger,       [kTechDataMapName] = JumpPadTrigger.kMapName },       
+        { [kTechDataId] = kTechId.AmmoPack,              [kTechDataAllowStacking] = true, [kTechDataMapName] = AmmoPack.kMapName,  [kTechDataDisplayName] = "AMMO_PACK",      [kTechDataModel] = AmmoPack.kModelName, [kTechDataTooltipInfo] = "AMMO_PACK_TOOLTIP", [kTechDataSpawnHeightOffset] = kCommanderDropSpawnHeight },
+        { [kTechDataId] = kTechId.MedPack,    [kTechDataCooldown] = kMedPackCooldown,         [kTechDataAllowStacking] = true, [kTechDataMapName] = MedPack.kMapName,   [kTechDataDisplayName] = "MED_PACK",     [kTechDataModel] = MedPack.kModelName,  [kTechDataTooltipInfo] = "MED_PACK_TOOLTIP", [kTechDataSpawnHeightOffset] = kCommanderDropSpawnHeight},
+        { [kTechDataId] = kTechId.CatPack,               [kTechDataAllowStacking] = true, [kTechDataMapName] = CatPack.kMapName,   [kTechDataDisplayName] = "CAT_PACK",      [kTechDataModel] = CatPack.kModelName,  [kTechDataTooltipInfo] = "CAT_PACK_TOOLTIP", [kTechDataSpawnHeightOffset] = kCommanderDropSpawnHeight},
+      
+      
         { [kTechDataId] = kTechId.DeathTrigger,                                 [kTechDataDisplayName] = "DEATH_TRIGGER",                                   [kTechDataMapName] = DeathTrigger.kMapName, [kTechDataModel] = ""},
 
     }
@@ -250,3 +254,32 @@ function LookupTechData(techId, fieldName, default)
     return data
 
 end
+
+local gTechForCategory = nil
+function GetTechForCategory(techId)
+
+    if gTechForCategory == nil then
+
+        gTechForCategory = {}
+
+        for upgradeId = 2, #kTechId do
+        
+            local category = LookupTechData(upgradeId, kTechDataCategory, nil)
+            if category and category ~= kTechId.None then
+                
+                if not gTechForCategory[category] then
+                    gTechForCategory[category] = {}
+                end
+                
+                table.insertunique(gTechForCategory[category], upgradeId)
+
+            end
+        
+        end
+    
+    end
+    
+    return gTechForCategory[techId] or {}
+
+end
+

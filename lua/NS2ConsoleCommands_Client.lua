@@ -58,29 +58,6 @@ local function OnCommandClientEntities(entityType)
     
 end
 
-local kTestHudCinematic = PrecacheAsset("cinematics/hudTest.cinematic")
-local kTestHudModel = PrecacheAsset("models/marine/observatory/observatory.model")
-local hudCinematic = nil
-local function OnCommandHUDCinematic()
-
-    if hudCinematic then
-        Client.DestroyHUDCinematic(hudCinematic)
-    end
-    
-    hudCinematic = Client.CreateHUDCinematic()
-    hudCinematic:SetCinematic(kTestHudCinematic)
-    //hudCinematic:SetModel(kTestHudModel)
-    hudCinematic:SetRepeatStyle(Cinematic.Repeat_Loop)
-    hudCinematic:SetBackgroundMaterial("ui/hudTest.material")
-    
-    local vector1 = Vector(0, 0, 0)
-    local vector2 = Vector(400, 300, 0)
-    
-    hudCinematic:SetPosition(vector1)
-    hudCinematic:SetSize(vector2)
-
-end
-
 local gHealthringsDisabled = false
 local function OnCommandHealthRings(state)
 
@@ -113,27 +90,52 @@ end
 local function OnConsoleMusic(name)
 
     if Shared.GetCheatsEnabled() then
-        Client.PlayMusic(name)
+        Client.PlayMusic("sound/NS2.fev/" .. name)
     end
     
 end
 
-local function OnCommandDebugCommander(vm)
+local function OnCommandDrawDecal(material, scale)
 
-    if Shared.GetCheatsEnabled() then    
-        BuildUtility_SetDebug(vm)        
-    end
+    if Shared.GetCheatsEnabled() then
+
+        local player = Client.GetLocalPlayer()
+        if player and material then
+        
+            // trace to a surface and draw the decal
+            local startPoint = player:GetEyePos()
+            local endPoint = startPoint + player:GetViewCoords().zAxis * 100
+            local trace = Shared.TraceRay(startPoint, endPoint,  CollisionRep.Default, PhysicsMask.Bullets, EntityFilterAll())
+            
+            if trace.fraction ~= 1 then
+            
+                local coords = Coords.GetTranslation(trace.endPoint)
+                coords.yAxis = trace.normal
+                coords.zAxis = coords.yAxis:GetPerpendicular()
+                coords.xAxis = coords.yAxis:CrossProduct(coords.zAxis)
+            
+                scale = scale and tonumber(scale) or 1.5
+                
+                Client.CreateTimeLimitedDecal(material, coords, scale)
+                Print("created decal %s", ToString(material))
+            
+            end
+        
+        else
+            Print("usage: drawdecal <materialname> <scale>")        
+        end
     
+    end
+
 end
+
+Event.Hook("Console_drawdecal", OnCommandDrawDecal)
 
 Event.Hook("Console_tracereticle", OnCommandTraceReticle)
 Event.Hook("Console_random_debug", OnCommandRandomDebug)
 Event.Hook("Console_location", OnCommandLocation)
 Event.Hook("Console_changegcsettingclient", OnCommandChangeGCSettingClient)
 Event.Hook("Console_cents", OnCommandClientEntities)
-Event.Hook("Console_hudcinematic", OnCommandHUDCinematic)
 Event.Hook("Console_r_healthrings", OnCommandHealthRings)
 Event.Hook("Console_reset_help", OnCommandResetHelp)
 Event.Hook("Console_music", OnConsoleMusic)
-
-Event.Hook("Console_debugcommander", OnCommandDebugCommander)

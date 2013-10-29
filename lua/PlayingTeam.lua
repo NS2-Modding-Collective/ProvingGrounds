@@ -11,20 +11,17 @@
 Script.Load("lua/Team.lua")
 Script.Load("lua/Entity.lua")
 Script.Load("lua/TeamDeathMessageMixin.lua")
+Script.Load("lua/bots/TeamBrain.lua")
 
 class 'PlayingTeam' (Team)
 
 PlayingTeam.kTooltipHelpInterval = 1
-
-PlayingTeam.kTechTreeUpdateTime = 1
 
 PlayingTeam.kBaseAlertInterval = 15
 PlayingTeam.kRepeatAlertInterval = 15
 
 // How often to update clear and update game effects
 PlayingTeam.kUpdateGameEffectsInterval = .3
-
-PlayingTeam.kResearchDisplayTime = 40
 
 /**
  * spawnEntity is the name of the map entity that will be created by default
@@ -42,15 +39,50 @@ function PlayingTeam:Initialize(teamName, teamNumber)
         
     self.timeSinceLastLOSUpdate = Shared.GetTime()
     
-    self.entityTechIds = {}
-    self.techIdCount = {}
+    self.concedeVoteManager = VoteManager()
+    self.concedeVoteManager:Initialize()
+    self.concedeVoteManager:SetTeamPercentNeeded(kPercentNeededForVoteConcede)
+
+    // child classes can specify a custom team info class
+    local teamInfoMapName = TeamInfo.kMapName
+    if self.GetTeamInfoMapName then
+        teamInfoMapName = self:GetTeamInfoMapName()
+    end
+    
+    self.supplyUsed = 0
+    
+    local teamInfoEntity = Server.CreateEntity(teamInfoMapName)
+    
+    self.teamInfoEntityId = teamInfoEntity:GetId()
+    teamInfoEntity:SetWatchTeam(self)
+
+    self.eventListeners = {}
+
+end
+
+function PlayingTeam:AddListener( event, func )
+
+    local listeners = self.eventListeners[event]
+
+    if not listeners then
+        listeners = {}
+        self.eventListeners[event] = listeners
+    end
+
+    table.insert( listeners, func )
+
+    //DebugPrint( 'event %s has %d listeners', event, #self.eventListeners[event] )
 
 end
 
 function PlayingTeam:Uninitialize()
+
+    if self.teamInfoEntityId and Shared.GetEntity(self.teamInfoEntityId) then
     
-    self.entityTechIds = { }
-    self.techIdCount = { }
+        DestroyEntity(Shared.GetEntity(self.teamInfoEntityId))
+        self.teamInfoEntityId = nil
+        
+    end
     
     Team.Uninitialize(self)
     
@@ -66,34 +98,35 @@ end
 
 function PlayingTeam:OnCreate()
 
-    self.entityTechIds = {}
-    self.techIdCount = {}
     Team.OnCreate(self)
       
 end
 
 function PlayingTeam:OnInitialized()
 
-    self.entityTechIds = {}
-    self.techIdCount = {}
-
     Team.OnInitialized(self)
-    
-    self:InitTechTree()
-    self.requiredTechIds = self.techTree:GetRequiredTechIds()
-    self.timeOfLastTechTreeUpdate = nil
-    
+        
     self.lastPlayedTeamAlertName = nil
     self.timeOfLastPlayedTeamAlert = nil
     self.alerts = {}
+
+    self.concedeVoteManager:Reset()
     
+    self.conceded = false
+        
+    self.supplyUsed = 0
+
 end
 
 function PlayingTeam:ResetTeam()
     
-    for i, player in ipairs( GetEntitiesForTeam("Player", self:GetTeamNumber()) ) do
+    local players = GetEntitiesForTeam("Player", self:GetTeamNumber())
+    for p = 1, #players do
+    
+        local player = players[p]
         self:RespawnPlayer(player)
-    end 
+        
+    end
     
 end
 
@@ -110,17 +143,7 @@ function PlayingTeam:Reset()
 
 end
 
-function PlayingTeam:InitTechTree()
-   
-    self.techTree = TechTree()
-    
-    self.techTree:Initialize()
-    
-    self.techTree:SetTeamNumber(self:GetTeamNumber())
-
-end
-
-// Returns marine or alien type
+// Returns green or purple type
 function PlayingTeam:GetTeamType()
     return self.teamType
 end
@@ -130,10 +153,22 @@ function PlayingTeam:GetLastAlert()
     return self.lastPlayedTeamAlertName, self.timeOfLastPlayedTeamAlert
 end
 
+function PlayingTeam:GetSupplyUsed()
+    return Clamp(self.supplyUsed, 0, kMaxSupply)
+end
+
+function PlayingTeam:AddSupplyUsed(supplyUsed)
+    self.supplyUsed = self.supplyUsed + supplyUsed
+end
+
+function PlayingTeam:RemoveSupplyUsed(supplyUsed)
+    self.supplyUsed = self.supplyUsed - supplyUsed
+end
+
 // Play audio alert for all players, but don't trigger them too often. 
 // This also allows neat tactics where players can time strikes to prevent the other team from instant notification of an alert, ala RTS.
 // Returns true if the alert was played.
-function PlayingTeam:TriggerAlert(techId, entity)
+function PlayingTeam:TriggerAlert(techId, entity, force)
 
     local triggeredAlert = false
     
@@ -168,10 +203,10 @@ function PlayingTeam:TriggerAlert(techId, entity)
 
             // If time elapsed > kBaseAlertInterval and not a repeat, play it OR
             // If time elapsed > kRepeatAlertInterval then play it no matter what
-            if ignoreInterval or (timeElapsed >= PlayingTeam.kBaseAlertInterval and not isRepeat) or timeElapsed >= PlayingTeam.kRepeatAlertInterval or newAlertPriority  > self.lastAlertPriority then
+            if force or ignoreInterval or (timeElapsed >= PlayingTeam.kBaseAlertInterval and not isRepeat) or timeElapsed >= PlayingTeam.kRepeatAlertInterval or newAlertPriority  > self.lastAlertPriority then
             
                 // Play for commanders only or for the whole team
-                local commandersOnly = not LookupTechData(techId, kTechDataAlertTeam, false)
+                local commandersOnly = false
                 
                 local ignoreDistance = LookupTechData(techId, kTechDataAlertIgnoreDistance, false)
                 
@@ -214,20 +249,19 @@ end
 
 function PlayingTeam:GetHasTeamLost()
 
-    if GetGamerules():GetGameStarted() and not Shared.GetCheatsEnabled() then
+   /* if GetGamerules():GetGameStarted() and not Shared.GetCheatsEnabled() then
     
         // Team can't respawn or last Command Station or Hive destroyed
         local activePlayers = self:GetHasActivePlayers()
-        local abilityToRespawn = self:GetHasAbilityToRespawn()
         
-        if  (not activePlayers and not abilityToRespawn) or
-            (self:GetNumPlayers() == 0) then
+        if  not activePlayers or
+            (self:GetNumPlayers() == 0) or 
+            self:GetHasConceded() then
             
             return true
             
-        end
-        
-    end
+        end        
+    end*/
     
     return false
     
@@ -245,11 +279,11 @@ function PlayingTeam:GetHasAbilityToRespawn()
     return true
 end
 
-function PlayingTeam:GetIsRedTeam()
+function PlayingTeam:GetIsPurpleTeam()
     return false
 end
 
-function PlayingTeam:GetIsMarineTeam()
+function PlayingTeam:GetIsGreenTeam()
     return false    
 end
 
@@ -277,9 +311,6 @@ function PlayingTeam:ReplaceRespawnPlayer(player, origin, angles, mapName)
     end
     
     newPlayer:ClearGameEffects()
-    if HasMixin(newPlayer, "Upgradable") then
-        newPlayer:ClearUpgrades()
-    end
     
     return (newPlayer ~= nil), newPlayer
     
@@ -288,21 +319,21 @@ end
 // Call with origin and angles, or pass nil to have them determined from team location and spawn points.
 function PlayingTeam:RespawnPlayer(player, origin, angles)
 
-    if self:GetIsMarineTeam() then
+    if self:GetIsGreenTeam() then
         if origin == nil or angles == nil then
         
             // Randomly choose unobstructed spawn points to respawn the player
-            local marineSpawnPoint = nil
-            local marineSpawnPoints = Server.team1SpawnList
-            local numSpawnPoints = table.maxn(marineSpawnPoints)
+            local greenSpawnPoint = nil
+            local greenSpawnPoints = Server.team1SpawnList
+            local numSpawnPoints = table.maxn(greenSpawnPoints)
           
             if numSpawnPoints > 0 then
             
-                local marineSpawnPoint = GetRandomClearSpawnPoint(player, marineSpawnPoints)
-                if marineSpawnPoint ~= nil then
+                local greenSpawnPoint = GetRandomClearSpawnPoint(player, greenSpawnPoints)
+                if greenSpawnPoint ~= nil then
                 
-                    origin = marineSpawnPoint:GetOrigin()
-                    angles = marineSpawnPoint:GetAngles()
+                    origin = greenSpawnPoint:GetOrigin()
+                    angles = greenSpawnPoint:GetAngles()
                     
                 end
                 
@@ -320,23 +351,23 @@ function PlayingTeam:RespawnPlayer(player, origin, angles)
             return true
             
         else
-            Print("PlayingTeam:RespawnPlayer(player, %s, %s) - No Marine Team Spawns.", ToString(origin), ToString(angles))
+            Print("PlayingTeam:RespawnPlayer(player, %s, %s) - No Green Team Spawns.", ToString(origin), ToString(angles))
         end
-    elseif self:GetIsRedTeam() then
+    elseif self:GetIsPurpleTeam() then
         if origin == nil or angles == nil then
         
             // Randomly choose unobstructed spawn points to respawn the player
-            local redSpawnPoint = nil
-            local redSpawnPoints = Server.team2SpawnList
-            local numSpawnPoints = table.maxn(redSpawnPoints)
+            local purpleSpawnPoint = nil
+            local purpleSpawnPoints = Server.team2SpawnList
+            local numSpawnPoints = table.maxn(purpleSpawnPoints)
             
             if numSpawnPoints > 0 then
             
-                redSpawnPoint = GetRandomClearSpawnPoint(player, redSpawnPoints)
-                if redSpawnPoint ~= nil then
+                purpleSpawnPoint = GetRandomClearSpawnPoint(player, purpleSpawnPoints)
+                if purpleSpawnPoint ~= nil then
                 
-                    origin = redSpawnPoint:GetOrigin()
-                    angles = redSpawnPoint:GetAngles()
+                    origin = purpleSpawnPoint:GetOrigin()
+                    angles = purpleSpawnPoint:GetAngles()
                     
                 end
                 
@@ -354,7 +385,7 @@ function PlayingTeam:RespawnPlayer(player, origin, angles)
             return true
             
         else
-            Print("PlayingTeam:RespawnPlayer(player, %s, %s) - No Alien Team Spawns.", ToString(origin), ToString(angles))
+            Print("PlayingTeam:RespawnPlayer(player, %s, %s) - No Purple Team Spawns.", ToString(origin), ToString(angles))
         end  
     else
         Print("PlayingTeam:RespawnPlayer(player) - Player isn't on team.")
@@ -364,14 +395,30 @@ function PlayingTeam:RespawnPlayer(player, origin, angles)
     
 end
 
+function PlayingTeam:GetTeamBrain()
+
+    // we have bots, need a team brain
+    // lazily init team brain
+    if self.brain == nil then
+        self.brain = TeamBrain()
+        self.brain:Initialize(self.teamName.."-Brain", self:GetTeamNumber())
+    end
+
+    return self.brain
+            
+end
 
 function PlayingTeam:Update(timePassed)
 
     PROFILE("PlayingTeam:Update")
-    
+      
     self:UpdateGameEffects(timePassed)
     
+    self:UpdateVotes()
+   
 end
+
+
 
 function PlayingTeam:PrintWorldTextForTeamInRange(messageType, data, position, range)
 
@@ -382,13 +429,6 @@ function PlayingTeam:PrintWorldTextForTeamInRange(messageType, data, position, r
         Server.SendNetworkMessage(player, "WorldText", message, true)        
     end
 
-end
-
-function PlayingTeam:GetTechTree()
-    return self.techTree
-end
-
-function PlayingTeam:TriggerSayingAction(player, sayingActionTechId)
 end
 
 // Update from alien team instead of in alien buildings think because we need to clear
@@ -402,3 +442,65 @@ end
 function PlayingTeam:UpdateTeamSpecificGameEffects()
 end
 
+function PlayingTeam:VoteToGiveUp(votingPlayer)
+
+    local votingPlayerSteamId = tonumber(Server.GetOwner(votingPlayer):GetUserId())
+
+    if self.concedeVoteManager:PlayerVotes(votingPlayerSteamId, Shared.GetTime()) then
+        PrintToLog("%s cast vote to give up.", votingPlayer:GetName())
+        
+        // notify all players on this team
+        if Server then
+
+            local vote = self.concedeVoteManager    
+
+            local netmsg = {
+                voterName = votingPlayer:GetName(),
+                votesMoreNeeded = vote:GetNumVotesNeeded()-vote:GetNumVotesCast()
+            }
+
+            local players = GetEntitiesForTeam("Player", self:GetTeamNumber())
+
+            for index, player in ipairs(players) do
+                Server.SendNetworkMessage(player, "VoteConcedeCast", netmsg, false)
+            end
+
+        end
+    end
+
+end
+
+function PlayingTeam:UpdateVotes()
+
+    PROFILE("PlayingTeam:UpdateVotes")
+    
+    // Update with latest team size
+    self.concedeVoteManager:SetNumPlayers(self:GetNumPlayers())
+    
+    -- Give up when enough votes
+    if self.concedeVoteManager:GetVotePassed() then
+    
+        self.concedeVoteManager:Reset()
+        self.conceded = true
+        Server.SendNetworkMessage("TeamConceded", { teamNumber = self:GetTeamNumber() })
+        
+    elseif self.concedeVoteManager:GetVoteElapsed(Shared.GetTime()) then
+        self.concedeVoteManager:Reset()
+    end
+
+    
+end
+
+function PlayingTeam:GetHasConceded()
+    return self.conceded
+end    
+
+function PlayingTeam:OnEntityChange(oldId, newId)
+
+    Team.OnEntityChange( self, oldId, newId )
+    
+    if self.brain then
+        self.brain:OnEntityChange( oldId, newId )
+    end
+
+end

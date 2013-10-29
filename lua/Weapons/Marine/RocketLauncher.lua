@@ -52,7 +52,7 @@ function RocketLauncher:GetDeathIconIndex()
 end
 
 function RocketLauncher:GetHUDSlot()
-    return kTertiaryWeaponSlot
+    return kFifthWeaponSlot
 end
 
 function RocketLauncher:GetClipSize()
@@ -110,13 +110,13 @@ function RocketLauncher:OnTag(tagName)
         LoadBullet(self)
     // We have a special case when loading the last shell in the clip.
     elseif tagName == "load_shell_sound" and self.clip < (self:GetClipSize() - 1) then
-        self:TriggerEffects("grenadelauncher_reload_shell")
+        self:TriggerEffects("rocketlauncher_reload_shell")
     elseif tagName == "load_shell_sound" then
-        self:TriggerEffects("grenadelauncher_reload_shell_last")
+        self:TriggerEffects("rocketlauncher_reload_shell_last")
     elseif tagName == "reload_start" then
-        self:TriggerEffects("grenadelauncher_reload_start")
+        self:TriggerEffects("rocketlauncher_reload_start")
     elseif tagName == "shut_canister" then
-        self:TriggerEffects("grenadelauncher_reload_end")
+        self:TriggerEffects("rocketlauncher_reload_end")
     end
     
     if continueReloading then
@@ -142,7 +142,7 @@ local function ShootRocket(self, player)
 
     PROFILE("ShootRocket")
     
-    self:TriggerEffects("grenadelauncher_attack")
+    self:TriggerEffects("rocketlauncher_attack")
     
     if Server and player then
     

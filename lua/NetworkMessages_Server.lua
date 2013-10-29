@@ -9,14 +9,6 @@
 //
 // ========= For more information, visit us at http://www.unknownworlds.com =====================
 
-function OnCommandExecuteSaying(client, message)
-
-    local player = client:GetControllingPlayer()
-    local sayingIndex, sayingsMenu = ParseExecuteSayingMessage(message)
-    player:ExecuteSaying(sayingIndex, sayingsMenu)
-
-end
-
 function OnCommandMutePlayer(client, message)
 
     local player = client:GetControllingPlayer()
@@ -92,6 +84,32 @@ local function OnChatReceived(client, message)
         
     end
     
+    // handle tournament mode commands
+    if client then  
+  
+        local player = client:GetControllingPlayer()
+        if player then        
+            ProcessSayCommand(player, chatMessage)
+        end
+    
+    end
+    
+end
+
+local function OnCommandSetRookieMode(client, networkMessage)
+
+    if client ~= nil then
+    
+        local player = client:GetControllingPlayer()
+        if player then 
+        
+            local rookieMode = ParseRookieMessage(networkMessage)
+            player:SetRookieMode(rookieMode)
+            
+        end
+        
+    end
+
 end
 
 local function OnCommandSetCommStatus(client, networkMessage)
@@ -110,7 +128,99 @@ local function OnCommandSetCommStatus(client, networkMessage)
 
 end
 
-Server.HookNetworkMessage("ExecuteSaying", OnCommandExecuteSaying)
+local function OnSetNameMessage(client, message)
+
+    local name = message.name
+    if client ~= nil and name ~= nil then
+    
+        local player = client:GetControllingPlayer()
+        
+        name = TrimName(name)
+        
+        // Treat "NsPlayer" as special.
+        if name ~= player:GetName() and name ~= kDefaultPlayerName and string.len(name) > 0 then
+        
+            local prevName = player:GetName()
+            player:SetName(name)
+            
+            if prevName == kDefaultPlayerName then
+                Server.Broadcast(nil, string.format("%s connected.", player:GetName()))
+            elseif prevName ~= player:GetName() then
+                Server.Broadcast(nil, string.format("%s is now known as %s.", prevName, player:GetName()))
+            end
+            
+        end
+        
+    end
+    
+end
+Server.HookNetworkMessage("SetName", OnSetNameMessage)
+
+local function onSpectatePlayer(client, message)
+
+    local spectatorPlayer = client:GetControllingPlayer()
+    if spectatorPlayer then
+
+        // This only works for players on the spectator team.
+        if spectatorPlayer:GetTeamNumber() == kSpectatorIndex then
+            client:GetControllingPlayer():SelectEntity(message.entityId)
+        end
+        
+    end
+    
+end
+Server.HookNetworkMessage("SpectatePlayer", onSpectatePlayer)
+
+local function OnSwitchFromFirstPersonSpectate(client, message)
+
+    local spectatorPlayer = client:GetControllingPlayer()
+    if client:GetSpectatingPlayer() and spectatorPlayer then
+    
+        // This only works for players on the spectator team.
+        if spectatorPlayer:GetTeamNumber() == kSpectatorIndex then
+            client:GetControllingPlayer():SetSpectatorMode(message.mode)
+        end
+        
+    end
+    
+end
+Server.HookNetworkMessage("SwitchFromFirstPersonSpectate", OnSwitchFromFirstPersonSpectate)
+
+local function OnSwitchFirstPersonSpectatePlayer(client, message)
+
+    if client:GetSpectatingPlayer() and client:GetControllingPlayer() then
+    
+        if client:GetControllingPlayer().CycleSpectatingPlayer then
+            client:GetControllingPlayer():CycleSpectatingPlayer(client:GetSpectatingPlayer(), message.forward)
+        end
+        
+    end
+    
+end
+Server.HookNetworkMessage("SwitchFirstPersonSpectatePlayer", OnSwitchFirstPersonSpectatePlayer)
+
+local function OnSetPlayerVariant(client, message)
+
+    if client then
+
+        client.variantData = message
+        
+        local player = client:GetControllingPlayer()
+        if player then
+            player:OnClientUpdated(client)
+        end
+        
+    end
+    
+end
+
+local function OnConnectMessage(client, message)
+    OnSetPlayerVariant( client, message )
+end
+
+Server.HookNetworkMessage("SetPlayerVariant", OnSetPlayerVariant)
 Server.HookNetworkMessage("MutePlayer", OnCommandMutePlayer)
 Server.HookNetworkMessage("ChatClient", OnChatReceived)
+Server.HookNetworkMessage("SetRookieMode", OnCommandSetRookieMode)
 Server.HookNetworkMessage("SetCommunicationStatus", OnCommandSetCommStatus)
+Server.HookNetworkMessage("ConnectMessage", OnConnectMessage)

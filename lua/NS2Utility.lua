@@ -7,12 +7,144 @@
 // NS2-specific utility functions.
 //
 // ========= For more information, visit us at http://www.unknownworlds.com =====================
+
 Script.Load("lua/Table.lua")
 Script.Load("lua/Utility.lua")
-Script.Load("lua/FunctionContracts.lua")
+
+function GetDirectedExtentsForDiameter(direction, diameter)
+    
+    // normalize and scale the vector, then extract the extents from it
+    local v = GetNormalizedVector(direction)
+    v:Scale(diameter)
+    
+    local x = math.sqrt(v.y * v.y + v.z * v.z)
+    local y = math.sqrt(v.x * v.x + v.z * v.z)
+    local z = math.sqrt(v.y * v.y + v.x * v.x)
+ 
+    local result = Vector(x,y,z)
+    // Log("extents for %s/%s -> %s", direction, v, result)
+    return result
+    
+end
+
+function GetSupplyUsedByTeam(teamNumber)
+
+    assert(teamNumber)
+
+    local supplyUsed = 0
+    
+    if Server then
+        local team = GetGamerules():GetTeam(teamNumber)
+        if team and team.GetSupplyUsed then
+            supplyUsed = team:GetSupplyUsed() 
+        end    
+    else
+        
+        local teamInfoEnt = GetTeamInfoEntity(teamNumber)
+        if teamInfoEnt and teamInfoEnt.GetSupplyUsed then
+            supplyUsed = teamInfoEnt:GetSupplyUsed()
+        end
+    
+    end    
+
+    return supplyUsed
+
+end
+
+function GetMaxSupplyForTeam(teamNumber)
+
+    return kMaxSupply
+
+end
 
 if Server then
     Script.Load("lua/NS2Utility_Server.lua")
+end
+
+local function HandleImpactDecal(position, doer, surface, target, showtracer, altMode, damage, direction, decalParams)
+
+    // when we hit a target project some blood on the geometry behind
+    //DebugLine(position, position + direction * kBloodDistance, 3, 1, 0, 0, 1)
+    if direction then
+    
+        local trace =  Shared.TraceRay(position, position + direction * kBloodDistance, CollisionRep.Damage, PhysicsMask.Bullets, EntityFilterOne(target))
+        if trace.fraction ~= 1 then   
+
+            decalParams[kEffectHostCoords] = Coords.GetTranslation(trace.endPoint)
+            decalParams[kEffectHostCoords].yAxis = trace.normal
+            decalParams[kEffectHostCoords].zAxis = direction
+            decalParams[kEffectHostCoords].xAxis = decalParams[kEffectHostCoords].yAxis:CrossProduct(decalParams[kEffectHostCoords].zAxis)
+            decalParams[kEffectHostCoords].zAxis = decalParams[kEffectHostCoords].xAxis:CrossProduct(decalParams[kEffectHostCoords].yAxis)
+
+            decalParams[kEffectHostCoords].zAxis:Normalize()
+            decalParams[kEffectHostCoords].xAxis:Normalize()
+            
+            //DrawCoords(decalParams[kEffectHostCoords])
+            
+            if not target then
+                decalParams[kEffectSurface] = trace.surface        
+            end
+            
+            GetEffectManager():TriggerEffects("damage_decal", decalParams)
+         
+        end
+    
+    end
+
+end
+
+function HandleHitEffect(position, doer, surface, target, showtracer, altMode, damage, direction)
+
+    local tableParams = { }
+    tableParams[kEffectHostCoords] = Coords.GetTranslation(position)
+    if doer then
+        tableParams[kEffectFilterDoerName] = doer:GetClassName()
+    end
+    tableParams[kEffectSurface] = surface
+    tableParams[kEffectFilterInAltMode] = altMode
+    
+    if target then
+    
+        tableParams[kEffectFilterClassName] = target:GetClassName()
+        
+        if target.GetTeamType then
+        
+            tableParams[kEffectFilterIsGreen] = target:GetTeamType() == kGreenTeamType
+            tableParams[kEffectFilterIsPurple] = target:GetTeamType() == kPurpleTeamType
+            
+        end
+        
+    else
+    
+        tableParams[kEffectFilterIsGreen] = false
+        tableParams[kEffectFilterIsPurple] = false
+        
+    end
+    
+    // Don't play the hit cinematic, those are made for third person.
+    if target ~= Client.GetLocalPlayer() then
+        GetEffectManager():TriggerEffects("damage", tableParams)
+    end
+    
+    // Always play sound effect.
+    GetEffectManager():TriggerEffects("damage_sound", tableParams)
+    
+    if showtracer == true and doer then
+    
+        local tracerStart = (doer.GetBarrelPoint and doer:GetBarrelPoint()) or (doer.GetEyePos and doer:GetEyePos()) or doer:GetOrigin()
+        
+        local tracerVelocity = GetNormalizedVector(position - tracerStart) * kTracerSpeed
+        CreateTracer(tracerStart, position, tracerVelocity, doer)
+        
+    end
+    
+    if damage > 0 and target and target.OnTakeDamageClient then
+        target:OnTakeDamageClient(damage, doer, position)
+    end
+
+    
+    HandleImpactDecal(position, doer, surface, target, showtracer, altMode, damage, direction, tableParams)
+
 end
 
 function GetGameInfoEntity()
@@ -20,15 +152,21 @@ function GetGameInfoEntity()
     local entityList = Shared.GetEntitiesWithClassname("GameInfo")
     if entityList:GetSize() > 0 then    
         return entityList:GetEntityAtIndex(0)
-    end    
+    end
 
 end
+
+function GetTeamInfoEntity(teamNumber)
+
+    local teamInfo = GetEntitiesForTeam("GreenTeamInfo", teamNumber)
+    if table.count(teamInfo) > 0 then
+        return teamInfo[1]
+    end
+    
+end
+
 function GetIsTargetDetected(target)
     return HasMixin(target, "Detectable") and target:GetIsDetected()
-end
-
-function GetIsParasited(target)
-    return target ~= nil and HasMixin(target, "ParasiteAble") and target:GetIsParasited()
 end
 
 function GetPlayerCanUseEntity(player, target)
@@ -42,25 +180,12 @@ function GetPlayerCanUseEntity(player, target)
     
     //Print("GetPlayerCanUseEntity(%s, %s) returns %s", ToString(player), ToString(target), ToString(useSuccessTable.useSuccess))
 
-    return useSuccessTable.useSuccess
-
-end
-
-function GetIsClassHasEnergyFor(className, entity, techId, techNode, commander)
-
-    local hasEnergy = false
-    
-    if entity:isa(className) and HasMixin(entity, "Energy") and entity:GetTechAllowed(techId, techNode, commander) then
-        local cost = LookupTechData(techId, kTechDataCostKey, 0)
-        hasEnergy = entity:GetEnergy() >= cost
-    end        
-    
-    return hasEnergy
+    // really need to move this functionality into two mixin (when for user, one for useable)
+    return useSuccessTable.useSuccess or (target.GetCanAlwaysBeUsed and target:GetCanAlwaysBeUsed())
 
 end
 
 function GetIsUnitActive(unit, debug)
-
 
     local alive = not HasMixin(unit, "Live") or unit:GetIsAlive()
     
@@ -121,6 +246,21 @@ function GetAttachEntity(techId, position, snapRadius)
     
 end
 
+local function FindPoweredAttachEntities(className, teamNumber, origin, range)
+
+    ASSERT(type(className) == "string")
+    ASSERT(type(teamNumber) == "number")
+    ASSERT(origin ~= nil)
+    ASSERT(type(range) == "number")
+    
+    local function teamAndPoweredFilterFunction(entity)
+        return entity:GetTeamNumber() == teamNumber and entity:GetIsBuilt() and entity:GetIsPowered()
+    end
+    
+    return Shared.GetEntitiesWithTagInRange("class:" .. className, origin, range, teamAndPoweredFilterFunction)
+    
+end
+
 function CheckForFlatSurface(origin, boxExtents)
 
     local valid = true
@@ -154,7 +294,7 @@ end
 /**
  * Returns the spawn point on success, nil on failure.
  */
-local function ValidateSpawnPoint(spawnPoint, capsuleHeight, capsuleRadius, filter, origin)
+function ValidateSpawnPoint(spawnPoint, capsuleHeight, capsuleRadius, filter, origin)
 
     local center = Vector(0, capsuleHeight * 0.5 + capsuleRadius, 0)
     local spawnPointCenter = spawnPoint + center
@@ -189,7 +329,7 @@ end
 // Find place for player to spawn, within range of origin. Makes sure that a line can be traced between the two points
 // without hitting anything, to make sure you don't spawn on the other side of a wall. Returns nil if it can't find a 
 // spawn point after a few tries.
-function GetRandomSpawnForCapsule(capsuleHeight, capsuleRadius, origin, minRange, maxRange, filter)
+function GetRandomSpawnForCapsule(capsuleHeight, capsuleRadius, origin, minRange, maxRange, filter, validationFunc)
 
     ASSERT(capsuleHeight > 0)
     ASSERT(capsuleRadius > 0)
@@ -205,10 +345,10 @@ function GetRandomSpawnForCapsule(capsuleHeight, capsuleRadius, origin, minRange
     for i = 0, 10 do
     
         local spawnPoint = nil
-        local points = GetRandomPointsWithinRadius(origin, minRange, maxRange, maxHeight, 1, 1)
+        local points = GetRandomPointsWithinRadius(origin, minRange, maxRange, maxHeight, 1, 1, nil, validationFunc)
         if #points == 1 then
             spawnPoint = points[1]
-        else
+        elseif Server then
             Print("GetRandomPointsWithinRadius() failed inside of GetRandomSpawnForCapsule()")
         end
         
@@ -325,7 +465,7 @@ end
 
 function GetHoverAt(entity, position, filter)
 
-    local ground = GetGroundAt(entity, position, PhysicsMask.AIMovement, filter)
+    local ground = GetGroundAt(entity, position, PhysicsMask.Movement, filter)
     local resultY = position.y
     // if we have a hover height, use it to find our minimum height above ground, otherwise use zero
     
@@ -347,6 +487,10 @@ function GetHoverAt(entity, position, filter)
 
     return position
 
+end
+
+function GetWaypointGroupName(entity)
+    return ConditionalValue(entity:GetIsFlying(), kAirWaypointsGroup, kDefaultWaypointGroup)
 end
 
 function GetTriggerEntity(position, teamNumber)
@@ -372,9 +516,21 @@ function GetTriggerEntity(position, teamNumber)
     
 end
 
+function GetBlockedByUmbra(entity)
+    return entity ~= nil and HasMixin(entity, "Umbra") and entity:GetHasUmbra()
+end
+
 // TODO: use what is defined in the material file
 function GetSurfaceFromEntity(entity)
-    return "thin_metal"   
+
+    if GetIsAlienUnit(entity) then
+        return "organic"
+    elseif GetIsMarineUnit(entity) then
+        return "thin_metal"
+    end
+
+    return "thin_metal"
+    
 end
 
 function GetSurfaceAndNormalUnderEntity(entity, axis)
@@ -556,8 +712,8 @@ end
 
 function GetAreEnemies(entityOne, entityTwo)
     return entityOne and entityTwo and HasMixin(entityOne, "Team") and HasMixin(entityTwo, "Team") and (
-            (entityOne:GetTeamNumber() == kMarineTeamType and entityTwo:GetTeamNumber() == kRedTeamType) or
-            (entityOne:GetTeamNumber() == kRedTeamType and entityTwo:GetTeamNumber() == kMarineTeamType)
+            (entityOne:GetTeamNumber() == kGreenTeamType and entityTwo:GetTeamNumber() == kPurpleTeamType) or
+            (entityOne:GetTeamNumber() == kPurpleTeamType and entityTwo:GetTeamNumber() == kGreenTeamType)
            )
 end
 
@@ -567,11 +723,11 @@ function GetAreFriends(entityOne, entityTwo)
 end
 
 function GetIsMarineUnit(entity)
-    return entity and HasMixin(entity, "Team") and entity:GetTeamType() == kMarineTeamType
+    return entity and HasMixin(entity, "Team") and entity:GetTeamType() == kGreenTeamType
 end
 
 function GetIsAlienUnit(entity)
-    return entity and HasMixin(entity, "Team") and entity:GetTeamType() == kRedTeamType
+    return entity and HasMixin(entity, "Team") and entity:GetTeamType() == kPurpleTeamType
 end
 
 function GetEnemyTeamNumber(entityTeamNumber)
@@ -670,9 +826,13 @@ function GetNearest(origin, className, teamNumber, filterFunc)
     
 end
 
-// Computes line of sight to entity
+function GetCanAttackEntity(seeingEntity, targetEntity)
+    return GetCanSeeEntity(seeingEntity, targetEntity, true)
+end
+
+// Computes line of sight to entity, set considerObstacles to true to check if any other entity is blocking LOS
 local toEntity = Vector()
-function GetCanSeeEntity(seeingEntity, targetEntity)
+function GetCanSeeEntity(seeingEntity, targetEntity, considerObstacles)
 
     PROFILE("NS2Utility:GetCanSeeEntity")
     
@@ -725,9 +885,9 @@ function GetCanSeeEntity(seeingEntity, targetEntity)
         if withinFOV then
         
             // See if there's something blocking our view of the entity.
-            local trace = Shared.TraceRay(eyePos, targetOrigin + toEntity, CollisionRep.LOS, PhysicsMask.All, EntityFilterOnly(targetEntity))
+            local trace = Shared.TraceRay(eyePos, targetOrigin, CollisionRep.LOS, PhysicsMask.All, filter)
             
-            if trace.entity == targetEntity then
+            if trace.fraction == 1 then
                 seen = true
             end
             
@@ -743,13 +903,13 @@ function GetLocations()
     return EntityListToTable(Shared.GetEntitiesWithClassname("Location"))
 end
 
-function GetLocationForPoint(point)
+function GetLocationForPoint(point, ignoredLocation)
 
     local ents = GetLocations()
     
     for index, location in ipairs(ents) do
     
-        if location:GetIsPointInside(point) then
+        if location ~= ignoredLocation and location:GetIsPointInside(point) then
         
             return location
             
@@ -833,6 +993,57 @@ function GetLightsForLocation(locationName)
    
 end
 
+// for performance, cache the probes for each locationName
+local probeLocationCache = {}
+
+function GetReflectionProbesForLocation(locationName)
+
+    if locationName == nil or locationName == "" then
+        return {}
+    end
+ 
+    if probeLocationCache[locationName] then
+        return probeLocationCache[locationName]   
+    end
+
+    local probeList = {}
+   
+    local locations = GetLocationEntitiesNamed(locationName)
+   
+    if table.count(locations) > 0 then
+   
+        for index, location in ipairs(locations) do
+           
+        // TEMP FIX FOR SCRIPT ERRORS
+            if Client.reflectionProbeList then
+            for index, probe in ipairs(Client.reflectionProbeList) do
+
+                if probe then
+               
+                    local probeOrigin = probe:GetOrigin()
+                   
+                    if location:GetIsPointInside(probeOrigin) then
+                   
+                        table.insert(probeList, probe)
+           
+                    end
+                   
+                end
+               
+            end
+            end
+           
+        end
+       
+    end
+
+    // Log("Total lights %s, lights in %s = %s", #Client.lightList, locationName, #lightList)
+    probeLocationCache[locationName] = probeList
+  
+    return probeList
+   
+end
+
 if Client then
 
     function ResetLights()
@@ -848,22 +1059,15 @@ if Client then
     
 end
 
-function SetPlayerPoseParameters(player, viewModel)
 
-    if not player or not player:isa("Player") then
-        Log("SetPlayerPoseParameters: player %s is not a player", player)
-    end
-    ASSERT(player and player:isa("Player"))
+local kUpVector = Vector(0, 1, 0)
+
+function SetPlayerPoseParameters(player, viewModel, headAngles)
+
+    local coords = player:GetCoords()
     
-    if viewmodel and not viewmodel:isa("Viewmodel") then
-        Log("SetPlayerPoseParameters: player %s s viewmodel is a %s", player, viewmodel)
-    end
-    ASSERT(not viewmodel or viewmodel:isa("Viewmodel"))
+    local pitch = -Math.Wrap(Math.Degrees(headAngles.pitch), -180, 180)
     
-    local viewAngles = player:GetViewAngles()
-    
-    local pitch = -Math.Wrap(Math.Degrees(viewAngles.pitch), -180, 180)
-	
     local landIntensity = player.landIntensity or 0
     
     local bodyYaw = 0
@@ -876,20 +1080,32 @@ function SetPlayerPoseParameters(player, viewModel)
         bodyYawRun = Math.Wrap(Math.Degrees(player.bodyYawRun), -180, 180)
     end
     
-    local viewAngles = player:GetViewAngles()
-    local viewCoords = viewAngles:GetCoords()
+    local headCoords = headAngles:GetCoords()
     
-    local horizontalVelocity = player:GetVelocityFromPolar()
+    local velocity = player:GetVelocityFromPolar()
     // Not all players will contrain their movement to the X/Z plane only.
     if player.GetMoveSpeedIs2D and player:GetMoveSpeedIs2D() then
-        horizontalVelocity.y = 0
+        velocity.y = 0
     end
     
-    local x = Math.DotProduct(viewCoords.xAxis, horizontalVelocity)
-    local z = Math.DotProduct(viewCoords.zAxis, horizontalVelocity)
+    local x = Math.DotProduct(headCoords.xAxis, velocity)
+    local z = Math.DotProduct(headCoords.zAxis, velocity)
     
-    local moveYaw = Math.Wrap(Math.Degrees( math.atan2(z,x) ), -180, 180)
-    local speedScalar = player:GetVelocityLength() / player:GetMaxSpeed(true)
+    local moveYaw
+    
+    if player.OverrideGetMoveYaw then
+        moveYaw = player:OverrideGetMoveYaw()
+    end
+    
+    if not moveYaw then
+        moveYaw = Math.Wrap(Math.Degrees( math.atan2(z,x) ), -180, 180)
+    end
+    
+    local speedScalar = velocity:GetLength() / player:GetMaxSpeed(true)
+    local crouchAmount = HasMixin(player, "CrouchMove") and player:GetCrouchAmount() or 0
+    if player.ModifyCrouchAnimation then
+        crouchAmount = player:ModifyCrouchAnimation(crouchAmount)
+    end
     
     player:SetPoseParam("move_yaw", moveYaw)
     player:SetPoseParam("move_speed", speedScalar)
@@ -897,6 +1113,20 @@ function SetPlayerPoseParameters(player, viewModel)
     player:SetPoseParam("body_yaw", bodyYaw)
     player:SetPoseParam("body_yaw_run", bodyYawRun)
 
+    // Some code for debugging help
+    //if Client and not Shared.GetIsRunningPrediction() and self:isa("Skulk") then
+        //Print('speedScalar,%f,%f', Shared.GetSystemTime(), speedScalar)
+    //end
+
+    //player:SetPoseParam("move_yaw", 0)
+    //player:SetPoseParam("move_speed", 0)
+    //player:SetPoseParam("body_pitch", 0)
+    //player:SetPoseParam("body_yaw", 0)
+    //player:SetPoseParam("body_yaw_run", 0)
+
+    //Print("body yaw = %f, move_yaw = %f", bodyYaw, moveYaw);
+    
+    player:SetPoseParam("crouch", crouchAmount)
     player:SetPoseParam("land_intensity", landIntensity)
     
     if viewModel then
@@ -904,6 +1134,7 @@ function SetPlayerPoseParameters(player, viewModel)
         viewModel:SetPoseParam("body_pitch", pitch)
         viewModel:SetPoseParam("move_yaw", moveYaw)
         viewModel:SetPoseParam("move_speed", speedScalar)
+        viewModel:SetPoseParam("crouch", crouchAmount)
         viewModel:SetPoseParam("body_yaw", bodyYaw)
         viewModel:SetPoseParam("body_yaw_run", bodyYawRun)
         viewModel:SetPoseParam("land_intensity", landIntensity)
@@ -913,11 +1144,11 @@ function SetPlayerPoseParameters(player, viewModel)
 end
 
 // Pass in position on ground
-function GetHasRoomForCapsule(extents, position, collisionRep, physicsMask, ignoreEntity)
+function GetHasRoomForCapsule(extents, position, collisionRep, physicsMask, ignoreEntity, filter)
 
     if extents ~= nil then
     
-        local filter = ConditionalValue(ignoreEntity, EntityFilterOne(ignoreEntity), nil)
+        local filter = filter or ConditionalValue(ignoreEntity, EntityFilterOne(ignoreEntity), nil)
         return not Shared.CollideBox(extents, position, collisionRep, physicsMask, filter)
         
     else
@@ -972,13 +1203,10 @@ function TriggerHitEffects(doer, target, origin, surface, melee, extraEffectPara
     
     if target and target.GetClassName and target.GetTeamType then
         tableParams[kEffectFilterClassName] = target:GetClassName()
-        tableParams[kEffectFilterIsMarine] = target:GetTeamType() == kMarineTeamType
-        tableParams[kEffectFilterIsAlien] = target:GetTeamType() == kRedTeamType
+        tableParams[kEffectFilterIsGreen] = target:GetTeamType() == kGreenTeamType
+        tableParams[kEffectFilterIsPurple] = target:GetTeamType() == kPurpleTeamType
     end
 
-    if GetIsPointOnInfestation(origin) then
-        surface = "organic"
-    end
        
     if not surface or surface == "" then
         surface = "metal"
@@ -1009,84 +1237,19 @@ function TriggerHitEffects(doer, target, origin, surface, melee, extraEffectPara
     
 end
 
-function TriggerMomentumChangeEffects(entity, surface, direction, normal, extraEffectParams)
 
-    assert(math.abs(direction:GetLengthSquared() - 1) < 0.001)
-    local tableParams = {}
-    
-    tableParams[kEffectFilterDoerName] = entity:GetClassName()
-    tableParams[kEffectSurface] = ConditionalValue(type(surface) == "string" and surface ~= "", surface, "metal") 
-
-    local coords = Coords.GetIdentity()
-    coords.origin = entity:GetOrigin()
-    coords.zAxis = direction
-    coords.yAxis = normal    
-    coords.xAxis = coords.yAxis:CrossProduct(coords.zAxis)
-    
-    tableParams[kEffectHostCoords] = coords
-
-    // Add in extraEffectParams if specified    
-    if extraEffectParams then
-        for key, element in pairs(extraEffectParams) do
-            tableParams[key] = element
-        end
-    end
-    
-    GetEffectManager():TriggerEffects("momentum_change", tableParams)
-
-end
-
-local kInfestationSearchRange = 25
-function GetIsPointOnInfestation(point)
-
-    local onInfestation = false
-    
-    // See if entity is on infestation
-    local infestationEntities = GetEntitiesWithinRange("Infestation", point, kInfestationSearchRange)
-    for infestationIndex = 1, #infestationEntities do
-        
-        local infestation = infestationEntities[infestationIndex]
-        
-        if infestation:GetIsPointOnInfestation(point, GetInfestationVerticalSize(nil)) then
-        
-            onInfestation = true
-            break
-            
-        end
-        
-    end
-    
-    return onInfestation
-
-end
 
 function GetSelectionText(entity, teamNumber)
 
     local text = ""
-    
-    local cloakedText = ""    
-    if entity.GetIsCamouflaged and entity:GetIsCamouflaged() then
-        cloakedText = " (" .. Locale.ResolveString("CAMOUFLAGED") .. ")"
-    elseif HasMixin(entity, "Cloakable") and entity:GetIsCloaked() then
-        cloakedText = " (" .. Locale.ResolveString("CLOAKED") .. ")"
-    end
-    local maturity = ""
-    
-    if HasMixin(entity, "Maturity") then
-    
-        if entity:GetMaturityLevel() == kMaturityLevel.Grow then
-            maturity = Locale.ResolveString("GROWN") .. " "
-        end
-        
-    end
-    
+       
     if entity:isa("Player") and entity:GetIsAlive() then
     
         local playerName = Scoreboard_GetPlayerData(entity:GetClientIndex(), "Name")
                     
         if playerName ~= nil then
             
-            text = string.format("%s%s", playerName, cloakedText)
+            text = string.format("%s%s", playerName)
         end
                     
     else
@@ -1095,36 +1258,18 @@ function GetSelectionText(entity, teamNumber)
         local enemyTeam = HasMixin(entity, "Team") and GetEnemyTeamNumber(entity:GetTeamNumber()) == teamNumber
         local techId = entity:GetTechId()
         
-        local secondaryText = ""
-        if HasMixin(entity, "Construct") and not entity:GetIsBuilt() then        
-            secondaryText = "Unbuilt "
-            
-        elseif HasMixin(entity, "PowerConsumer") and entity:GetRequiresPower() and not entity:GetIsPowered() then
-            secondaryText = "Unpowered "
-            
-        elseif entity:isa("Whip") then
-        
-            if not entity:GetIsRooted() then
-                secondaryText = "Unrooted "
-            end
-            
-        end
-        
+     
         local primaryText = GetDisplayNameForTechId(techId)
         if entity.GetDescription then
             primaryText = entity:GetDescription()
         end
 
-        text = string.format("%s%s%s%s", maturity, secondaryText, primaryText, cloakedText)
+        text = string.format("%s%s%s%s", primaryText)
 
     end
     
     return text
     
-end
-
-function GetCostForTech(techId)
-    return LookupTechData(techId, kTechDataCostKey, 0)
 end
 
 /**
@@ -1179,47 +1324,51 @@ end
 
 // All damage is routed through here.
 function CanEntityDoDamageTo(attacker, target, cheats, devMode, friendlyFire, damageType)
- 
+
+    if GetGameInfoEntity():GetState() == kGameState.NotStarted then
+        return false
+    end
+     
     if not HasMixin(target, "Live") then
         return false
     end
-    
-    if (not target:GetCanTakeDamage()) then
+
+    if not target:GetCanTakeDamage() then
         return false
     end
     
-    if (target == nil or target == {} or (target.GetDarwinMode and target:GetDarwinMode())) then
+    if target == nil or (target.GetDarwinMode and target:GetDarwinMode()) then
         return false
-    elseif(cheats or devMode) then
+    elseif cheats or devMode then
         return true
     elseif attacker == nil then
         return true
     end
-
-    // You can always do damage to yourself
-    if (attacker == target) then
+    
+    // You can always do damage to yourself.
+    if attacker == target then
         return true
     end
+        
+    // Your own grenades can hurt you.
+    if attacker:isa("Grenade") or attacker:isa("Rocket") then
     
-    // Your own grenades can hurt you
-    if attacker:isa("Grenade") then
-        local owner = attacker:GetOwner()        
+        local owner = attacker:GetOwner()
         if owner and owner:GetId() == target:GetId() then
             return true
         end
-    end
-    
-    // Same teams not allowed to hurt each other unless friendly fire enabled
-    local teamsOK = true
-    if attacker ~= nil then
-
-        teamsOK = GetAreEnemies(attacker, target) or friendlyFire
         
     end
     
-    // Allow damage of own stuff when testing
+    // Same teams not allowed to hurt each other unless friendly fire enabled.
+    local teamsOK = true
+    if attacker ~= nil then
+        teamsOK = GetAreEnemies(attacker, target) or friendlyFire
+    end
+    
+    // Allow damage of own stuff when testing.
     return teamsOK
-
+    
 end
 
 function TraceMeleeBox(weapon, eyePoint, axis, extents, range, mask, filter)
@@ -1236,11 +1385,11 @@ function TraceMeleeBox(weapon, eyePoint, axis, extents, range, mask, filter)
     
 end
 
-local function IsPossibleMeleeTarget(player, target)
+local function IsPossibleMeleeTarget(player, target, teamNumber)
 
     if target and HasMixin(target, "Live") and target:GetCanTakeDamage() and target:GetIsAlive() then
     
-        if HasMixin(target, "Team") and GetEnemyTeamNumber(player:GetTeamNumber()) == target:GetTeamNumber() then
+        if HasMixin(target, "Team") and teamNumber == target:GetTeamNumber() then
             return true
         end
         
@@ -1257,9 +1406,11 @@ end
  *
  * Default priority: closest enemy player, otherwise closest enemy melee target
  */
-local function IsBetterMeleeTarget(player, newTarget, target)
+local function IsBetterMeleeTarget(weapon, player, newTarget, target)
 
-    if IsPossibleMeleeTarget(player, newTarget) then
+    local teamNumber = GetEnemyTeamNumber(player:GetTeamNumber())
+
+    if IsPossibleMeleeTarget(player, newTarget, teamNumber) then
     
         if not target or (not target:isa("Player") and newTarget:isa("Player")) then
             return true
@@ -1272,13 +1423,14 @@ local function IsBetterMeleeTarget(player, newTarget, target)
 end
 
 // melee targets must be in front of the player
-local minAngle = 20 / 90
 local function IsNotBehind(fromPoint, hitPoint, forwardDirection)
 
-    local toHitPoint = hitPoint - fromPoint
+    local startPoint = fromPoint + forwardDirection * 0.1
+
+    local toHitPoint = hitPoint - startPoint
     toHitPoint:Normalize()
-    
-    return forwardDirection:DotProduct(toHitPoint) > minAngle
+
+    return forwardDirection:DotProduct(toHitPoint) > 0
 
 end
 
@@ -1308,9 +1460,15 @@ local kTraceOrder = { 4, 1, 3, 5, 7, 0, 2, 6, 8 }
   * Then we split the space into 9 parts and trace/select all of them, choose the "best" target. If no good target is found,
   * we use the middle trace for effects.
   */
-function CheckMeleeCapsule(weapon, player, damage, range, optionalCoords, traceRealAttack)
+function CheckMeleeCapsule(weapon, player, damage, range, optionalCoords, traceRealAttack, scale, priorityFunc, filter)
+
+    scale = scale or 1
 
     local eyePoint = player:GetEyePos()
+    
+    if not teamNumber then
+        teamNumber = GetEnemyTeamNumber( player:GetTeamNumber() )
+    end
     
     local coords = optionalCoords or player:GetViewAngles():GetCoords()
     local axis = coords.zAxis
@@ -1322,11 +1480,26 @@ function CheckMeleeCapsule(weapon, player, damage, range, optionalCoords, traceR
     end
     
     local width, height = weapon:GetMeleeBase()
+    width = scale * width
+    height = scale * height
+    
+    /*
+    if Client then
+        Client.DebugCapsule(eyePoint, eyePoint + axis * range, width, 0, 3)
+    end
+    */
+    
     // extents defines a world-axis aligned box, so x and z must be the same. 
     local extents = Vector(width / 6, height / 6, width / 6)
-    local filter = EntityFilterOne(player)
+    if not filter then
+        filter = EntityFilterOne(player)
+    end
     local middleTrace,middleStart
     local target,endPoint,surface,startPoint
+    
+    if not priorityFunc then
+        priorityFunc = IsBetterMeleeTarget
+    end
     
     for _, pointIndex in ipairs(kTraceOrder) do
     
@@ -1339,19 +1512,13 @@ function CheckMeleeCapsule(weapon, player, damage, range, optionalCoords, traceR
             middleTrace, middleStart = trace, sp
         end
         
-        if IsBetterMeleeTarget(player, trace.entity, target) and IsNotBehind(eyePoint, trace.endPoint, forwardDirection) then
+        if trace.entity and priorityFunc(weapon, player, trace.entity, target) and IsNotBehind(eyePoint, trace.endPoint, forwardDirection) then
         
-            // Log("Selected %s over %s", target, trace.entity)
             target = trace.entity
             startPoint = sp
             endPoint = trace.endPoint
             surface = trace.surface
             
-        end
-        
-        // Performance boost, doubt it makes much difference, but its an easy one...
-        if target and target:isa("Player") then
-            break
         end
         
     end
@@ -1362,50 +1529,123 @@ function CheckMeleeCapsule(weapon, player, damage, range, optionalCoords, traceR
     surface = surface or middleTrace.surface
     startPoint = startPoint or middleStart
     
-    local direction = target and (endPoint - startPoint):GetUnit() or nil
+    local direction = target and (endPoint - startPoint):GetUnit() or coords.zAxis
     return target ~= nil or middleTrace.fraction < 1, target, endPoint, direction, surface
     
+end
+
+local kNumMeleeZones = 3
+local kRangeMult = 0 // 0.15
+function PerformGradualMeleeAttack(weapon, player, damage, range, optionalCoords, altMode, filter)
+
+    local didHit, target, endPoint, direction, surface
+    local didHitNow
+    local damageMult = 1
+    local stepSize = 1 / kNumMeleeZones
+    
+    for i = 1, kNumMeleeZones do
+    
+        local attackRange = range * (1 - (i-1) * kRangeMult)
+        didHitNow, target, endPoint, direction, surface = CheckMeleeCapsule(weapon, player, damage, range, optionalCoords, true, i * stepSize, nil, filter)
+        didHit = didHit or didHitNow
+        if target and didHitNow then
+            
+            if target:isa("Player") then
+                damageMult = 1 - (i - 1) * stepSize
+            end
+
+            break
+            
+        end
+        
+    end
+    
+    if didHit then
+        weapon:DoDamage(damage * damageMult, target, endPoint, direction, surface, altMode)
+    end
+    
+    return didHit, target, endPoint, direction, surface
+
 end
 
 /**
  * Does an attack with a melee capsule.
  */
-function AttackMeleeCapsule(weapon, player, damage, range, optionalCoords, altMode)
+function AttackMeleeCapsule(weapon, player, damage, range, optionalCoords, altMode, filter)
 
-    // Enable tracing on this capsule check, last argument.
-    local didHit, target, endPoint, direction, surface = CheckMeleeCapsule(weapon, player, damage, range, optionalCoords, true)
+    local targets = {}
+    local didHit, target, endPoint, direction, surface
     
-    if didHit then
-        weapon:DoDamage(damage, target, endPoint, direction, surface, altMode)
+    if not filter then
+        filter = EntityFilterTwo(player, weapon)
+    end
+
+    for i = 1, 20 do
+    
+        local traceFilter = function(test)
+            return EntityFilterList(targets)(test) or filter(test)
+        end
+    
+        // Enable tracing on this capsule check, last argument.
+        didHit, target, endPoint, direction, surface = CheckMeleeCapsule(weapon, player, damage, range, optionalCoords, true, 1, nil, traceFilter)
+        local alreadyHitTarget = target ~= nil and table.contains(targets, target)
+
+        if didHit and not alreadyHitTarget then
+            weapon:DoDamage(damage, target, endPoint, direction, surface, altMode)
+        end
+        
+        if target and not alreadyHitTarget then
+            table.insert(targets, target)
+        end
+        
+        if not target or not HasMixin(target, "SoftTarget") then
+            break
+        end
+    
     end
     
-    return didHit, target, endPoint, surface
+    return didHit, targets[#targets], endPoint, surface
     
 end
 
+local kExplosionDirections =
+{
+    Vector(0, 1, 0),
+    Vector(0, -1, 0),
+    Vector(1, 0, 0),
+    Vector(-1, 0, 0),
+    Vector(1, 0, 0),
+    Vector(0, 0, 1),
+    Vector(0, 0, -1),
+}
 
-/**
- * Returns true if the passed in entity is under the control of a client (i.e. either the
- * entity for which SetControllingPlayer has been called on the server, or one
- * of its children).
- */
-function GetIsClientControlled(entity)
+function CreateExplosionDecals(triggeringEntity, effectName)
 
-    PROFILE("NS2Utility:GetIsClientControlled")
+    effectName = effectName or "explosion_decal"
+
+    local startPoint = triggeringEntity:GetOrigin() + Vector(0, 0.2, 0)
+    for i = 1, #kExplosionDirections do
     
-    local parent = entity:GetParent()
+        local direction = kExplosionDirections[i]
+        local trace = Shared.TraceRay(startPoint, startPoint + direction * 2, CollisionRep.Damage, PhysicsMask.Bullets, EntityFilterAll())
+
+        if trace.fraction ~= 1 then
+        
+            local coords = Coords.GetTranslation(trace.endPoint)
+            coords.yAxis = trace.normal
+            coords.zAxis = trace.normal:GetPerpendicular()
+            coords.xAxis = coords.zAxis:CrossProduct(coords.yAxis)
+
+            triggeringEntity:TriggerEffects(effectName, {effecthostcoords = coords})
+        
+        end
     
-    if parent ~= nil and GetIsClientControlled(parent) then
-        return true
-    end
-    
-    if Server then
-        return Server.GetOwner(entity) ~= nil
-    else
-        return Client.GetLocalPlayer() == entity
     end
 
 end
+
+
+
 
 gEventTiming = {}
 function LogEventTiming()
@@ -1431,25 +1671,39 @@ function GetEventTimingString(seconds)
     
 end
 
-function GetIsVortexed(entity)
-    return entity and HasMixin(entity, "VortexAble") and entity:GetIsVortexed()
-end
-
 if Client then
 
-    function AdjustInputForInversion(input)
-    
-        // Invert mouse if specified in options.
-        local invertMouse = Client.GetOptionBoolean(kInvertedMouseOptionsKey, false)
-        if invertMouse then
-            input.pitch = -input.pitch
-        end
-        
-    end
-    
     local kMaxPitch = Math.Radians(89.9)
     function ClampInputPitch(input)
         input.pitch = Math.Clamp(input.pitch, -kMaxPitch, kMaxPitch)
+    end
+    
+    // &ol& = order location
+    // &ot& = order target entity name
+    function TranslateHintText(text)
+    
+        local translatedText = text
+        local player = Client.GetLocalPlayer()
+        
+        if player and HasMixin(player, "Orders") then
+        
+            local order = player:GetCurrentOrder()
+            if order then
+            
+                local orderDestination = order:GetLocation()
+                local location = GetLocationForPoint(orderDestination)
+                local orderLocationName = location and location:GetName() or ""
+                translatedText = string.gsub(translatedText, "&ol&", orderLocationName)
+                
+                local orderTargetEntityName = LookupTechData(order:GetParam(), kTechDataDisplayName, "<entity name>")
+                translatedText = string.gsub(translatedText, "&ot&", orderTargetEntityName)
+                
+            end
+            
+        end
+        
+        return translatedText
+        
     end
     
 end
@@ -1503,6 +1757,7 @@ end
 
 -- add comma to separate thousands
 function CommaValue(amount)
+
     local formatted = ""
     if amount ~= nil then
         formatted = amount
@@ -1514,19 +1769,41 @@ function CommaValue(amount)
         end
     end
     return formatted
+    
+end
+
+/**
+ * Trim off unnecessary path and extension.
+ */
+function GetTrimmedMapName(mapName)
+
+    if mapName == nil then
+        return ""
+    end
+    
+    for trimmedName in string.gmatch(mapName, [[\/(.+)\.level]]) do
+        return trimmedName
+    end
+    
+    return mapName
+    
 end
 
 // Look for "BIND_" in the string and substitute with key to press
 // ie, "Press the BIND_Buy key to evolve to a new lifeform or to gain new upgrades." => "Press the B key to evolve to a new lifeform or to gain new upgrades."
 function SubstituteBindStrings(tipString)
 
-    local substitutions = {}
+    local substitutions = { }
     for word in string.gmatch(tipString, "BIND_(%a+)") do
     
         local bind = GetPrettyInputName(word)
-        //local bind = BindingsUI_GetInputValue(word)
-        assert(type(bind) == "string", tipString)
-        tipString = string.gsub(tipString, "BIND_" .. word, bind)
+        if type(bind) == "string" then
+            tipString = string.gsub(tipString, "BIND_" .. word, bind)
+        // If the input name is not found, replace the BIND_InputName with just InputName as a fallback.
+        else
+            tipString = string.gsub(tipString, "BIND_" .. word, word)
+        end
+        
     end
     
     return tipString
@@ -1550,7 +1827,7 @@ function GetTexCoordsForTechId(techId)
         // marine weapons
         gTechIdPosition[kTechId.Rifle] = kDeathMessageIcon.Rifle
         gTechIdPosition[kTechId.Pistol] = kDeathMessageIcon.Pistol
-        gTechIdPosition[kTechId.AntiMatterSword] = kDeathMessageIcon.Axe
+        gTechIdPosition[kTechId.Axe] = kDeathMessageIcon.Axe
         gTechIdPosition[kTechId.Shotgun] = kDeathMessageIcon.Shotgun
         gTechIdPosition[kTechId.Flamethrower] = kDeathMessageIcon.Flamethrower
         gTechIdPosition[kTechId.GrenadeLauncher] = kDeathMessageIcon.Grenade
@@ -1567,5 +1844,244 @@ function GetTexCoordsForTechId(techId)
     end
     
     return x1, y1, x2, y2
+
+end
+
+// Ex: input.commands = RemoveMoveCommand( input.commands, Move.PrimaryAttack )
+function RemoveMoveCommand( commands, moveMask )
+    local negMask = bit.bxor(0xFFFFFFFF, moveMask)
+    return bit.band(commands, negMask)
+end
+
+function HasMoveCommand( commands, moveMask )
+    return bit.band( commands, moveMask ) ~= 0
+end
+
+function AddMoveCommand( commands, moveMask )
+    return bit.bor(commands, moveMask)
+end
+
+
+function GetInstalledMapList()
+
+    local matchingFiles = { }
+    Shared.GetMatchingFileNames("maps/*.level", false, matchingFiles)
+    
+    local mapNames = { }
+    local mapFiles = { }
+    
+    for _, mapFile in pairs(matchingFiles) do
+    
+        local _, _, filename = string.find(mapFile, "maps/(.*).level")
+        local mapname = string.gsub(filename, 'pg_', '', 1):gsub("^%l", string.upper)
+        local tagged,_ = string.match(filename, "pg_", 1)
+        if tagged ~= nil then
+        
+            table.insert(mapNames, mapname)
+            table.insert(mapFiles, {["name"] = mapname, ["fileName"] = filename})
+            
+        end
+        
+    end
+    
+    return mapNames, mapFiles
+    
+end
+
+// TODO: move to Utility.lua
+
+function EntityFilterList(list)
+    return function(test) return table.contains(list, test) end
+end
+
+function GetBulletTargets(startPoint, endPoint, spreadDirection, bulletSize, filter)
+
+    local targets = {}
+    local hitPoints = {}
+    local trace
+    
+    for i = 1, 20 do
+    
+        local traceFilter = nil 
+        if filter then
+
+            traceFilter = function(test)
+                return EntityFilterList(targets)(test) or filter(test)
+            end
+        
+        else        
+            traceFilter = EntityFilterList(targets)        
+        end
+    
+        trace = Shared.TraceRay(startPoint, endPoint, CollisionRep.Damage, PhysicsMask.Bullets, traceFilter)
+        if not trace.entity then
+        
+            -- Limit the box trace to the point where the ray hit as an optimization.
+            local boxTraceEndPoint = trace.fraction ~= 1 and trace.endPoint or endPoint
+            local extents = GetDirectedExtentsForDiameter(spreadDirection, bulletSize)
+            trace = Shared.TraceBox(extents, startPoint, boxTraceEndPoint, CollisionRep.Damage, PhysicsMask.Bullets, traceFilter)
+            
+        end
+        
+        if trace.entity and not table.contains(targets, trace.entity) then
+        
+            table.insert(targets, trace.entity)
+            table.insert(hitPoints, trace.endPoint)
+            
+        end
+        
+        if (not trace.entity or not HasMixin(trace.entity, "SoftTarget")) or trace.fraction == 1 then
+            break
+        end
+    
+    end
+    
+    return targets, trace, hitPoints
+
+end
+
+local kAlienStructureMoveSound = PrecacheAsset("sound/NS2.fev/alien/infestation/build")
+function UpdateAlienStructureMove(self, deltaTime)
+
+    if Server then
+
+        local currentOrder = self:GetCurrentOrder()
+        if GetIsUnitActive(self) and currentOrder and currentOrder:GetType() == kTechId.Move and (not HasMixin(self, "TeleportAble") or not self:GetIsTeleporting()) then
+
+            local speed = self:GetMaxSpeed()
+            if self.shiftBoost then
+                speed = speed * kShiftStructurespeedScalar
+            end
+        
+            self:MoveToTarget(PhysicsMask.AIMovement, currentOrder:GetLocation(), speed, deltaTime)
+            
+            if self:IsTargetReached(currentOrder:GetLocation(), kAIMoveOrderCompleteDistance) then
+                self:CompletedCurrentOrder()
+                self.moving = false
+            else
+                self.moving = true            
+            end
+            
+        else
+            self.moving = false
+        end
+
+        if HasMixin(self, "Obstacle") then
+
+            if currentOrder and currentOrder:GetType() == kTechId.Move then
+            
+                self:RemoveFromMesh()
+            
+                if not self.removedMesh then            
+                    
+                    self.removedMesh = true
+                    self:OnObstacleChanged()
+                
+                end
+                
+            elseif self.removedMesh then
+            
+                self:AddToMesh()
+                self.removedMesh = false
+                
+            end
+
+        end   
+
+    elseif Client then
+    
+        if self.clientMoving ~= self.moving then
+        
+            if self.moving then
+                Shared.PlaySound(self, kAlienStructureMoveSound, 1)
+            else
+                Shared.StopSound(self, kAlienStructureMoveSound)
+            end
+            
+            self.clientMoving = self.moving
+        
+        end
+        
+        if self.moving and (not self.timeLastDecalCreated or self.timeLastDecalCreated + 1.1 < Shared.GetTime() ) then
+        
+            self:TriggerEffects("structure_move")
+            self.timeLastDecalCreated = Shared.GetTime()
+        
+        end
+    
+    end
+
+end
+
+function GetCommanderLogoutAllowed()
+
+    return true
+    
+    /*
+
+    local gameState = kGameState.PreGame
+    local gameStateDuration = 0
+
+    if Server then   
+
+        local gamerules = GetGamerules()
+        if gamerules then
+        
+            gameState = gamerules:GetGameState()
+            gameStateDuration = gamerules:GetGameTimeChanged()
+        
+        end
+
+    else  
+    
+        local gameInfo = GetGameInfoEntity()
+        
+        if gameInfo then
+        
+            gameState = gameInfo:GetState()
+            gameStateDuration = math.max(0, Shared.GetTime() - gameInfo:GetStartTime())
+            
+        end
+
+    end
+
+    return ( gameState ~= kGameState.Countdown and gameState ~= kGameState.Started ) or gameStateDuration >= kCommanderMinTime
+    
+    */
+
+end
+
+function GetFileExists(path)
+    local searchResult = {}
+    Shared.GetMatchingFileNames( path, false, searchResult )
+    return #searchResult > 0
+end
+
+//----------------------------------------
+//  This will return nil if the asset DNE
+//----------------------------------------
+function PrecacheAssetIfExists( path )
+
+    if GetFileExists(path) then
+        return PrecacheAsset(path)
+    else
+        //DebugPrint("attempted to precache asset that does not exist: "..path)
+        return nil
+    end
+
+end
+
+//----------------------------------------
+//  If the first path DNE, it will use the fallback
+//----------------------------------------
+function PrecacheAssetSafe( path, fallback )
+
+    if GetFileExists(path) then
+        return PrecacheAsset(path)
+    else
+        //DebugPrint("Could not find "..path.."\n    Loading "..fallback.." instead" )
+        assert( GetFileExists(fallback) )
+        return PrecacheAsset(fallback)
+    end
 
 end

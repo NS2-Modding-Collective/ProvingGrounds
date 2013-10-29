@@ -10,18 +10,11 @@
 // color, playername, color, message
 local chatMessages = { }
 local enteringChatMessage = false
+local startedChatTime = 0
 local teamOnlyChat = false
 // Note: Nothing clears this out but it is probably safe to assume the player won't
 // mute enough clients to run out of memory.
 local mutedClients = { }
-
-/**
- * Returns true if the user is currently holding down the button to record for
- * voice chat.
- */
-function ChatUI_IsVoiceChatActive()
-    return Client.IsVoiceRecordingActive()
-end
 
 /**
  * Returns true if the passed in client is currently speaking.
@@ -29,13 +22,12 @@ end
 function ChatUI_GetIsClientSpeaking(clientIndex)
 
     // Handle the local client specially.
-    local localPlayer = Client.GetLocalPlayer()
-    if localPlayer and localPlayer:GetClientIndex() == clientIndex then
-        return ChatUI_IsVoiceChatActive()
+    if Client.GetLocalClientIndex() == clientIndex then
+        return Client.IsVoiceRecordingActive()
     end
     
     return Client.GetIsClientSpeaking(clientIndex)
-
+    
 end
 
 function ChatUI_SetClientMuted(muteClientIndex, setMute)
@@ -53,22 +45,20 @@ function ChatUI_SetClientMuted(muteClientIndex, setMute)
 end
 
 function ChatUI_GetClientMuted(clientIndex)
-
     return mutedClients[clientIndex] == true
-
 end
 
 function ChatUI_GetMessages()
 
-    local uiChatMessages = {}
+    local uiChatMessages = { }
     
-    if(table.maxn(chatMessages) > 0) then
+    if table.maxn(chatMessages) > 0 then
     
         table.copy(chatMessages, uiChatMessages)
-        chatMessages = {}
+        chatMessages = { }
         
     end
-        
+    
     return uiChatMessages
     
 end
@@ -76,6 +66,10 @@ end
 // Return true if we want the UI to take key input for chat
 function ChatUI_EnteringChatMessage()
     return enteringChatMessage
+end
+
+function ChatUI_GetStartedChatTime()
+    return startedChatTime
 end
 
 // Return string prefix to display in front of the chat input
@@ -106,6 +100,8 @@ function ChatUI_SubmitChatMessageBody(chatMessage)
     
     enteringChatMessage = false
     
+    SetMoveInputBlocked(false)
+    
 end
 
 /** 
@@ -116,7 +112,10 @@ function ChatUI_EnterChatMessage(teamOnly)
     if not enteringChatMessage then
     
         enteringChatMessage = true
+        startedChatTime = Shared.GetTime()
         teamOnlyChat = teamOnly
+        
+        SetMoveInputBlocked(true)
         
     end
     
@@ -132,8 +131,17 @@ local function OnMessageChat(message)
     if player then
     
         // color, playername, color, message
-        table.insert(chatMessages, GetColorForTeamNumber(message.teamNumber))
-                
+
+        local drawRookie = ScoreboardUI_GetDrawRookie(message.playerName, player)
+
+        local rookieText = ""
+        if drawRookie then
+            table.insert(chatMessages, kNewPlayerColor)
+            rookieText = " " .. Locale.ResolveString("ROOKIE_CHAT")
+        else
+            table.insert(chatMessages, GetColorForTeamNumber(message.teamNumber))
+        end
+        
         // Tack on location name if any
         local locationNameText = ""
         
@@ -146,10 +154,16 @@ local function OnMessageChat(message)
         end
         
         // Pre-pend "team" or "all"
-        local preMessageString = string.format("%s%s%s: ", message.teamOnly and locationNameText or "(All) ", message.playerName, locationNameText)
+        local preMessageString = string.format("%s%s%s: ", message.teamOnly and locationNameText or "(All) ", message.playerName, rookieText, locationNameText)
         
         table.insert(chatMessages, preMessageString)
-        table.insert(chatMessages, kChatTextColor[message.teamType])     
+        
+        if drawRookie then
+            table.insert(chatMessages, kNewPlayerColorFloat)
+        else
+            table.insert(chatMessages, kChatTextColor[message.teamType])
+        end
+        
         table.insert(chatMessages, message.message)
         
         // reserved for possible texture name
@@ -161,7 +175,7 @@ local function OnMessageChat(message)
         // entity id
         table.insert(chatMessages, 0)
         
-        Shared.PlaySound(self, player:GetChatSound())
+        StartSoundEffect(player:GetChatSound())
         
         // Only print to log if the client isn't running a local server
         // which has already printed to log.
@@ -175,6 +189,37 @@ local function OnMessageChat(message)
             Shared.Message(prefixText .. " - " .. message.playerName .. ": " .. message.message)
             
         end
+        
+    end
+    
+end
+
+local kSystemMessageHexColor = 0xFFD800
+local kSystemMessageColor = Color(1.0, 0.8, 0.0, 1)
+
+// Let other modules add messages to the chat system - useful for system messages
+function ChatUI_AddSystemMessage(msgText)
+
+    local player = Client.GetLocalPlayer()    
+    
+    if player then
+    
+        table.insert(chatMessages, kSystemMessageHexColor)
+        table.insert(chatMessages, "")
+        
+        table.insert(chatMessages, kSystemMessageColor)
+        table.insert(chatMessages, msgText)
+
+         // reserved for possible texture name
+        table.insert(chatMessages, "")
+        // texture x
+        table.insert(chatMessages, 0)
+        // texture y
+        table.insert(chatMessages, 0)
+        // entity id
+        table.insert(chatMessages, 0)
+
+        StartSoundEffect(player:GetChatSound())
         
     end
     

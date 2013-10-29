@@ -13,15 +13,19 @@ math.randomseed(Shared.GetSystemTime())
 // math.random() is more random the more you call it. Don't ask.
 for i = 1, 100 do math.random() end
 
-// Utility and constants
+// NOTE: EventTester.lua needs to be loaded first.
+Script.Load("lua/EventTester.lua")
 
+Script.Load("lua/JITConsoleCommands.lua")
+// Utility and constants
 Script.Load("lua/Globals.lua")
 Script.Load("lua/DamageTypes.lua")
 Script.Load("lua/Debug.lua")
 Script.Load("lua/CollisionRep.lua")
 Script.Load("lua/Utility.lua")
+Script.Load("lua/PlayerInput.lua")
+
 Script.Load("lua/MixinUtility.lua")
-Script.Load("lua/Actor.lua")
 Script.Load("lua/AnimatedModel.lua")
 Script.Load("lua/Vector.lua")
 Script.Load("lua/Table.lua")
@@ -30,8 +34,7 @@ Script.Load("lua/Effects.lua")
 Script.Load("lua/NetworkMessages.lua")
 Script.Load("lua/TechTreeConstants.lua")
 Script.Load("lua/TechData.lua")
-Script.Load("lua/TechNode.lua")
-Script.Load("lua/TechTree.lua")
+Script.Load("lua/TechTreeButtons.lua")
 Script.Load("lua/ScriptActor.lua")
 Script.Load("lua/PropDynamic.lua")
 Script.Load("lua/ParticleEffect.lua")
@@ -43,18 +46,19 @@ Script.Load("lua/RingBuffer.lua")
 
 Script.Load("lua/Balance.lua")
 Script.Load("lua/BalanceHealth.lua")
-Script.Load("lua/BalanceMisc.lua")
 
 Script.Load("lua/TeamJoin.lua")
 
 // Neutral structures
-Script.Load("lua/Door.lua")
 Script.Load("lua/Reverb.lua")
 Script.Load("lua/Location.lua")
 Script.Load("lua/Trigger.lua")
-Script.Load("lua/Ladder.lua")
 Script.Load("lua/DeathTrigger.lua")
+Script.Load("lua/JumpPadTrigger.lua")
 Script.Load("lua/TimedEmitter.lua")
+Script.Load("lua/ButtonEmitter.lua")
+Script.Load("lua/AmbientSoundPlayer.lua")
+Script.Load("lua/PropDynamicAnimator.lua")
 Script.Load("lua/Gamerules.lua")
 Script.Load("lua/PGGamerules.lua")
 Script.Load("lua/BaseSpawn.lua")
@@ -62,66 +66,43 @@ Script.Load("lua/ReadyRoomSpawn.lua")
 Script.Load("lua/TeamSpawn.lua")
 Script.Load("lua/Weapons/ViewModel.lua")
 
-
+Script.Load("lua/ItemSpawn.lua")
+Script.Load("lua/DropPack.lua")
 Script.Load("lua/AmmoPack.lua")
 Script.Load("lua/MedPack.lua")
 Script.Load("lua/CatPack.lua")
-Script.Load("lua/Effect.lua")
-Script.Load("lua/AmbientSound.lua")
-Script.Load("lua/Particles.lua")
+Script.Load("lua/ServerParticleEmitter.lua")
 
 // Base players
+//Script.Load("lua/Avatar.lua")
+Script.Load("lua/GreenAvatar.lua")
+Script.Load("lua/PurpleAvatar.lua")
 Script.Load("lua/ReadyRoomPlayer.lua")
 Script.Load("lua/Spectator.lua")
 Script.Load("lua/FilmSpectator.lua")
-Script.Load("lua/RedSpectator.lua")
 Script.Load("lua/MarineSpectator.lua")
 Script.Load("lua/Ragdoll.lua")
 
-// Character class behaviors
-Script.Load("lua/Weapons/Weapon.lua")
-Script.Load("lua/Avatar.lua")
+
 
 // Weapons
 Script.Load("lua/Weapons/Marine/ClipWeapon.lua")
-
 Script.Load("lua/Weapons/Marine/Rifle.lua")
 Script.Load("lua/Weapons/Marine/Pistol.lua")
 Script.Load("lua/Weapons/Marine/Shotgun.lua")
 Script.Load("lua/Weapons/Marine/Axe.lua")
-Script.Load("lua/Weapons/Marine/GrenadeLauncher.lua")
 Script.Load("lua/Weapons/Marine/RocketLauncher.lua")
 Script.Load("lua/Weapons/Marine/Flamethrower.lua")
-Script.Load("lua/Weapons/Marine/AMS.lua")
 
-Script.Load("lua/Sayings.lua")
+
 Script.Load("lua/NS2Utility.lua")
 Script.Load("lua/WeaponUtility.lua")
+Script.Load("lua/GreenTeamInfo.lua")
+Script.Load("lua/PurpleTeamInfo.lua")
 Script.Load("lua/GameInfo.lua")
-Script.Load("lua/PathingUtility.lua")
-
-gHeightMap = gHeightMap // survive hotloading; will be nil the first time
-
-local function LoadHeightmap()
-
-    // Load height map
-    gHeightMap = HeightMap()   
-    local heightmapFilename = string.format("maps/overviews/%s.hmp", Shared.GetMapName())
-    
-    if not gHeightMap:Load(heightmapFilename) then
-        Shared.Message("Couldn't load height map " .. heightmapFilename)
-        gHeightMap = nil
-    end
-
-end
 
 local function OnMapPostLoad()
-    LoadHeightmap()
-
-end
-
-function GetHeightmap()
-    return gHeightMap
+    
 end
 
 /**
