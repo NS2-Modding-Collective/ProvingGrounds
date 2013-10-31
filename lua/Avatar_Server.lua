@@ -10,13 +10,13 @@ function Avatar:OnTakeDamage(damage, attacker, doer, point)
 
     if doer then
     
-        if doer:isa("Grenade") and doer:GetOwner() == self then
+        if doer:isa("Grenade") or doer:isa("Rocket") and doer:GetOwner() == self then
         
             self.onGround = false
             local velocity = self:GetVelocity()
             local fromGrenade = self:GetOrigin() - doer:GetOrigin()
             local length = fromGrenade:Normalize()
-            local force = Clamp(1 - (length / 4), 0, 1)
+            local force = 80 //Clamp(1 - (length / 4), 0, 1)
             
             if force > 0 then
                 velocity:Add(force * fromGrenade)
@@ -67,10 +67,14 @@ function Avatar:GiveItem(itemMapName)
     
 end
 
+local kPickupHealthOffset = Vector(0, 0.75, 0)
 function Avatar:OnKill(attacker, doer, point, direction)
     
     // Destroy remaining weapons
     self:DestroyWeapons()
+    
+    local pickupHealth = CreateEntity(HealthPickup.kMapName, self:GetOrigin() + kPickupHealthOffset)
+    pickupHealth:SetVelocity(self:GetVelocity() * 0.5)    
     
     Player.OnKill(self, attacker, doer, point, direction)
         

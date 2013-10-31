@@ -1,4 +1,4 @@
-shader = "models/marine/marine.surface_shader"
+shader = "models/alien/alien.surface_shader"
 albedoMap = "models/props/lamp/lamp_diffuse.dds"
 specularMap = "models/props/lamp/lamp_specular.dds"
 normalMap = "models/props/lamp/lamp_normal.dds"

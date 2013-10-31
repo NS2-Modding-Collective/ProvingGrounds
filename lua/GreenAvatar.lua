@@ -10,7 +10,6 @@ Script.Load("lua/AvatarVariantMixin.lua")
 Script.Load("lua/Avatar.lua")
 
 if Client then
-//    Script.Load("lua/ColoredSkinsMixin.lua")
     Script.Load("lua/TeamMessageMixin.lua")
 end
 
@@ -32,7 +31,6 @@ function GreenAvatar:OnCreate()
         
     if Client then
         InitMixin(self, TeamMessageMixin, { kGUIScriptName = "GUIMarineTeamMessage" })    
-//        InitMixin(self, ColoredSkinsMixin) //Client only
     end
 
 
@@ -41,7 +39,7 @@ end
 if Client then
 
     function GreenAvatar:GetBaseSkinColor()
-	    return Color(0.078, 0.878, 0.984, 1)
+	    return Color(0.078, 0.978, 0.384, 1)
 	end
 	
 	function GreenAvatar:GetAccentSkinColor()

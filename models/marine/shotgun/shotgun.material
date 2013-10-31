@@ -1,0 +1,12 @@
+shader = "shaders/ColoredSkins.surface_shader"
+albedoMap = "models/marine/shotgun/shotgun.dds"
+specularMap = "materials/dev/black.dds"
+normalMap = "materials/dev/dev_normal.dds"
+emissiveMap = "materials/dev/black.dds"
+
+modelColorMap = "models/marine/shotgun/shotgun_colorMap.dds"
+numColumns = 1
+numRows = 1
+colorizeModel = 1
+
+surface = "metal"
