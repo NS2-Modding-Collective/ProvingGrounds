@@ -10,10 +10,9 @@ local function CheckForRecipients(self)
 
     for _, avatar in ipairs(GetEntitiesWithinRange("Avatar", self:GetOrigin(), 1.7)) do
     
-        if avatar:GetIsAlive() and avatar:GetHealth() > 0 and avatar:GetHealth() < 100 then
+        if avatar:GetIsAlive() and avatar:GetHealth() > 0 and avatar:GetHealth() ~= avatar:GetMaxHealth() then
 
             avatar:AddHealth(kPickupHealth, false, false)
-            PrintToLog("Health is %s", avatar:GetHealth())
             StartSoundEffectAtOrigin(kHealthSound, self:GetOrigin())
             DestroyEntity(self)
             

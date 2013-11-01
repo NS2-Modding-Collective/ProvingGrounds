@@ -7,7 +7,7 @@
 // ========= For more information, visit us at http://www.unknownworlds.com =====================		
 		
 // HEALTH AND ARMOR		
-kAvatarHealth = 100	kAvatarPointValue = 5
+kAvatarHealth = 150	kAvatarPointValue = 5
 
 kGrenadeLauncherPointValue = 2
 kShotgunPointValue = 5
