@@ -4,5 +4,6 @@ Game Design and Programming - Andy 'Soul Rider' Wilson
 Mapping & Textures - =Mr.P=
 Models - Von Doom
 Colored Skins Code - McGlaspie
+Health Pickups - Sewlek
 Posters - TwoStroker
 Logo - Jibrail

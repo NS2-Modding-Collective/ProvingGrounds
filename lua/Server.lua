@@ -15,6 +15,7 @@ Script.Load("lua/Shared.lua")
 Script.Load("lua/MapEntityLoader.lua")
 Script.Load("lua/TechData.lua")
 Script.Load("lua/TargetCache.lua")
+Script.Load("lua/ItemSpawn.lua")
 
 Script.Load("lua/GreenTeam.lua")
 Script.Load("lua/PurpleTeam.lua")
@@ -146,7 +147,7 @@ function GetLoadSpecial(mapName, groupName, values)
         
         local entity = ItemSpawn()
         entity:OnCreate()
-        LoadEntityFromvalues(entity, values)
+        LoadEntityFromValues(entity, values)
         if entity.itemName == kSpawnItem1 then
             table.insert(Server.spawnItem1List, entity)
         end

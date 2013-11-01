@@ -55,7 +55,7 @@ Avatar.kAirStrafeWeight = 4
 Avatar.kAvatarAlertTimeout = 4
 
 //Dodge Variables for Proving Grounds AW
-local kDodgeCooldown = 1.5
+local kDodgeCooldown = 0.8
 local kDodgeForce = 4
 local kDodgeSpeed = 30
 local kDodgeJumpDelay = 0.5
@@ -316,7 +316,7 @@ function Avatar:OnUpdateAnimationInput(modelMixin)
     if self.catpackboost then
         catalystSpeed = kCatPackWeaponSpeed
     end
-
+    modelMixin:SetAnimationInput("reload_time", kReloadTime)
     modelMixin:SetAnimationInput("catalyst_speed", catalystSpeed)
     
 end

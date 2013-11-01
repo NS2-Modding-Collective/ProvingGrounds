@@ -10,7 +10,6 @@ Script.Load("lua/Avatar.lua")
 Script.Load("lua/AvatarVariantMixin.lua")
 
 if Client then
-//    Script.Load("lua/ColoredSkinsMixin.lua")
     Script.Load("lua/TeamMessageMixin.lua")
 end
 
@@ -29,7 +28,6 @@ function PurpleAvatar:OnCreate()
 
     if Client then
         InitMixin(self, TeamMessageMixin, { kGUIScriptName = "GUIMarineTeamMessage" })
-//        InitMixin(self, ColoredSkinsMixin) //Client only
     end
 
 end
@@ -37,15 +35,15 @@ end
 if Client then
 
     function PurpleAvatar:GetBaseSkinColor()
-	    return Color(0.61, 0.43, 0.16, 1)
+	    return Color(0.848, 0.143, 0.531, 1)
 	end
 	
 	function PurpleAvatar:GetAccentSkinColor()
-	    return Color(1.0, 0.0, 0.0, 1)
+	    return Color(0.942, 0.621, 0.903, 1)
 	end
 	
 	function PurpleAvatar:GetTrimSkinColor()
-	    return Color(0.576, 0.194, 0.011, 1)
+	    return Color(0.976, 0.594, 0.711, 1)
 	end
 	
 	function PurpleAvatar:InitializeSkin()

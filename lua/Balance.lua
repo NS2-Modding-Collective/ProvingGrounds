@@ -29,7 +29,7 @@ kNerveGasDamageType = kDamageType.NerveGas
 
 
 // AVATAR DAMAGE
-kRifleDamage = 2
+kRifleDamage = 3
 kRifleDamageType = kDamageType.Normal
 kRifleClipSize = 50
 
@@ -40,7 +40,7 @@ kHeavyRifleClipSize = 75
 kRifleMeleeDamage = 25
 kRifleMeleeDamageType = kDamageType.Normal
 
-kPistolDamage = 6
+kPistolDamage = 7
 kPistolDamageType = kDamageType.Normal
 kPistolClipSize = 20
 // not used yet
@@ -48,7 +48,7 @@ kPistolMinFireDelay = 0.1
 
 kPistolAltDamage = 40
 
-kAxeDamage = 150
+kAxeDamage = 151
 kAxeDamageType = kDamageType.Normal
 
 
@@ -59,7 +59,7 @@ kGrenadeLauncherGrenadeDamageRadius = 4
 kGrenadeLifetime = 2.0
 kGrenadeUpgradedLifetime = 1.5
 
-kRocketLauncherRocketDamage = 75
+kRocketLauncherRocketDamage = 60
 kRocketLauncherRocketDamageType = kDamageType.Normal
 kRocketLauncherRocketDamageRadius = 4
 kRocketLauncherClipSize = 4
@@ -67,7 +67,7 @@ kRocketLauncherClipSize = 4
 kShotgunDamage = 2
 kShotgunDamageType = kDamageType.Normal
 kShotgunClipSize = 8
-kShotgunBulletsPerShot = 10
+kShotgunBulletsPerShot = 14
 
 kNadeLauncherClipSize = 4
 

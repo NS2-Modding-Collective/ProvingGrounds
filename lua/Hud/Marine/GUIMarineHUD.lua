@@ -213,7 +213,8 @@ function GUIMarineHUD:Update(deltaTime)
     
     // Update health bar
     self.statusDisplay:Update(deltaTime, { PlayerUI_GetPlayerHealth(), PlayerUI_GetPlayerMaxHealth() } )
-        
+    GUIAnimatedScript.Update(self, deltaTime)   
+ 
     // Update game time
     local gameTime = PlayerUI_GetGameStartTime()
     

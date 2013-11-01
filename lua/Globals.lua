@@ -32,10 +32,10 @@ kPercentNeededForVoteConcede = 0.75
 
 // Team colors
 kGreenFontName = "fonts/AgencyFB_large.fnt"
-kGreenFontColor = Color(0.756, 0.952, 0.988, 1)
+kGreenFontColor = Color(0.078, 0.978, 0.384, 1)
 
 kPurpleFontName = "fonts/AgencyFB_large.fnt"
-kPurpleFontColor = Color(0.901, 0.623, 0.215, 1)
+kPurpleFontColor = Color(0.848, 0.143, 0.531, 1)
 
 kNeutralFontName = "fonts/AgencyFB_large.fnt"
 kNeutralFontColor = Color(0.7, 0.7, 0.7, 1)
@@ -46,9 +46,9 @@ kHitEffectOffset = 0.13
 kBloodDistance = 3.5
 
 kGreenTeamColor = 0x4DB1FF
-kGreenTeamColorFloat = Color(0.302, 0.859, 1)
+kGreenTeamColorFloat = Color(0.1, 0.98, 0.4)
 kPurpleTeamColor = 0xFFCA3A
-kPurpleTeamColorFloat = Color(1, 0.792, 0.227)
+kPurpleTeamColorFloat = Color(0.85, 0.15, 0.5)
 kNeutralTeamColor = 0xEEEEEE
 kChatPrefixTextColor = 0xFFFFFF
 kChatTextColor = { [kNeutralTeamType] = kNeutralFontColor,
@@ -83,6 +83,7 @@ kDefaultPlayerName = "Avatar"
 // Used for cross team win scenarios
 kTeamWin = enum( { 'None', 'Team1Win', 'Team2Win', 'TheyDraw' }) 
 
+kPickupHealth = 25
 // Max number of entities allowed in radius. Don't allow creating any more entities if this number is rearched.
 // Don't include players in count.
 kMaxEntitiesInRadius = 25
@@ -131,6 +132,8 @@ kTertiaryWeaponSlot = 3
 kFourthWeaponSlot = 4
 kFifthWeaponSlot = 5
 kSixthWeaponSlot = 6
+//Weapon Reload Time Multipler for faster than NS2 reloads
+kReloadTime = 4
 
 // How long to display weapon picker after selecting weapons
 kDisplayWeaponTime = 0.5
@@ -259,8 +262,8 @@ kNameTagFontNames = { [kGreenTeamType] = kGreenFontName,
                       [kPurpleTeamType] = kPurpleFontName,
                       [kNeutralTeamType] = kNeutralFontName }
 
-kHealthBarColors = { [kGreenTeamType] = Color(0.725, 0.921, 0.949, 1),
-                     [kPurpleTeamType] = Color(0.776, 0.364, 0.031, 1),
+kHealthBarColors = { [kGreenTeamType] = Color(0.078, 0.978, 0.384, 1),
+                     [kPurpleTeamType] = Color(0.848, 0.143, 0.531, 1),
                      [kNeutralTeamType] = Color(1, 1, 1, 1) }
                      
 // used for specific effects

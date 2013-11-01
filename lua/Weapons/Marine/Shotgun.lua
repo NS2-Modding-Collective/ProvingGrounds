@@ -69,7 +69,7 @@ function Shotgun:OnCreate()
     
     InitMixin(self, LiveMixin)
     InitMixin(self, PointGiverMixin)
-    
+       
     self.emptyPoseParam = 0
 
 end
@@ -79,7 +79,7 @@ if Client then
     function Shotgun:OnInitialized()
     
         ClipWeapon.OnInitialized(self)
-    
+
     end
 
 end

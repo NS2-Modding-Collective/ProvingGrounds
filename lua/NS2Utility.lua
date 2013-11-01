@@ -752,6 +752,11 @@ function SpawnPlayerAtPoint(player, origin, angles)
     
 end
 
+//For spawning items, AW for PG
+function SpawnItemAtPoint(item, origin)
+    item:SetOrigin(origin)
+end
+
 /**
  * Returns the passed in point traced down to the ground. Ignores all entities.
  */

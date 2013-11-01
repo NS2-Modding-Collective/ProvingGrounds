@@ -22,7 +22,7 @@ local kAnimationGraph = PrecacheAsset("models/marine/rifle/rifle_view.animation_
 
 local kRange = 100
 // 4 degrees in NS1
-local kSpread = Math.Radians(1.8)
+local kSpread = Math.Radians(0.1)
 
 local kButtRange = 1.1
 

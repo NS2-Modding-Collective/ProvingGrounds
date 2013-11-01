@@ -8,12 +8,11 @@
 // ========= For more information, visit us at http://www.unknownworlds.com =====================
 
 Script.Load("lua/ScriptActor.lua")
-Script.Load("lua/DropPack.lua")
+Script.Load("lua/ItemPickups.lua")
 Script.Load("lua/PickupableMixin.lua")
 Script.Load("lua/Mixins/ClientModelMixin.lua")
-Script.Load("lua/TeamMixin.lua")
 
-class 'MedPack' (DropPack)
+class 'MedPack' (ItemPickups)
 
 MedPack.kMapName = "medpack"
 
@@ -30,12 +29,12 @@ local networkVars =
 
 function MedPack:OnInitialized()
 
-    DropPack.OnInitialized(self)
+    ItemPickups.OnInitialized(self)
     
     self:SetModel(MedPack.kModelName)
 
     if Client then
-        InitMixin(self, PickupableMixin, { kRecipientType = "Marine" })
+        InitMixin(self, PickupableMixin, { kRecipientType = "Avatar" })
     end
     
 end

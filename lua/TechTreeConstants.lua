@@ -39,9 +39,9 @@ kTechId = createTechIdEnum({
     
     // Mapping Entities
     
-    'JumpPadTrigger',
+    'JumpPadTrigger', 'ItemSpawn',
     
-    'AmmoPack', 'MedPack', 'CatPack',
+    'ItemPickups', 'AmmoPack', 'MedPack', 'CatPack',
   
     'GameStarted',
     
