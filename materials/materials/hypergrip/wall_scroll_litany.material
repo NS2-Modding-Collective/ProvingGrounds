@@ -1,0 +1,6 @@
+shader = "shaders/Model.surface_shader"
+albedoMap = "materials/hypergrip/wall_scroll_litany.dds"
+normalMap = "materials/hypergrip/wall_scroll_litany_normal.dds"
+specularMap = "materials/hypergrip/wall_scroll_litany_spec.dds"
+
+surface = "thin_metal"

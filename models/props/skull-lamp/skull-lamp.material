@@ -1,4 +1,4 @@
-shader = "models/alien/alien.surface_shader"
+shader = "shaders/Model.surface_shader"
 albedoMap = "models/props/skull-lamp/skull-lamp.dds"
 specularMap = "models/props/skull-lamp/skull-lamp_specular.dds"
 normalMap = "models/props/skull-lamp/skull-lamp_normal.dds"

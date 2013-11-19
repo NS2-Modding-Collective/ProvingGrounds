@@ -1,0 +1,4 @@
+shader = "shaders/Level.surface_shader"
+albedoMap = "materials/hypergrip/black.dds"
+
+surface = "thin_metal"

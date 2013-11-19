@@ -1,0 +1,3 @@
+Set Avatar uniform colors to match team colors
+Set team icon colors to match team colors
+Increased reload speed - tried to, not quite working..

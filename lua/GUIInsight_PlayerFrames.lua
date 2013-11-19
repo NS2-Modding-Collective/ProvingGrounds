@@ -269,7 +269,6 @@ end
 function GUIInsight_PlayerFrames:UpdatePlayer(player, playerRecord, team, yPosition)
 
     local playerName = playerRecord.Name
-    local isCommander = playerRecord.IsCommander
     
     player.EntityId = playerRecord.EntityId
     
@@ -278,8 +277,7 @@ function GUIInsight_PlayerFrames:UpdatePlayer(player, playerRecord, team, yPosit
     else
         player.Frame:SetColor(Color(1,1,1,1))    
     end
-    
-    local resourcesStr = string.format("%d Res", playerRecord.Resources)
+
     local KDRStr = string.format("%s / %s", playerRecord.Kills, playerRecord.Deaths)
     local currentPosition = Vector(player["Background"]:GetPosition())
     local newStatus = playerRecord.Status
@@ -288,7 +286,6 @@ function GUIInsight_PlayerFrames:UpdatePlayer(player, playerRecord, team, yPosit
 
     currentPosition.y = yPosition
     player["Background"]:SetPosition(currentPosition)
-    player["Detail"]:SetText(resourcesStr)
     player.KDR:SetText(KDRStr)
     player["Background"]:SetColor(teamColor)
     -- Name
@@ -301,13 +298,7 @@ function GUIInsight_PlayerFrames:UpdatePlayer(player, playerRecord, team, yPosit
     if newStatus == "Dead" then
 
         player["Background"]:SetColor(kDeadColor)
-        healthBar:SetIsVisible(false)
-        
-    elseif isCommander then
-    
-        player["Background"]:SetColor(kCommanderColor)
-        healthBar:SetIsVisible(false)
-        
+        healthBar:SetIsVisible(false)        
     else
     
         if playerRecord.Health then           
@@ -338,38 +329,6 @@ function GUIInsight_PlayerFrames:UpdatePlayer(player, playerRecord, team, yPosit
     if newStatus ~= player.status then
     
         local oldStatus = player.status
-        -- Alerts for Fade, Onos, Exo deaths
-        if newStatus == Locale.ResolveString("STATUS_DEAD") then
-        
-            if player.Name:GetText() == playerName then
-
-                local texture = nil
-                local textureCoordinates = nil
-                if oldStatus == Locale.ResolveString("STATUS_FADE") then
-                    texture = "ui/Fade.dds"
-                    textureCoordinates = {0, 0, 188, 220}
-                elseif oldStatus == Locale.ResolveString("STATUS_ONOS") then
-                    texture = "ui/Onos.dds"
-                    textureCoordinates = {0, 0, 304, 326}
-                elseif oldStatus == Locale.ResolveString("STATUS_EXO") then
-                    texture = "ui/marine_buy_bigIcons.dds"
-                    textureCoordinates = {47, 2093, 47+316, 2093+316}
-                end
-                
-                if texture ~= nil then
-                
-                    local position = player["Background"]:GetScreenPosition(Client.GetScreenWidth(), Client.GetScreenHeight())
-                    local text = string.format("%s %s Has Died", oldStatus, playerName)
-                    local icon = {Texture = texture, TextureCoordinates = textureCoordinates, Color = Color(1,1,1,0.25), Size = Vector(0,0,0)}
-                    local info = {Text = text, Scale = Vector(0.2,0.2,0.2), Color = Color(0.5,0.5,0.5,0.5), ShadowColor = Color(0,0,0,0.5)}
-                    local alert = GUIInsight_AlertQueue:CreateAlert(position, icon, info, teamNumber)
-                    GUIInsight_AlertQueue:AddAlert(alert, Color(1,1,1,1), Color(1,1,1,1))
-                    
-                end
-            
-            end
-        
-        end
         
         local coords = kIconCoords[newStatus]
         if coords then
@@ -458,18 +417,7 @@ function GUIInsight_PlayerFrames:CreateMarineBackground()
     KDRitem:SetPosition(Vector(kPlayersPanelSize.x, 0, 0))
     KDRitem:SetColor(kInfoColor)
     background:AddChild(KDRitem)
-    
-    -- Res text item.
-    local detailItem = GUIManager:CreateTextItem()
-    detailItem:SetFontName(kInfoFontName)
-    detailItem:SetScale(kInfoFontScale)
-    detailItem:SetAnchor(GUIItem.Left, GUIItem.Middle)
-    detailItem:SetTextAlignmentX(GUIItem.Align_Max)
-    detailItem:SetTextAlignmentY(GUIItem.Align_Min)
-    detailItem:SetPosition(Vector(kPlayersPanelSize.x, 0, 0))
-    detailItem:SetColor(kInfoColor)
-    background:AddChild(detailItem)
-    
+       
     -- Health bar item.
     local healthBar = GUIManager:CreateGraphicItem()
     healthBar:SetSize(kHealthBarSize)
@@ -486,7 +434,7 @@ function GUIInsight_PlayerFrames:CreateMarineBackground()
     frame:SetTexturePixelCoordinates(unpack(leftFrameCoords))
     background:AddChild(frame)
     
-    return { Background = background, Frame = frame, Name = nameItem, Type = typeIcon, Detail = detailItem, KDR = KDRitem, HealthBar = healthBar }
+    return { Background = background, Frame = frame, Name = nameItem, Type = typeIcon, KDR = KDRitem, HealthBar = healthBar }
 
 end
 
@@ -529,17 +477,6 @@ function GUIInsight_PlayerFrames:CreateAlienBackground()
     KDRitem:SetColor(kInfoColor)
     background:AddChild(KDRitem)
     
-    -- Res text item.
-    local detailItem = GUIManager:CreateTextItem()
-    detailItem:SetFontName(kInfoFontName)
-    detailItem:SetScale(kInfoFontScale)
-    detailItem:SetAnchor(GUIItem.Left, GUIItem.Middle)
-    detailItem:SetPosition(Vector(GUIScale(2), 0, 0))
-    detailItem:SetTextAlignmentX(GUIItem.Align_Min)
-    detailItem:SetTextAlignmentY(GUIItem.Align_Min)
-    detailItem:SetColor(kInfoColor)
-    background:AddChild(detailItem)
-    
     -- Health bar item.
     local healthBar = GUIManager:CreateGraphicItem()
     healthBar:SetSize(kHealthBarSize)
@@ -557,6 +494,6 @@ function GUIInsight_PlayerFrames:CreateAlienBackground()
     frame:SetTexturePixelCoordinates(unpack(rightFrameCoords))
     background:AddChild(frame)
     
-    return { Background = background, Frame = frame, Name = nameItem, Type = typeIcon, Detail = detailItem, KDR = KDRitem, HealthBar = healthBar }
+    return { Background = background, Frame = frame, Name = nameItem, Type = typeIcon, KDR = KDRitem, HealthBar = healthBar }
 
 end

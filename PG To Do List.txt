@@ -1,0 +1,11 @@
+Jobs to do
+
+Fix health on respawn. - Done
+Fix Dodge. - Done
+Implement Extra Entities.
+Code Movement. - Done
+Implement Color Mod.
+Code SG/Grenade Launcher - Done
+Code Rocket Launcher - Done
+Fix Weapon GUI displays.
+

@@ -1,0 +1,45 @@
+McGlaspie: ////GameRules.lua (or whatever is named)
+GameRules.itemSpawns = {}
+
+function GameRules:OnReset()
+
+//do reset stuff
+GameRules.itemSpawns = {}
+
+for _, ent in ientitylist(Shared.GetEntitiesWithClassname("item_spawn") do
+table.insert(GameRules.itemSpawns, ent:GetId())
+end
+
+//do other reset stuffs
+
+end
+
+function GameRules:OnUpdateItemSpawns( deltaTime )
+
+for _, itemSpawnId in ipairs(GameRules.itemSpawns) do
+
+local itemSpawn = Shared.GetEntity( itemSpawnId )
+if itemSpawn then
+
+if itemSpawn:isa("ItemSpawn") and itemSpawn:GetCanRespawn(deltaTime) then
+itemSpawn:SpawnItem()
+end
+
+end
+
+end
+
+end
+
+
+//// ItemRespawn.lua
+function ItemSpawn:GetCanRespawn( deltaTime ) 
+return self.lastItemSpawnTime + deltaTime > self.itemRespawnTime
+//can set respawn time limit by what should be spawned or game settings
+end
+
+
+function ItemSpawn:SpawnItem()
+//do actual item create at self:GetOrigin() + kGroundOffset
+//DropToGround() type call...we don't want to see floating items
+end

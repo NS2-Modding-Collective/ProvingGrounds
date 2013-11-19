@@ -1,0 +1,6 @@
+shader = "shaders/Model.surface_shader"
+albedoMap = "materials/hypergrip/wood_planks_floor.dds"
+normalMap = "materials/hypergrip/wood_planks_floor_normal.dds"
+specularMap = "materials/hypergrip/wood_planks_floor_spec.dds"
+
+surface = "thin_metal"

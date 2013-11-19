@@ -1,0 +1,6 @@
+shader = "shaders/Model.surface_shader"
+albedoMap = "materials/hypergrip/tatami.dds"
+normalMap = "materials/hypergrip/tatami_normal.dds"
+specularMap = "materials/hypergrip/tatami_spec.dds"
+
+surface = "thin_metal"

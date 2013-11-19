@@ -424,6 +424,30 @@
 	<parent>trigger</parent>
 
     </class>
+
+    <!-- Teleport trigger -->
+    <class name="teleport_trigger" placeable="true">
+	<parent>trigger</parent>
+        
+        <cone_radius>
+		<radius>distance</radius>
+		<angle>angle</angle>
+	</cone_radius>
+
+        <parameter name="destination" type="string" label="Destination Name" help="Name of the destination TeleportTrigger (need to be a TeleportTrigger, too." default=""/>    
+        <parameter name="exitonly" type="boolean" label="Exit only" help="This teleporter is only a Exit (Destination Name will be ignored)." default="false"/>
+        <parameter name="waitDelay" type="real" label="Wait Delay" help="How long a Player has to wait before he can use the Teleporter exit (in sec.)." default="2"/>
+		<parameter name="clearVelocity" type="boolean" label="Clear velocity" help="This will elimante the velocity of the player so he won't lose his speed he got as he teleportet. Set this on the in teleporter, not to the exit." default="false"/>
+		<parameter name="teamNumber" type="choice" label="Team Number" help="Only this team can use the teleporter." default="0">
+            <choice label="Both teams" value="0"/>
+            <choice label="Green" value="1"/>
+            <choice label="Purple" value="2"/>
+		</parameter>
+        <parameter name="distance" type="distance" label = "Distance" default="3.0" help="Angle from the teleporter-output"/>
+        <parameter name="angle" type="angle" label = "Angles" default="30.0" help="Angle from the teleporter-output"/>
+
+    </class>
+
     
     <!-- Ambient sound -->    
     <class name="ambient_sound">

@@ -183,8 +183,6 @@ Event.Hook("Console_johnmadden", OnConsolePenColor )
 Event.Hook("Console_jm", OnConsolePenColor )
 Event.Hook("Console_pen", OnConsolePenColor )
 
-local maxRTs = 1
-local maxRes = 1
 local maxKills = 1
 local teams = { }
 
