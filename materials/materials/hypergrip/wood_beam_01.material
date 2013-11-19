@@ -1,0 +1,6 @@
+shader = "shaders/Model.surface_shader"
+albedoMap = "materials/hypergrip/wood_beam_01.dds"
+normalMap = "materials/hypergrip/wood_beam_01_normal.dds"
+specularMap = "materials/hypergrip/wood_beam_01_spec.dds"
+
+surface = "thin_metal"

@@ -1,0 +1,6 @@
+shader = "shaders/Model.surface_shader"
+albedoMap = "materials/hypergrip/grass.dds"
+normalMap = "materials/hypergrip/grass_normal.dds"
+specularMap = "materials/hypergrip/grass_spec.dds"
+
+surface = "thin_metal"

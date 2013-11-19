@@ -52,9 +52,9 @@ local function ReadyRoom(player)
     
 end
 
-local function Spectate(player)
+/*local function Spectate(player)
     return GetGamerules():JoinTeam(player, kSpectatorIndex)
-end
+end*/
 
 local function OnCommandJoinTeamOne(client)
 
@@ -77,14 +77,14 @@ local function OnCommandReadyRoom(client)
     
 end
 
-local function OnCommandSpectate(client)
+/*local function OnCommandSpectate(client)
 
     local player = client:GetControllingPlayer()
     Spectate(player)
     
-end
+end*/
 
-local function OnCommandFilm(client)
+/*local function OnCommandFilm(client)
 
     local player = client:GetControllingPlayer()
     
@@ -99,7 +99,7 @@ local function OnCommandFilm(client)
         
     end
     
-end
+end*/
 
 /**
  * Forces the game to end for testing purposes
@@ -1232,8 +1232,8 @@ Event.Hook("Console_changegcsettingserver", OnCommandChangeGCSettingServer)
 Event.Hook("Console_jointeamone", OnCommandJoinTeamOne)
 Event.Hook("Console_jointeamtwo", OnCommandJoinTeamTwo)
 Event.Hook("Console_readyroom", OnCommandReadyRoom)
-Event.Hook("Console_spectate", OnCommandSpectate)
-Event.Hook("Console_film", OnCommandFilm)
+//Event.Hook("Console_spectate", OnCommandSpectate)
+//Event.Hook("Console_film", OnCommandFilm)
 
 // Shortcuts because we type them so much
 Event.Hook("Console_j1", OnCommandJoinTeamOne)

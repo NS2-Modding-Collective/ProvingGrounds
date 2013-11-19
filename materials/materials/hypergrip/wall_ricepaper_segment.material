@@ -1,0 +1,6 @@
+shader = "shaders/Model.surface_shader"
+albedoMap = "materials/hypergrip/wall_ricepaper_segment.dds"
+normalMap = "materials/hypergrip/wall_ricepaper_segment_normal.dds"
+specularMap = "materials/hypergrip/wall_ricepaper_segment_spec.dds"
+
+surface = "thin_metal"

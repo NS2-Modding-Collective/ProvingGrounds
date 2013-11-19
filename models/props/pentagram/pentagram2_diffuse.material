@@ -1,4 +1,4 @@
-shader = "models/alien/alien.surface_shader"
+shader = "shaders/Model.surface_shader"
 albedoMap = "models/props/pentagram/pentagram2_diffuse.dds"
 specularMap = "models/props/pentagram/pentagram2_specular.dds"
 normalMap = "models/props/pentagram/pentagram2_normal.dds"

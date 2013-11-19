@@ -207,7 +207,7 @@ kMaxIdleWorkers = 127
 kMaxPlayerAlerts = 127
 
 // Max distance to propagate entities with
-kMaxRelevancyDistance = 40
+kMaxRelevancyDistance = 80
 
 kEpsilon = 0.0001
 

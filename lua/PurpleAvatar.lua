@@ -35,7 +35,7 @@ end
 if Client then
 
     function PurpleAvatar:GetBaseSkinColor()
-	    return Color(0.848, 0.143, 0.531, 1)
+	    return Color(0.731, 0.243, 0.999, 1)
 	end
 	
 	function PurpleAvatar:GetAccentSkinColor()

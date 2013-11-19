@@ -84,8 +84,10 @@ end
 local kPickupHealthOffset = Vector(0, 0.75, 0)
 function Avatar:OnKill(attacker, doer, point, direction)
     
-    if doer:isa("Axe") and attacker ~= self then
-        attacker:ApplyCatPack()
+    if doer ~= nil then
+        if doer:isa("Axe") and attacker ~= self then
+            attacker:ApplyCatPack()
+        end
     end
         
     // Destroy remaining weapons

@@ -1,0 +1,8 @@
+shader = "shaders/Model_emissive_alpha.surface_shader"
+albedoMap = "materials/hypergrip/wall_ricepaper_segment.dds"
+normalMap = "materials/hypergrip/wall_ricepaper_segment_normal.dds"
+specularMap = "materials/hypergrip/wall_ricepaper_segment_spec.dds"
+emissiveMap = "materials/hypergrip/wall_ricepaper_segment_illum.dds"
+opacityMap = "materials/hypergrip/wall_ricepaper_segment_alpha.dds"
+
+surface = "thin_metal"
