@@ -2,8 +2,9 @@ Credits:
 
 Game Design and Programming - Andy 'Soul Rider' Wilson
 Mapping & Textures - =Mr.P=
+Additional Textures - Hypergrip
 Models - Von Doom
-Colored Skins Code - McGlaspie
+Colored Skins Framework - McGlaspie
 Health Pickups - Sewlek
 Posters - TwoStroker
 Logo - Jibrail
