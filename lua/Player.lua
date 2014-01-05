@@ -132,6 +132,8 @@ Player.kMinimumPlayerVelocity = .05    // Minimum player velocity for network pe
 // Player speeds
 Player.kWalkMaxSpeed = 6.5                // Four miles an hour = 6,437 meters/hour = 1.8 meters/second (increase for FPS tastes)
 
+// Don't slow down players when crouching as it is the trigger to use wall-running
+Player.kCrouchSpeedScalar = 1
 Player.kAcceleration = 40
 Player.kRunAcceleration = 100
 
@@ -1793,6 +1795,10 @@ function Player:HandleButtons(input)
         
     end
     
+end
+
+function Player:GetCanCrouch()
+    return true
 end
 
 function Player:GetIsOverhead()

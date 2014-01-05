@@ -10,7 +10,9 @@ Script.Load("lua/Player.lua")
 Script.Load("lua/Mixins/BaseMoveMixin.lua")
 Script.Load("lua/Mixins/GroundMoveMixin.lua")
 Script.Load("lua/Mixins/JumpMoveMixin.lua")
+Script.Load("lua/Mixins/CrouchMoveMixin.lua")
 Script.Load("lua/Mixins/CameraHolderMixin.lua")
+Script.Load("lua/WallMovementMixin.lua")
 Script.Load("lua/ScoringMixin.lua")
 Script.Load("lua/UnitStatusMixin.lua")
 Script.Load("lua/DissolveMixin.lua")
@@ -59,6 +61,20 @@ local kDodgeCooldown = 0.8
 local kDodgeForce = 4
 local kDodgeSpeed = 30
 local kDodgeJumpDelay = 0.5
+//Wall-Running Variables for Proving Grounds AW
+// How big the spheres are that are casted out to find walls, "feelers".
+// The size is calculated so the "balls" touch each other at the end of their range
+local kNormalWallWalkFeelerSize = 0.25
+local kNormalWallWalkRange = 0.3
+
+//Wall-Jump Variables for Proving Grounds AW
+// jump is valid when you are close to a wall but not attached yet at this range
+local kJumpWallRange = 0.4
+local kJumpWallFeelerSize = 0.1
+local kWallJumpInterval = 0.4
+local kWallJumpForce = 5.2 // scales down the faster you are
+local kMinWallJumpForce = 0.1
+local kVerticalWallJumpForce = 4.3
 
 local networkVars =
 {      
@@ -67,6 +83,13 @@ local networkVars =
     timeDodge = "private compensated time",
     dodgeDirection = "private vector",
     dodgeSpeed = "private compensated interpolated float",
+    
+    //Wall-Running Local Network Variables for Proving Grounds AW
+    wallWalking = "compensated boolean",
+    timeLastWallWalkCheck = "private compensated time",
+    timeOfLastJumpLand = "private compensated time",
+    timeLastWallJump = "private compensated time",
+    jumpLandSpeed = "private compensated float",
     
     catpackboost = "private boolean",
     timeCatpackboost = "private time",
@@ -80,6 +103,7 @@ local networkVars =
 AddMixinNetworkVars(BaseMoveMixin, networkVars)
 AddMixinNetworkVars(GroundMoveMixin, networkVars)
 AddMixinNetworkVars(JumpMoveMixin, networkVars)
+AddMixinNetworkVars(CrouchMoveMixin, networkVars)
 AddMixinNetworkVars(CameraHolderMixin, networkVars)
 AddMixinNetworkVars(DissolveMixin, networkVars)
 AddMixinNetworkVars(LOSMixin, networkVars)
@@ -92,7 +116,9 @@ function Avatar:OnCreate()
     InitMixin(self, BaseMoveMixin, { kGravity = Player.kGravity })
     InitMixin(self, GroundMoveMixin)
     InitMixin(self, JumpMoveMixin)
+    InitMixin(self, CrouchMoveMixin)
     InitMixin(self, CameraHolderMixin, { kFov = kDefaultFov })
+    InitMixin(self, WallMovementMixin)
     InitMixin(self, ScoringMixin, { kMaxScore = kMaxScore })
     InitMixin(self, CombatMixin)
     
@@ -119,11 +145,21 @@ end
 
 function Avatar:OnInitialized()
 
+    // Note: This needs to be initialized BEFORE calling SetModel() below
+    // as SetModel() will call GetHeadAngles() through SetPlayerPoseParameters()
+    // which will cause a script error if the Avatar is wall running BEFORE
+    // the Avatar is initialized on the client.
+    self.currentWallWalkingAngles = Angles(0.0, 0.0, 0.0)
+        
     // SetModel must be called before Player.OnInitialized is called so the attach points in
     // the Marine are valid to attach weapons to. This is far too subtle...
     self:SetModel(self:GetVariantModel(), AvatarVariantMixin.kMarineAnimationGraph)
     
     Player.OnInitialized(self)
+    
+    //Set-Up Wall-Running variables
+    self.wallWalking = false
+    self.wallWalkingNormalGoal = Vector.yAxis
             
     local viewAngles = self:GetViewAngles()
     self.lastYaw = viewAngles.yaw
@@ -133,9 +169,12 @@ function Avatar:OnInitialized()
     self.horizontalSwing = 0
     // -1 = up, +1 = down
     
-
+    //Cat Pack Boost is given to players on Melee kill - Proving Grounds AW
     self.catpackboost = false
     self.timeCatpackboost = 0
+    
+    //Wall-Jump Variable
+    self.timeLastWallJump = 0
 
 end
 
@@ -164,17 +203,33 @@ function Avatar:HandleButtons(input)
         self:TriggerDodge(input.move)
     end
     
+    local crouchPressed = bit.band(input.commands, Move.Crouch) ~= 0
+    
+    /*if crouchPressed then
+    end*/
+    
     Player.HandleButtons(self, input)
     
+end
+
+function Avatar:GetCrouchSpeedScalar()
+    return Player.kCrouchSpeedScalar
 end
 
 function Avatar:ModifyGroundFraction(groundFraction)
     return groundFraction > 0 and 1 or 0
 end
 
+function Avatar:OverrideUpdateOnGround(onGround)
+    return onGround or self:GetIsWallWalking()
+end
+
 function Avatar:ModifyGravityForce(gravityTable)
 
-    if self:GetIsOnGround() then
+    if self:GetIsWallWalking() then
+        gravityTable.gravity = 0
+
+    elseif self:GetIsOnGround() then
         gravityTable.gravity = 0
     end
 
@@ -191,6 +246,10 @@ function Avatar:GetMaxSpeed(possible)
     end
     
     local maxSpeed = Avatar.kMaxSpeed
+    
+    if self:GetIsWallWalking() then
+        maxSpeed = maxSpeed + 0.25
+    end
     
     if self.catpackboost then
         maxSpeed = maxSpeed + kCatPackMoveAddSpeed
@@ -213,20 +272,157 @@ function Avatar:GetPlayerControllersGroup()
     return PhysicsGroup.BigPlayerControllersGroup
 end
 
+function Avatar:GetRecentlyWallJumped()
+    return self.timeLastWallJump + kWallJumpInterval > Shared.GetTime()
+end
+
+function Avatar:GetCanWallJump()
+
+    local wallWalkNormal = self:GetAverageWallWalkingNormal(kJumpWallRange, kJumpWallFeelerSize)
+    if wallWalkNormal then
+        return wallWalkNormal.y < 0.5
+    end
+    
+    return false
+
+end
+
+function Avatar:GetIsWallWalking()
+    return self.wallWalking
+end
+
+function Avatar:GetIsWallWalkingPossible() 
+    return self:GetCrouching()
+end
+
+local function PredictGoal(self, velocity)
+
+    PROFILE("Avatar:PredictGoal")
+
+    local goal = self.wallWalkingNormalGoal
+    if velocity:GetLength() > 1 and not self:GetIsOnSurface() then
+
+        local movementDir = GetNormalizedVector(velocity)
+        local trace = Shared.TraceCapsule(self:GetOrigin(), movementDir * 2.5, Skulk.kXExtents, 0, CollisionRep.Move, PhysicsMask.Movement, EntityFilterOne(self))
+
+        if trace.fraction < 1 and not trace.entity then
+            goal = trace.normal    
+        end
+
+    end
+
+    return goal
+
+end
+
 function Avatar:GetJumpHeight()
     return Player.kJumpHeight
+end
+
+function Avatar:GetPerformsVerticalMove()
+    return self:GetIsWallWalking()
 end
 
 function Avatar:GetAirControl()
     return 100
 end 
 
+function Avatar:GetGroundTransistionTime()
+    return 0.1
+end
+
+function Avatar:GetAirAcceleration()
+    return 9
+end
+
+function Avatar:GetAirFriction()
+    return 0.055
+end 
+
 function Avatar:GetHasDodgeCooldown()
     return self.timeDodge + kDodgeCooldown > Shared.GetTime()
 end
 
+// Update wall-walking from current origin
+function Avatar:PreUpdateMove(input, runningPrediction)
+
+    PROFILE("Avatar:PreUpdateMove")
+
+    if self:GetCrouching() then
+        self.wallWalking = false
+    end
+
+    if self.wallWalking then
+
+        // Most of the time, it returns a fraction of 0, which means
+        // trace started outside the world (and no normal is returned)           
+        local goal = self:GetAverageWallWalkingNormal(kNormalWallWalkRange, kNormalWallWalkFeelerSize)
+        if goal ~= nil then
+        
+            self.wallWalkingNormalGoal = goal
+            self.wallWalking = true
+
+        else
+            self.wallWalking = false
+        end
+    
+    end
+    
+    if not self:GetIsWallWalking() then
+        // When not wall walking, the goal is always directly up (running on ground).
+        self.wallWalkingNormalGoal = Vector.yAxis
+    end
+    
+    self.currentWallWalkingAngles = self:GetAnglesFromWallNormal(self.wallWalkingNormalGoal or Vector.yAxis) or self.currentWallWalkingAngles
+
+end
+
+function Avatar:GetRollSmoothRate()
+    return 5
+end
+
+function Avatar:GetPitchSmoothRate()
+    return 3
+end
+
+function Avatar:GetSlerpSmoothRate()
+    return 5
+end
+
+function Avatar:GetAngleSmoothRate()
+    return 6
+end
+
 function Avatar:GetCollisionSlowdownFraction()
     return 0.05
+end
+
+function Avatar:GetDesiredAngles(deltaTime)
+    return self.currentWallWalkingAngles
+end 
+
+function Avatar:GetHeadAngles()
+
+    if self:GetIsWallWalking() then
+        return self.currentWallWalkingAngles
+    else
+        return self:GetViewAngles()
+    end
+
+end
+
+function Avatar:GetAngleSmoothingMode()
+
+    if self:GetIsWallWalking() then
+        return "quatlerp"
+    else
+        return "euler"
+    end
+
+end
+
+function Avatar:GetIsUsingBodyYaw()
+    return not self:GetIsWallWalking()
 end
 
 function Avatar:TriggerDodge(direction)
@@ -332,18 +528,65 @@ end
 function Avatar:ModifyJump(input, velocity, jumpVelocity)
 
     jumpVelocity.y = jumpVelocity.y * 1.6
+    
+    /*if self:GetCanWallJump() then
+    
+        local direction = input.move.z == -1 and -1 or 1
+    
+        // we add the bonus in the direction the move is going
+        local viewCoords = self:GetViewAngles():GetCoords()
+        self.bonusVec = viewCoords.zAxis * direction
+        self.bonusVec.y = 0
+        self.bonusVec:Normalize()
+        
+        jumpVelocity.y = 3 + math.min(1, 1 + viewCoords.zAxis.y) * 2
+        
+        local force = math.max(kMinWallJumpForce, kWallJumpForce)
+          
+        self.bonusVec:Scale(force)      
+
+        if not self:GetRecentlyWallJumped() then
+        
+            self.bonusVec.y = viewCoords.zAxis.y * kVerticalWallJumpForce
+            jumpVelocity:Add(self.bonusVec)
+
+        end
+        
+        self.timeLastWallJump = Shared.GetTime()
+        
+    end*/
 
 end
 
 function Avatar:OnJump()
 
-    if not self:GetIsOnGround() then
+    if not self:GetIsOnGround() or not self:GetIsWallWalking() then
         self.hasDoubleJumped = true           
     end
     
-    self:TriggerEffects("jump", {surface = self:GetMaterialBelowPlayer()})
+    self.wallWalking = false
     
-end    
+    local jumpEffectName = "jump"
+    
+    local velocityLength = self:GetVelocity():GetLengthXZ()
+    
+    if velocityLength > 11 then
+        jumpEffectName = "jump_best"            
+    elseif velocityLength > 8.5 then
+        jumpEffectName = "jump_good"
+    end
+
+    self:TriggerEffects(jumpEffectName, {surface = self:GetMaterialBelowPlayer()})
+    
+end
+
+function Avatar:OnWorldCollision(normal, impactForce, newVelocity)
+
+    PROFILE("Avatar:OnWorldCollision")
+
+    self.wallWalking = self:GetIsWallWalkingPossible() and normal.y < 0.5
+    
+end
 
 function Avatar:OnProcessMove(input)
 
@@ -415,6 +658,18 @@ function Avatar:PostUpdateMove(input, runningPrediction)
     if self:GetIsOnGround() then
         self.hasDoubleJumped = false
     end
+end
+
+function Avatar:GetCrouchShrinkAmount()
+    return 0
+end
+
+function Avatar:GetExtentsCrouchShrinkAmount()
+    return 0
+end
+
+function Avatar:GetCrouchCameraAnimationAllowed(result)
+    result.allowed = false
 end
 
 Shared.LinkClassToMap("Avatar", Avatar.kMapName, networkVars, true)
