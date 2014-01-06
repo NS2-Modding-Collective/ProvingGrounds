@@ -17,11 +17,6 @@ function Avatar:UpdateClientEffects(deltaTime, isLocal)
     Player.UpdateClientEffects(self, deltaTime, isLocal)
     
     if isLocal then
-        
-        local avatarHUD = ClientUI.GetScript("Hud/Marine/GUIMarineHUD")
-        if avatarHUD then
-            avatarHUD:SetIsVisible(self:GetIsAlive())
-        end
 
         local blurEnabled = self.buyMenu ~= nil
         self:SetBlurEnabled(blurEnabled)
@@ -98,31 +93,6 @@ function Avatar:PlayerCameraCoordsAdjustment(cameraCoords)
     return cameraCoords
 
 end*/
-
-function Avatar:OnCountDown()
-
-    Player.OnCountDown(self)
-    
-    local script = ClientUI.GetScript("Hud/Marine/GUIMarineHUD")
-    if script then
-        script:SetIsVisible(false)
-    end
-    
-end
-
-function Avatar:OnCountDownEnd()
-
-    Player.OnCountDownEnd(self)
-    
-    local script = ClientUI.GetScript("Hud/Marine/GUIMarineHUD")
-    if script then
-    
-        script:SetIsVisible(true)
-        script:TriggerInitAnimations()
-        
-    end
-    
-end
 
 function Avatar:CreateTrailCinematic()
 

@@ -39,7 +39,8 @@ end
 
 // Below are the rules for what scripts should be active when the local player is a certain class.
 local kShowAsClass = { }
-kShowAsClass["Avatar"] = { ["Hud/Marine/GUIMarineHUD"] = true, GUIRequestMenu = true}
+kShowAsClass["GreenAvatar"] = { ["Hud/Marine/GUIGreenHUD"] = true, GUIRequestMenu = true}
+kShowAsClass["PurpleAvatar"] = { ["Hud/Marine/GUIPurpleHUD"] = true, GUIRequestMenu = true}
 kShowAsClass["MarineSpectator"] = { GUIRequestMenu = true }
 kShowAsClass["AlienSpectator"] = { GUIRequestMenu = true }
 kShowAsClass["ReadyRoomPlayer"] = { }
