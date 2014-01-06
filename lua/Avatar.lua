@@ -58,7 +58,7 @@ Avatar.kAvatarAlertTimeout = 4
 local kDodgeCooldown = 0.8
 local kDodgeForce = 4
 local kDodgeSpeed = 30
-local kDodgeJumpDelay = 0.5
+local kDodgeJumpDelay = 0.2
 
 local networkVars =
 {      
